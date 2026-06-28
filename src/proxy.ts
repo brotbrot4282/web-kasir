@@ -5,8 +5,7 @@ const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "warmindo-secret-key-change-in-production"
 );
 
-const protectedRoutes = ["/", "/kasir", "/admin"];
-const publicRoutes = ["/login"];
+const publicRoutes = ["/login", "/api/auth"];
 
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -15,7 +14,12 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (!protectedRoutes.some((r) => pathname.startsWith(r))) {
+  const isProtected =
+    pathname === "/" ||
+    pathname.startsWith("/kasir") ||
+    pathname.startsWith("/admin");
+
+  if (!isProtected) {
     return NextResponse.next();
   }
 
