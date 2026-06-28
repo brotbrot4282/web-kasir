@@ -7,8 +7,8 @@ export async function GET(request: NextRequest) {
   const sampai = searchParams.get("sampai");
 
   const dateFilter: Record<string, Date> = {};
-  if (dari) dateFilter.gte = new Date(dari + "T00:00:00.000Z");
-  if (sampai) dateFilter.lte = new Date(sampai + "T23:59:59.999Z");
+  if (dari) dateFilter.gte = new Date(dari + "T00:00:00+07:00");
+  if (sampai) dateFilter.lte = new Date(sampai + "T23:59:59.999+07:00");
 
   const where = dari || sampai ? { createdAt: dateFilter } : {};
 

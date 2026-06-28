@@ -30,9 +30,11 @@ export default function LaporanPage() {
   useEffect(() => { loadData(); }, []);
 
   const cari = (e: React.FormEvent) => { e.preventDefault(); loadData(dari || undefined, sampai || undefined); };
-  const hariIni = () => { const t = new Date().toISOString().split("T")[0]; setDari(t); setSampai(t); loadData(t, t); };
-  const mingguIni = () => { const t = new Date(); const w = new Date(t); w.setDate(w.getDate() - 7); setDari(w.toISOString().split("T")[0]); setSampai(t.toISOString().split("T")[0]); loadData(w.toISOString().split("T")[0], t.toISOString().split("T")[0]); };
-  const bulanIni = () => { const t = new Date(); const b = new Date(t.getFullYear(), t.getMonth(), 1); setDari(b.toISOString().split("T")[0]); setSampai(t.toISOString().split("T")[0]); loadData(b.toISOString().split("T")[0], t.toISOString().split("T")[0]); };
+  const getLocalDate = (d: Date) =>
+    new Intl.DateTimeFormat("fr-CA", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+  const hariIni = () => { const t = getLocalDate(new Date()); setDari(t); setSampai(t); loadData(t, t); };
+  const mingguIni = () => { const skrg = new Date(); const t = getLocalDate(skrg); const w = new Date(skrg); w.setDate(w.getDate() - 7); const d = getLocalDate(w); setDari(d); setSampai(t); loadData(d, t); };
+  const bulanIni = () => { const skrg = new Date(); const t = getLocalDate(skrg); const b = getLocalDate(new Date(skrg.getFullYear(), skrg.getMonth(), 1)); setDari(b); setSampai(t); loadData(b, t); };
 
   return (
     <div className="space-y-6">
