@@ -149,9 +149,9 @@ export default function Dashboard() {
 
 function StatCard({ title, value }: { title: string; value: string }) {
   return (
-    <div className="bg-white border border-sage-200 rounded-xl p-5 hover:border-sage-300 transition-all">
-      <p className="text-sm text-sage-500">{title}</p>
-      <p className="text-xl font-bold text-sage-800 mt-1">{value}</p>
+    <div className="bg-sage-600 rounded-xl p-5 shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
+      <p className="text-sm text-sage-100">{title}</p>
+      <p className="text-xl font-bold text-white mt-1">{value}</p>
     </div>
   );
 }
