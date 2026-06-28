@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Navigation from "@/components/Navigation";
+import Navbar1 from "@/components/ui/navbar-1";
 
 export const metadata: Metadata = {
   title: "Warmindo Kasir",
@@ -23,7 +23,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen antialiased">
-        <Navigation />
+        <Navbar1 />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{children}</main>
       </body>
     </html>
