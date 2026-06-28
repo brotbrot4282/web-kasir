@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, LogOut } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 const navItems = [
   { href: "/", label: "Dashboard" },
@@ -16,14 +16,24 @@ const navItems = [
 
 export default function Navbar1() {
   const [isOpen, setIsOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+
+  if (pathname === "/login") return null;
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+  };
+
   return (
     <div className="flex justify-center w-full py-4 px-4 sticky top-0 z-50">
-      <div className="flex items-center justify-center px-6 py-2.5 bg-sage-600 rounded-full shadow-lg w-full max-w-3xl relative z-10">
+      <div className="flex items-center justify-between px-6 py-2.5 bg-sage-600 rounded-full shadow-lg w-full max-w-3xl relative z-10">
         <nav className="hidden md:flex items-center space-x-1">
           {navItems.map((item) => {
             const active = isActive(item.href);
@@ -50,13 +60,24 @@ export default function Navbar1() {
           })}
         </nav>
 
-        <motion.button
-          className="md:hidden flex items-center"
-          onClick={() => setIsOpen(!isOpen)}
-          whileTap={{ scale: 0.9 }}
-        >
-          <Menu className="h-5 w-5 text-white" />
-        </motion.button>
+        <div className="flex items-center gap-2">
+          <motion.button
+            className="md:hidden flex items-center"
+            onClick={() => setIsOpen(!isOpen)}
+            whileTap={{ scale: 0.9 }}
+          >
+            <Menu className="h-5 w-5 text-white" />
+          </motion.button>
+
+          <button
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className="flex items-center gap-1.5 text-xs text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-full px-3 py-1.5 transition-colors disabled:opacity-50"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Keluar</span>
+          </button>
+        </div>
       </div>
 
       <AnimatePresence>
@@ -104,6 +125,19 @@ export default function Navbar1() {
                   </motion.div>
                 );
               })}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: navItems.length * 0.1 + 0.1 }}
+              >
+                <button
+                  onClick={() => { handleLogout(); setIsOpen(false); }}
+                  className="flex items-center gap-2 text-base text-white/80 hover:text-white px-4 py-3 rounded-xl transition-colors w-full"
+                >
+                  <LogOut className="h-5 w-5" />
+                  Keluar
+                </button>
+              </motion.div>
             </div>
           </motion.div>
         )}

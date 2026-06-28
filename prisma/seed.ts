@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import bcrypt from "bcryptjs";
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
@@ -11,6 +12,19 @@ const prisma = new PrismaClient({ adapter });
 
 async function main() {
   console.log("Seeding database...");
+
+  // Admin user
+  const adminPassword = await bcrypt.hash("password123", 12);
+  await prisma.user.upsert({
+    where: { username: "admin@warmindo" },
+    update: {},
+    create: {
+      username: "admin@warmindo",
+      password: adminPassword,
+      nama: "Admin Warmindo",
+    },
+  });
+  console.log("Admin user created");
 
   // Upsert kategori
   const makanan = await prisma.kategori.upsert({
