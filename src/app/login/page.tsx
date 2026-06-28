@@ -132,8 +132,17 @@ export default function LoginPage() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-xs text-sage-400 mt-6">
-          &copy; {new Date().getFullYear()} Warmindo Kasir
+        <p className="text-center text-xs text-sage-300 mt-6">
+          &copy; {new Date().getFullYear()} Warmindo Kasir &middot;
+          Made by{" "}
+          <a
+            href="https://rafcode.vercel.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sage-200 hover:text-white underline underline-offset-2 transition-colors"
+          >
+            Rafcode
+          </a>
         </p>
       </motion.div>
     </div>
