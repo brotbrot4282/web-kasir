@@ -23,19 +23,7 @@ export default function Navbar1() {
 
   return (
     <div className="flex justify-center w-full py-4 px-4 sticky top-0 z-50">
-      <div className="flex items-center justify-between px-6 py-2.5 bg-white rounded-full shadow-lg w-full max-w-3xl relative z-10">
-        <Link href="/" className="flex items-center">
-          <motion.div
-            className="w-8 h-8 mr-4 rounded-md bg-sage-600 flex items-center justify-center text-white text-sm font-bold"
-            initial={{ scale: 0.8 }}
-            animate={{ scale: 1 }}
-            whileHover={{ rotate: 10 }}
-            transition={{ duration: 0.3 }}
-          >
-            W
-          </motion.div>
-        </Link>
-
+      <div className="flex items-center justify-center px-6 py-2.5 bg-sage-600 rounded-full shadow-lg w-full max-w-3xl relative z-10">
         <nav className="hidden md:flex items-center space-x-1">
           {navItems.map((item) => {
             const active = isActive(item.href);
@@ -49,10 +37,10 @@ export default function Navbar1() {
               >
                 <Link
                   href={item.href}
-                  className={`text-sm transition-colors font-medium px-3 py-1.5 rounded-md ${
+                  className={`text-sm transition-colors font-medium px-4 py-1.5 rounded-full ${
                     active
-                      ? "text-white bg-sage-600"
-                      : "text-sage-600 hover:text-sage-800 hover:bg-sage-50"
+                      ? "text-sage-800 bg-white"
+                      : "text-white/90 hover:text-white hover:bg-white/15"
                   }`}
                 >
                   {item.label}
@@ -67,14 +55,14 @@ export default function Navbar1() {
           onClick={() => setIsOpen(!isOpen)}
           whileTap={{ scale: 0.9 }}
         >
-          <Menu className="h-5 w-5 text-sage-700" />
+          <Menu className="h-5 w-5 text-white" />
         </motion.button>
       </div>
 
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            className="fixed inset-0 bg-white/95 backdrop-blur-sm z-40 pt-24 px-6 md:hidden"
+            className="fixed inset-0 bg-sage-600 z-40 pt-24 px-6 md:hidden"
             initial={{ opacity: 0, x: "100%" }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: "100%" }}
@@ -88,10 +76,10 @@ export default function Navbar1() {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
             >
-              <X className="h-6 w-6 text-sage-700" />
+              <X className="h-6 w-6 text-white" />
             </motion.button>
 
-            <div className="flex flex-col space-y-4">
+            <div className="flex flex-col space-y-3">
               {navItems.map((item, i) => {
                 const active = isActive(item.href);
                 return (
@@ -105,10 +93,10 @@ export default function Navbar1() {
                     <Link
                       href={item.href}
                       onClick={() => setIsOpen(false)}
-                      className={`block text-base font-medium px-4 py-2 rounded-lg transition-colors ${
+                      className={`block text-base font-medium px-4 py-3 rounded-xl transition-colors ${
                         active
-                          ? "text-white bg-sage-600"
-                          : "text-sage-700 hover:bg-sage-50"
+                          ? "text-sage-800 bg-white"
+                          : "text-white/90 hover:text-white hover:bg-white/15"
                       }`}
                     >
                       {item.label}
