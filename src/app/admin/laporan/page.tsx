@@ -1,0 +1,177 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { formatRupiah, formatDate } from "@/lib/utils";
+
+type Ringkasan = { totalOmset: number; totalTransaksi: number; totalItem: number };
+type MenuTerlaris = { menuId: string; namaMenu: string; totalTerjual: number };
+type Transaksi = {
+  id: string; noTransaksi: string; totalHarga: number; totalBayar: number;
+  kembalian: number; createdAt: string;
+  itemTransaksi: Array<{ id: string; namaMenu: string; harga: number; jumlah: number; subtotal: number }>;
+};
+type LaporanData = { ringkasan: Ringkasan; menuTerlaris: MenuTerlaris[]; transaksi: Transaksi[] };
+
+export default function LaporanPage() {
+  const [data, setData] = useState<LaporanData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [dari, setDari] = useState("");
+  const [sampai, setSampai] = useState("");
+  const [detail, setDetail] = useState<Transaksi | null>(null);
+
+  const loadData = (d?: string, s?: string) => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (d) params.set("dari", d);
+    if (s) params.set("sampai", s);
+    fetch(`/api/laporan?${params.toString()}`).then((r) => r.json()).then((d: LaporanData) => setData(d)).finally(() => setLoading(false));
+  };
+
+  useEffect(() => { loadData(); }, []);
+
+  const cari = (e: React.FormEvent) => { e.preventDefault(); loadData(dari || undefined, sampai || undefined); };
+  const hariIni = () => { const t = new Date().toISOString().split("T")[0]; setDari(t); setSampai(t); loadData(t, t); };
+  const mingguIni = () => { const t = new Date(); const w = new Date(t); w.setDate(w.getDate() - 7); setDari(w.toISOString().split("T")[0]); setSampai(t.toISOString().split("T")[0]); loadData(w.toISOString().split("T")[0], t.toISOString().split("T")[0]); };
+  const bulanIni = () => { const t = new Date(); const b = new Date(t.getFullYear(), t.getMonth(), 1); setDari(b.toISOString().split("T")[0]); setSampai(t.toISOString().split("T")[0]); loadData(b.toISOString().split("T")[0], t.toISOString().split("T")[0]); };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-bold text-sage-800">Laporan</h1>
+        <p className="text-sm text-sage-500 mt-0.5">Rekap penjualan dan analisis</p>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <button onClick={hariIni} className="px-3 py-1.5 bg-sage-100 text-sage-600 rounded-lg text-sm font-medium hover:bg-sage-200 transition-colors">Hari Ini</button>
+        <button onClick={mingguIni} className="px-3 py-1.5 bg-sage-100 text-sage-600 rounded-lg text-sm font-medium hover:bg-sage-200 transition-colors">7 Hari</button>
+        <button onClick={bulanIni} className="px-3 py-1.5 bg-sage-100 text-sage-600 rounded-lg text-sm font-medium hover:bg-sage-200 transition-colors">Bulan Ini</button>
+        <form onSubmit={cari} className="flex items-center gap-2 ml-auto">
+          <input type="date" value={dari} onChange={(e) => setDari(e.target.value)} className="border border-sage-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400" />
+          <span className="text-sage-400 text-sm">–</span>
+          <input type="date" value={sampai} onChange={(e) => setSampai(e.target.value)} className="border border-sage-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400" />
+          <button type="submit" className="bg-sage-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-sage-700 transition-colors">Cari</button>
+        </form>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20"><div className="animate-pulse text-sage-400">Memuat data...</div></div>
+      ) : data ? (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-white border border-sage-200 rounded-xl p-5">
+              <p className="text-sm text-sage-500">Total Omset</p>
+              <p className="text-xl font-bold text-sage-800 mt-1">{formatRupiah(data.ringkasan.totalOmset)}</p>
+            </div>
+            <div className="bg-white border border-sage-200 rounded-xl p-5">
+              <p className="text-sm text-sage-500">Total Transaksi</p>
+              <p className="text-xl font-bold text-sage-800 mt-1">{data.ringkasan.totalTransaksi}</p>
+            </div>
+            <div className="bg-white border border-sage-200 rounded-xl p-5">
+              <p className="text-sm text-sage-500">Total Item Terjual</p>
+              <p className="text-xl font-bold text-sage-800 mt-1">{data.ringkasan.totalItem}</p>
+            </div>
+          </div>
+
+          {data.menuTerlaris.length > 0 && (
+            <div className="bg-white border border-sage-200 rounded-xl p-5">
+              <h2 className="text-sm font-semibold text-sage-800 mb-3">Menu Terlaris</h2>
+              <div className="space-y-1">
+                {data.menuTerlaris.map((item, i) => (
+                  <div key={item.menuId} className="flex items-center justify-between py-2.5 border-b border-sage-100 last:border-0">
+                    <div className="flex items-center gap-3">
+                      <span className="w-6 h-6 rounded-full bg-sage-100 text-xs font-medium flex items-center justify-center text-sage-500">{i + 1}</span>
+                      <span className="text-sm text-sage-700">{item.namaMenu}</span>
+                    </div>
+                    <span className="text-sm font-semibold text-sage-800">{item.totalTerjual}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="bg-white border border-sage-200 rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-sage-100">
+              <h2 className="text-sm font-semibold text-sage-800">Riwayat Transaksi</h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-sage-100">
+                    <th className="text-left px-4 py-3 text-xs font-medium text-sage-500 uppercase">No. Transaksi</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-sage-500 uppercase">Total</th>
+                    <th className="text-center px-4 py-3 text-xs font-medium text-sage-500 uppercase">Item</th>
+                    <th className="text-center px-4 py-3 text-xs font-medium text-sage-500 uppercase">Waktu</th>
+                    <th className="text-center px-4 py-3 text-xs font-medium text-sage-500 uppercase">Detail</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-sage-100">
+                  {data.transaksi.map((t) => (
+                    <tr key={t.id} className="hover:bg-sage-50 transition-colors">
+                      <td className="px-4 py-3.5 font-mono text-xs text-sage-400">{t.noTransaksi}</td>
+                      <td className="px-4 py-3.5 text-right font-medium text-sage-800">{formatRupiah(t.totalHarga)}</td>
+                      <td className="px-4 py-3.5 text-center text-sage-500">{t.itemTransaksi.reduce((s, i) => s + i.jumlah, 0)}</td>
+                      <td className="px-4 py-3.5 text-center text-sage-400 text-xs">{formatDate(new Date(t.createdAt))}</td>
+                      <td className="px-4 py-3.5 text-center">
+                        <button onClick={() => setDetail(t)} className="text-sage-600 hover:text-sage-700 text-sm font-medium transition-colors">
+                          Lihat
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {data.transaksi.length === 0 && (
+                    <tr><td colSpan={5} className="text-center py-12 text-sage-400 text-sm">Belum ada transaksi</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {detail && (
+            <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/20 backdrop-blur-sm" onClick={() => setDetail(null)}>
+              <div className="bg-white rounded-xl p-6 shadow-xl border border-sage-200 w-full max-w-lg mx-4" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-sage-800">Detail Transaksi</h3>
+                    <p className="font-mono text-xs text-sage-400 mt-0.5">{detail.noTransaksi}</p>
+                  </div>
+                  <button onClick={() => setDetail(null)} className="text-sage-400 hover:text-sage-600 transition-colors">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-sage-100 text-left">
+                      <th className="py-2 text-xs font-medium text-sage-500 uppercase">Menu</th>
+                      <th className="py-2 text-xs font-medium text-sage-500 uppercase">Harga</th>
+                      <th className="py-2 text-xs font-medium text-sage-500 uppercase">Jumlah</th>
+                      <th className="py-2 text-xs font-medium text-sage-500 uppercase text-right">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-sage-100">
+                    {detail.itemTransaksi.map((item) => (
+                      <tr key={item.id}>
+                        <td className="py-2.5 text-sage-700">{item.namaMenu}</td>
+                        <td className="py-2.5 text-sage-500">{formatRupiah(item.harga)}</td>
+                        <td className="py-2.5 text-sage-500">{item.jumlah}</td>
+                        <td className="py-2.5 text-right font-medium text-sage-800">{formatRupiah(item.subtotal)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="border-t-2 border-sage-200">
+                    <tr><td colSpan={3} className="py-2.5 text-right font-semibold text-sage-800">Total</td><td className="py-2.5 text-right font-bold text-sage-800">{formatRupiah(detail.totalHarga)}</td></tr>
+                    <tr className="text-sage-500"><td colSpan={3} className="py-1 text-right">Bayar</td><td className="py-1 text-right">{formatRupiah(detail.totalBayar)}</td></tr>
+                    <tr className="text-sage-600 font-medium"><td colSpan={3} className="py-1 text-right">Kembali</td><td className="py-1 text-right">{formatRupiah(detail.kembalian)}</td></tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="text-center py-20 text-sage-400">Tidak ada data</div>
+      )}
+    </div>
+  );
+}

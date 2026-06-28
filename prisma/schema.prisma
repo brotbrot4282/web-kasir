@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Kategori {
+  id        String   @id @default(uuid()) @db.Uuid
+  nama      String   @unique
+  menu      Menu[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("kategori")
+}
+
+model Menu {
+  id         String          @id @default(uuid()) @db.Uuid
+  nama       String
+  harga      Int
+  kategoriId String          @map("kategori_id") @db.Uuid
+  kategori   Kategori        @relation(fields: [kategoriId], references: [id], onDelete: Cascade)
+  gambar     String?
+  stok       Int             @default(0)
+  isTersedia Boolean         @default(true) @map("is_tersedia")
+  itemTransaksi ItemTransaksi[]
+  createdAt  DateTime        @default(now()) @map("created_at")
+  updatedAt  DateTime        @updatedAt @map("updated_at")
+
+  @@map("menu")
+}
+
+model Transaksi {
+  id          String          @id @default(uuid()) @db.Uuid
+  noTransaksi String          @unique @map("no_transaksi")
+  totalHarga  Int             @map("total_harga")
+  totalBayar  Int             @map("total_bayar")
+  kembalian   Int             @default(0)
+  itemTransaksi ItemTransaksi[]
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  @@map("transaksi")
+}
+
+model ItemTransaksi {
+  id          String    @id @default(uuid()) @db.Uuid
+  transaksiId String    @map("transaksi_id") @db.Uuid
+  transaksi   Transaksi @relation(fields: [transaksiId], references: [id], onDelete: Cascade)
+  menuId      String    @map("menu_id") @db.Uuid
+  menu        Menu      @relation(fields: [menuId], references: [id])
+  namaMenu    String    @map("nama_menu")
+  harga       Int
+  jumlah      Int
+  subtotal    Int
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@map("item_transaksi")
+}
+
+model Stok {
+  id         String   @id @default(uuid()) @db.Uuid
+  namaBahan  String   @map("nama_bahan")
+  jumlah     Int
+  satuan     String
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("stok")
+}

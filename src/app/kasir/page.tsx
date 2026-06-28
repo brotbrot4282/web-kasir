@@ -1,0 +1,315 @@
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import { formatRupiah } from "@/lib/utils";
+
+type Kategori = { id: string; nama: string };
+type Menu = {
+  id: string; nama: string; harga: number; stok: number;
+  isTersedia: boolean; kategoriId: string; kategori: Kategori;
+};
+type KeranjangItem = { menuId: string; nama: string; harga: number; jumlah: number; subtotal: number };
+
+export default function KasirPage() {
+  const [kategoriList, setKategoriList] = useState<Kategori[]>([]);
+  const [menuList, setMenuList] = useState<Menu[]>([]);
+  const [kategoriAktif, setKategoriAktif] = useState("");
+  const [search, setSearch] = useState("");
+  const [keranjang, setKeranjang] = useState<KeranjangItem[]>([]);
+  const [totalBayar, setTotalBayar] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [transaksiSukses, setTransaksiSukses] = useState<{
+    noTransaksi: string; totalHarga: number; totalBayar: number;
+    kembalian: number; items: KeranjangItem[];
+  } | null>(null);
+
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/kategori").then((r) => r.json()),
+      fetch("/api/menu").then((r) => r.json()),
+    ]).then(([kategori, menu]) => {
+      setKategoriList(kategori);
+      setMenuList(menu);
+      if (kategori.length > 0) setKategoriAktif(kategori[0].id);
+    }).finally(() => setLoading(false));
+  }, []);
+
+  const menuFilter = menuList.filter((m) => {
+    if (!m.isTersedia) return false;
+    if (kategoriAktif && m.kategoriId !== kategoriAktif) return false;
+    if (search && !m.nama.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
+  const totalKeranjang = keranjang.reduce((sum, item) => sum + item.subtotal, 0);
+
+  const tambahKeKeranjang = useCallback((menu: Menu) => {
+    setKeranjang((prev) => {
+      const existing = prev.find((item) => item.menuId === menu.id);
+      if (existing) {
+        if (existing.jumlah >= menu.stok && menu.stok > 0) return prev;
+        return prev.map((item) =>
+          item.menuId === menu.id
+            ? { ...item, jumlah: item.jumlah + 1, subtotal: (item.jumlah + 1) * item.harga }
+            : item
+        );
+      }
+      return [...prev, { menuId: menu.id, nama: menu.nama, harga: menu.harga, jumlah: 1, subtotal: menu.harga }];
+    });
+  }, []);
+
+  const ubahJumlah = (menuId: string, delta: number) => {
+    setKeranjang((prev) =>
+      prev.map((item) =>
+        item.menuId === menuId
+          ? { ...item, jumlah: Math.max(0, item.jumlah + delta), subtotal: Math.max(0, item.jumlah + delta) * item.harga }
+          : item
+      ).filter((item) => item.jumlah > 0)
+    );
+  };
+
+  const bayar = async () => {
+    if (submitting) return;
+    const bayar = parseInt(totalBayar.replace(/\D/g, "")) || 0;
+    if (keranjang.length === 0) { setMessage({ type: "error", text: "Keranjang masih kosong" }); return; }
+    if (bayar < totalKeranjang) { setMessage({ type: "error", text: `Kurang Rp ${(totalKeranjang - bayar).toLocaleString()}` }); return; }
+
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/transaksi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: keranjang.map((i) => ({ menuId: i.menuId, jumlah: i.jumlah })), totalBayar: bayar }),
+      });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error || "Gagal"); }
+      const data = await res.json();
+      setTransaksiSukses({ noTransaksi: data.noTransaksi, totalHarga: data.totalHarga, totalBayar: data.totalBayar, kembalian: data.kembalian, items: [...keranjang] });
+      setKeranjang([]); setTotalBayar(""); setMessage(null);
+      fetch("/api/menu").then((r) => r.json()).then(setMenuList);
+    } catch (err) {
+      setMessage({ type: "error", text: err instanceof Error ? err.message : "Gagal bayar" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (transaksiSukses) {
+    return (
+      <div className="max-w-sm mx-auto">
+        <div className="bg-white border border-sage-200 rounded-xl p-6 text-center" id="struk">
+          <div className="w-12 h-12 rounded-full bg-sage-100 flex items-center justify-center mx-auto mb-3">
+            <span className="text-lg font-bold text-sage-600">W</span>
+          </div>
+          <h2 className="font-bold text-lg text-sage-800">Warmindo</h2>
+          <p className="text-xs text-sage-400 mt-0.5">Struk Pembayaran</p>
+          <p className="text-xs font-mono text-sage-300 mt-1">{transaksiSukses.noTransaksi}</p>
+
+          <div className="border-t border-dashed border-sage-200 mt-4 pt-4 text-left space-y-2 mb-4">
+            {transaksiSukses.items.map((item) => (
+              <div key={item.menuId} className="flex justify-between text-sm">
+                <span className="text-sage-600">{item.nama} <span className="text-sage-400">x{item.jumlah}</span></span>
+                <span className="font-medium text-sage-800">{formatRupiah(item.subtotal)}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="border-t border-sage-200 pt-3 space-y-1.5 text-sm">
+            <div className="flex justify-between font-bold text-sage-800">
+              <span>Total</span><span>{formatRupiah(transaksiSukses.totalHarga)}</span>
+            </div>
+            <div className="flex justify-between text-sage-500">
+              <span>Bayar</span><span>{formatRupiah(transaksiSukses.totalBayar)}</span>
+            </div>
+            <div className="flex justify-between text-sage-600 font-medium">
+              <span>Kembali</span><span>{formatRupiah(transaksiSukses.kembalian)}</span>
+            </div>
+          </div>
+
+          <p className="text-xs text-sage-300 mt-5">Terima kasih atas kunjungan Anda</p>
+        </div>
+
+        <div className="flex gap-3 mt-4 no-print">
+          <button onClick={() => window.print()} className="flex-1 bg-sage-600 text-white py-2.5 rounded-xl font-medium hover:bg-sage-700 transition-colors text-sm">
+            Cetak Struk
+          </button>
+          <button onClick={() => setTransaksiSukses(null)} className="flex-1 bg-sage-100 text-sage-600 py-2.5 rounded-xl font-medium hover:bg-sage-200 transition-colors text-sm">
+            Transaksi Baru
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col lg:flex-row gap-6">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h1 className="text-lg font-semibold text-sage-800">Kasir</h1>
+            <p className="text-xs text-sage-400 mt-0.5">{new Date().toLocaleDateString("id-ID", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
+          </div>
+          <div className="w-8 h-8 rounded-full bg-sage-100 flex items-center justify-center">
+            <svg className="w-4 h-4 text-sage-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12" />
+            </svg>
+          </div>
+        </div>
+
+        <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1 no-print">
+          <button onClick={() => setKategoriAktif("")} className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+            kategoriAktif === "" ? "bg-sage-600 text-white shadow-sm" : "bg-white text-sage-500 border border-sage-200 hover:border-sage-300 hover:text-sage-700"
+          }`}>Semua</button>
+          {kategoriList.map((k) => (
+            <button key={k.id} onClick={() => setKategoriAktif(k.id)} className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+              kategoriAktif === k.id ? "bg-sage-600 text-white shadow-sm" : "bg-white text-sage-500 border border-sage-200 hover:border-sage-300 hover:text-sage-700"
+            }`}>{k.nama}</button>
+          ))}
+        </div>
+
+        <div className="relative mb-4">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sage-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+          </svg>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Cari menu..."
+            className="w-full border border-sage-200 rounded-lg pl-9 pr-3 py-2 text-sm bg-white text-sage-800 placeholder:text-sage-400 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all"
+          />
+          {search && (
+            <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-sage-400 hover:text-sage-600 transition-colors">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="animate-pulse text-sage-400">Memuat menu...</div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+            {menuFilter.map((menu) => (
+              <button
+                key={menu.id}
+                onClick={() => tambahKeKeranjang(menu)}
+                disabled={menu.stok === 0}
+                className={`bg-white border border-sage-200 rounded-xl p-4 text-center transition-all ${
+                  menu.stok === 0 ? "opacity-40 cursor-not-allowed" : "hover:border-sage-300 hover:shadow-sm active:bg-sage-50 cursor-pointer"
+                }`}
+              >
+                <div className="w-10 h-10 rounded-lg bg-sage-50 flex items-center justify-center mx-auto mb-2">
+                  <svg className="w-5 h-5 text-sage-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8.25v-1.5m0 1.5c-1.355 0-2.25.895-2.25 2.25m2.25-2.25c1.355 0 2.25.895 2.25 2.25M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                  </svg>
+                </div>
+                <p className="font-medium text-sm text-sage-800 truncate">{menu.nama}</p>
+                <p className="text-sage-600 font-semibold text-sm mt-0.5">{formatRupiah(menu.harga)}</p>
+                {menu.stok <= 5 && menu.stok > 0 && <p className="text-[11px] text-sage-400 mt-0.5">Sisa {menu.stok}</p>}
+                {menu.stok === 0 && <p className="text-[11px] text-sage-400 mt-0.5">Habis</p>}
+              </button>
+            ))}
+            {menuFilter.length === 0 && (
+              <div className="col-span-full text-center py-16 text-sage-400">
+                <p className="text-sm">Tidak ada menu tersedia</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="w-full lg:w-80 xl:w-96 no-print">
+        <div className="bg-white border border-sage-200 rounded-xl p-4 sticky top-16">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold text-sm text-sage-800">Pesanan</h2>
+            {keranjang.length > 0 && (
+              <span className="text-xs bg-sage-100 text-sage-600 px-2 py-0.5 rounded font-medium">
+                {keranjang.reduce((s, i) => s + i.jumlah, 0)} item
+              </span>
+            )}
+          </div>
+
+          <div className={`${keranjang.length > 0 ? "space-y-1.5 max-h-72 overflow-y-auto mb-4" : ""}`}>
+            {keranjang.length === 0 ? (
+              <div className="text-center py-10">
+                <svg className="w-8 h-8 text-sage-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0l-3-3m3 3l3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                </svg>
+                <p className="text-sm text-sage-400">Belum ada item</p>
+              </div>
+            ) : (
+              keranjang.map((item) => (
+                <div key={item.menuId} className="flex items-center gap-2 bg-sage-50 rounded-lg p-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-sage-700 truncate">{item.nama}</p>
+                    <p className="text-xs text-sage-400">{formatRupiah(item.harga)}</p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => ubahJumlah(item.menuId, -1)} className="w-6 h-6 rounded bg-white border border-sage-200 flex items-center justify-center text-sage-500 hover:bg-sage-100 text-xs">-</button>
+                    <span className="w-5 text-center text-sm font-medium text-sage-700">{item.jumlah}</span>
+                    <button onClick={() => ubahJumlah(item.menuId, 1)} className="w-6 h-6 rounded bg-white border border-sage-200 flex items-center justify-center text-sage-500 hover:bg-sage-100 text-xs">+</button>
+                  </div>
+                  <p className="text-sm font-medium text-sage-800 w-14 text-right">{formatRupiah(item.subtotal)}</p>
+                </div>
+              ))
+            )}
+          </div>
+
+          {keranjang.length > 0 && (
+            <div className="border-t border-sage-200 pt-3 space-y-3">
+              <div className="flex justify-between items-baseline">
+                <span className="text-sm text-sage-500">Total</span>
+                <span className="text-lg font-bold text-sage-800">{formatRupiah(totalKeranjang)}</span>
+              </div>
+
+              <div>
+                <label className="block text-xs text-sage-500 mb-1">Jumlah Bayar</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-sage-400">Rp</span>
+                  <input
+                    type="text"
+                    value={totalBayar}
+                    onChange={(e) => setTotalBayar(e.target.value.replace(/\D/g, ""))}
+                    placeholder="0"
+                    className="w-full border border-sage-200 rounded-lg pl-9 pr-3 py-2 text-right text-base font-bold text-sage-800 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all"
+                  />
+                </div>
+              </div>
+
+              {totalBayar && parseInt(totalBayar) >= totalKeranjang && (
+                <div className="flex justify-between text-sm text-sage-600 font-medium bg-sage-50 rounded-lg px-3 py-1.5">
+                  <span>Kembali</span>
+                  <span>{formatRupiah(parseInt(totalBayar) - totalKeranjang)}</span>
+                </div>
+              )}
+
+              {message && (
+                <div className={`text-sm p-2.5 rounded-lg ${message.type === "error" ? "bg-red-50 text-red-500" : "bg-sage-100 text-sage-700"}`}>
+                  {message.text}
+                </div>
+              )}
+
+              <button
+                onClick={bayar}
+                disabled={keranjang.length === 0 || submitting}
+                className="w-full bg-sage-600 text-white py-2.5 rounded-lg font-semibold text-sm hover:bg-sage-700 disabled:bg-sage-100 disabled:text-sage-400 disabled:cursor-not-allowed transition-colors"
+              >
+                {submitting ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Memproses...
+                  </span>
+                ) : "Bayar"}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
