@@ -61,11 +61,23 @@ model ItemTransaksi {
   @@map("item_transaksi")
 }
 
+enum Role {
+  OWNER
+  KASIR
+}
+
+enum Shift {
+  SHIFT_1
+  SHIFT_2
+}
+
 model User {
   id        String   @id @default(uuid()) @db.Uuid
   username  String   @unique
   password  String
   nama      String
+  role      Role     @default(OWNER)
+  shift     Shift?
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

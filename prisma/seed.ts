@@ -13,18 +13,48 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   console.log("Seeding database...");
 
-  // Admin user
-  const adminPassword = await bcrypt.hash("password123", 12);
+  const password = await bcrypt.hash("password123", 12);
+
+  // Owner
   await prisma.user.upsert({
     where: { username: "admin@warmindo" },
     update: {},
     create: {
       username: "admin@warmindo",
-      password: adminPassword,
+      password,
       nama: "Admin Warmindo",
+      role: "OWNER",
     },
   });
-  console.log("Admin user created");
+  console.log("Owner user created");
+
+  // Kasir Shift 1
+  await prisma.user.upsert({
+    where: { username: "kasir1@warmindo" },
+    update: {},
+    create: {
+      username: "kasir1@warmindo",
+      password,
+      nama: "Kasir Shift 1",
+      role: "KASIR",
+      shift: "SHIFT_1",
+    },
+  });
+  console.log("Kasir Shift 1 created");
+
+  // Kasir Shift 2
+  await prisma.user.upsert({
+    where: { username: "kasir2@warmindo" },
+    update: {},
+    create: {
+      username: "kasir2@warmindo",
+      password,
+      nama: "Kasir Shift 2",
+      role: "KASIR",
+      shift: "SHIFT_2",
+    },
+  });
+  console.log("Kasir Shift 2 created");
 
   // Upsert kategori
   const makanan = await prisma.kategori.upsert({

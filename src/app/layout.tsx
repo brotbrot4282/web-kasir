@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Navbar1 from "@/components/ui/navbar-1";
 
 export const metadata: Metadata = {
   title: "Warmindo Kasir",
@@ -23,7 +22,6 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen antialiased">
-        <Navbar1 />
         {children}
       </body>
     </html>

@@ -30,11 +30,18 @@ export default async function proxy(request: NextRequest) {
   }
 
   try {
-    await jwtVerify(
-      token,
-      JWT_SECRET,
-      { algorithms: ["HS256"] }
-    );
+    const { payload } = await jwtVerify(token, JWT_SECRET, { algorithms: ["HS256"] });
+    const user = payload as { username: string; nama: string; role: string; shift?: string };
+
+    // Role-based routing
+    if (user.role === "KASIR" && pathname !== "/kasir") {
+      return NextResponse.redirect(new URL("/kasir", request.url));
+    }
+
+    if (user.role === "OWNER" && pathname === "/kasir") {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+
     return NextResponse.next();
   } catch {
     return NextResponse.redirect(new URL("/login", request.url));

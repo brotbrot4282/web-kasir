@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { unlink } from "fs/promises";
+import path from "path";
 
 type Params = Promise<{ id: string }>;
 
@@ -19,6 +21,11 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
       if (!kategori) {
         return NextResponse.json({ error: "Kategori tidak ditemukan" }, { status: 400 });
       }
+    }
+
+    if (gambar !== undefined && gambar !== existing.gambar && existing.gambar) {
+      const filepath = path.join(process.cwd(), "public", existing.gambar);
+      try { await unlink(filepath); } catch { /* file sudah tidak ada */ }
     }
 
     const menu = await prisma.menu.update({
@@ -55,6 +62,11 @@ export async function DELETE(_request: NextRequest, { params }: { params: Params
         { error: "Menu sudah memiliki riwayat transaksi, tidak bisa dihapus" },
         { status: 400 }
       );
+    }
+
+    if (existing.gambar) {
+      const filepath = path.join(process.cwd(), "public", existing.gambar);
+      try { await unlink(filepath); } catch { /* file sudah tidak ada */ }
     }
 
     await prisma.menu.delete({ where: { id } });

@@ -21,8 +21,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const token = await signToken({ username: user.username, nama: user.nama });
+  const shift = user.shift; // null for OWNER
+  const token = await signToken({ username: user.username, nama: user.nama, role: user.role, shift });
   await setSession(token);
 
-  return NextResponse.json({ success: true, nama: user.nama });
+  return NextResponse.json({ success: true, nama: user.nama, role: user.role, shift });
 }

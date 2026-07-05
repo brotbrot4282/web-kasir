@@ -5,7 +5,7 @@ import { formatRupiah } from "@/lib/utils";
 
 type Kategori = { id: string; nama: string };
 type Menu = {
-  id: string; nama: string; harga: number; stok: number;
+  id: string; nama: string; harga: number; stok: number; gambar: string | null;
   isTersedia: boolean; kategoriId: string; kategori: Kategori;
 };
 type KeranjangItem = { menuId: string; nama: string; harga: number; jumlah: number; subtotal: number };
@@ -199,19 +199,27 @@ export default function KasirPage() {
                 key={menu.id}
                 onClick={() => tambahKeKeranjang(menu)}
                 disabled={menu.stok === 0}
-                className={`bg-white border border-sage-200 rounded-xl p-4 text-center transition-all ${
+                className={`bg-white border border-sage-200 rounded-xl overflow-hidden text-center transition-all ${
                   menu.stok === 0 ? "opacity-40 cursor-not-allowed" : "hover:border-sage-300 hover:shadow-sm active:bg-sage-50 cursor-pointer"
                 }`}
               >
-                <div className="w-10 h-10 rounded-lg bg-sage-50 flex items-center justify-center mx-auto mb-2">
-                  <svg className="w-5 h-5 text-sage-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8.25v-1.5m0 1.5c-1.355 0-2.25.895-2.25 2.25m2.25-2.25c1.355 0 2.25.895 2.25 2.25M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-                  </svg>
+                {menu.gambar ? (
+                  <div className="w-full h-28 bg-sage-50">
+                    <img src={menu.gambar} alt={menu.nama} className="w-full h-full object-cover" loading="lazy" />
+                  </div>
+                ) : (
+                  <div className="w-full h-28 bg-sage-50 flex items-center justify-center">
+                    <svg className="w-8 h-8 text-sage-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
+                    </svg>
+                  </div>
+                )}
+                <div className="p-3">
+                  <p className="font-medium text-sm text-sage-800 truncate">{menu.nama}</p>
+                  <p className="text-sage-600 font-semibold text-sm mt-0.5">{formatRupiah(menu.harga)}</p>
+                  {menu.stok <= 5 && menu.stok > 0 && <p className="text-[11px] text-sage-400 mt-0.5">Sisa {menu.stok}</p>}
+                  {menu.stok === 0 && <p className="text-[11px] text-sage-400 mt-0.5">Habis</p>}
                 </div>
-                <p className="font-medium text-sm text-sage-800 truncate">{menu.nama}</p>
-                <p className="text-sage-600 font-semibold text-sm mt-0.5">{formatRupiah(menu.harga)}</p>
-                {menu.stok <= 5 && menu.stok > 0 && <p className="text-[11px] text-sage-400 mt-0.5">Sisa {menu.stok}</p>}
-                {menu.stok === 0 && <p className="text-[11px] text-sage-400 mt-0.5">Habis</p>}
               </button>
             ))}
             {menuFilter.length === 0 && (

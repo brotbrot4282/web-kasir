@@ -12,8 +12,11 @@ export default function AdminMenuPage() {
   const [kategoriList, setKategoriList] = useState<Kategori[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ nama: "", harga: "", kategoriId: "", stok: "0", isTersedia: true });
+  const [form, setForm] = useState({ nama: "", harga: "", kategoriId: "", stok: "0", isTersedia: true, gambar: "" });
   const [kategoriForm, setKategoriForm] = useState({ nama: "" });
+  const [gambarFile, setGambarFile] = useState<File | null>(null);
+  const [gambarPreview, setGambarPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const loadData = useCallback(() => {
@@ -22,11 +25,11 @@ export default function AdminMenuPage() {
   }, []);
   useEffect(() => { loadData(); }, [loadData]);
 
-  const resetForm = () => { setForm({ nama: "", harga: "", kategoriId: "", stok: "0", isTersedia: true }); setEditingId(null); setShowForm(false); };
+  const resetForm = () => { setForm({ nama: "", harga: "", kategoriId: "", stok: "0", isTersedia: true, gambar: "" }); setGambarFile(null); setGambarPreview(null); setEditingId(null); setShowForm(false); };
 
   const editMenu = (menu: Menu) => {
-    setForm({ nama: menu.nama, harga: menu.harga.toString(), kategoriId: menu.kategoriId, stok: menu.stok.toString(), isTersedia: menu.isTersedia });
-    setEditingId(menu.id); setShowForm(true);
+    setForm({ nama: menu.nama, harga: menu.harga.toString(), kategoriId: menu.kategoriId, stok: menu.stok.toString(), isTersedia: menu.isTersedia, gambar: menu.gambar || "" });
+    setGambarPreview(menu.gambar); setGambarFile(null); setEditingId(menu.id); setShowForm(true);
   };
 
   const simpanMenu = async (e: React.FormEvent) => {
@@ -34,7 +37,25 @@ export default function AdminMenuPage() {
     if (!form.nama.trim()) { setToast({ message: "Nama menu wajib diisi", type: "error" }); return; }
     if (!form.harga || parseInt(form.harga) <= 0) { setToast({ message: "Harga harus angka positif", type: "error" }); return; }
     if (!form.kategoriId) { setToast({ message: "Pilih kategori", type: "error" }); return; }
-    const body = { nama: form.nama, harga: parseInt(form.harga), kategoriId: form.kategoriId, stok: parseInt(form.stok) || 0, isTersedia: form.isTersedia };
+
+    let gambarUrl = form.gambar;
+    if (gambarFile) {
+      setUploading(true);
+      try {
+        const uploadForm = new FormData();
+        uploadForm.append("file", gambarFile);
+        const uploadRes = await fetch("/api/upload", { method: "POST", body: uploadForm });
+        if (!uploadRes.ok) { const err = await uploadRes.json(); throw new Error(err.error || "Gagal upload"); }
+        const uploadData = await uploadRes.json();
+        gambarUrl = uploadData.url;
+      } catch (err) {
+        setToast({ message: err instanceof Error ? err.message : "Gagal upload gambar", type: "error" });
+        setUploading(false); return;
+      }
+      setUploading(false);
+    }
+
+    const body = { nama: form.nama, harga: parseInt(form.harga), kategoriId: form.kategoriId, stok: parseInt(form.stok) || 0, isTersedia: form.isTersedia, gambar: gambarUrl || null };
     try {
       const res = editingId
         ? await fetch(`/api/menu/${editingId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
@@ -124,6 +145,35 @@ export default function AdminMenuPage() {
                 <input type="text" value={form.stok} onChange={(e) => setForm({ ...form, stok: e.target.value.replace(/\D/g, "") })} className="w-full border border-sage-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all" placeholder="0" />
               </div>
             </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-sage-600 mb-1">Gambar</label>
+              <div className="flex items-start gap-4">
+                {gambarPreview && (
+                  <div className="w-20 h-20 rounded-lg overflow-hidden border border-sage-200 shrink-0">
+                    <img src={gambarPreview} alt="Preview" className="w-full h-full object-cover" />
+                  </div>
+                )}
+                <div className="flex-1">
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setGambarFile(file);
+                        setGambarPreview(URL.createObjectURL(file));
+                      }
+                    }}
+                    className="w-full text-sm text-sage-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-sage-100 file:text-sage-600 hover:file:bg-sage-200 file:transition-colors file:cursor-pointer cursor-pointer"
+                  />
+                  {gambarPreview && (
+                    <button type="button" onClick={() => { setGambarFile(null); setGambarPreview(null); setForm((f) => ({ ...f, gambar: "" })); }} className="text-xs text-sage-400 hover:text-red-500 mt-1.5 transition-colors">
+                      Hapus gambar
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
             <label className="flex items-center gap-2 cursor-pointer">
               <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${form.isTersedia ? "bg-sage-600 border-sage-600" : "border-sage-300"}`}>
                 {form.isTersedia && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>}
@@ -143,7 +193,8 @@ export default function AdminMenuPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-sage-100">
-                <th className="text-left px-4 py-3 text-xs font-medium text-sage-500 uppercase">Menu</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-sage-500 uppercase w-12">Gbr</th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-sage-500 uppercase">Menu</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-sage-500 uppercase">Kategori</th>
                 <th className="text-right px-4 py-3 text-xs font-medium text-sage-500 uppercase">Harga</th>
                 <th className="text-center px-4 py-3 text-xs font-medium text-sage-500 uppercase">Stok</th>
@@ -154,6 +205,17 @@ export default function AdminMenuPage() {
             <tbody className="divide-y divide-sage-100">
               {menuList.map((menu) => (
                 <tr key={menu.id} className="hover:bg-sage-50 transition-colors">
+                  <td className="px-4 py-3.5">
+                    {menu.gambar ? (
+                      <img src={menu.gambar} alt={menu.nama} className="w-10 h-10 rounded-lg object-cover border border-sage-200" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-lg bg-sage-100 flex items-center justify-center">
+                        <svg className="w-5 h-5 text-sage-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
+                        </svg>
+                      </div>
+                    )}
+                  </td>
                   <td className="px-4 py-3.5 font-medium text-sage-800">{menu.nama}</td>
                   <td className="px-4 py-3.5"><span className="text-xs bg-sage-100 text-sage-500 px-2 py-0.5 rounded">{menu.kategori.nama}</span></td>
                   <td className="px-4 py-3.5 text-right font-medium text-sage-800">{formatRupiah(menu.harga)}</td>
@@ -173,7 +235,7 @@ export default function AdminMenuPage() {
                 </tr>
               ))}
               {menuList.length === 0 && (
-                <tr><td colSpan={6} className="text-center py-12 text-sage-400 text-sm">Belum ada menu</td></tr>
+                <tr><td colSpan={7} className="text-center py-12 text-sage-400 text-sm">Belum ada menu</td></tr>
               )}
             </tbody>
           </table>

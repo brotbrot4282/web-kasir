@@ -19,7 +19,7 @@ export async function verifyPassword(
   return bcrypt.compare(password, hash);
 }
 
-export async function signToken(payload: { username: string; nama: string }) {
+export async function signToken(payload: { username: string; nama: string; role: string; shift?: string | null }) {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime("7d")
@@ -29,7 +29,7 @@ export async function signToken(payload: { username: string; nama: string }) {
 export async function verifyToken(token: string) {
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET);
-    return payload as { username: string; nama: string };
+    return payload as { username: string; nama: string; role: string; shift?: string };
   } catch {
     return null;
   }
