@@ -4,15 +4,16 @@ import { useEffect, useState, useCallback } from "react";
 import { formatRupiah } from "@/lib/utils";
 import { Toast } from "@/components/Toast";
 
+type Variant = { nama: string; tambahHarga: number };
 type Kategori = { id: string; nama: string; _count?: { menu: number } };
-type Menu = { id: string; nama: string; harga: number; stok: number; isTersedia: boolean; gambar: string | null; kategoriId: string; kategori: Kategori };
+type Menu = { id: string; nama: string; harga: number; stok: number; isTersedia: boolean; gambar: string | null; kategoriId: string; kategori: Kategori; variants: Variant[] | null };
 
 export default function AdminMenuPage() {
   const [menuList, setMenuList] = useState<Menu[]>([]);
   const [kategoriList, setKategoriList] = useState<Kategori[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ nama: "", harga: "", kategoriId: "", stok: "0", isTersedia: true, gambar: "" });
+  const [form, setForm] = useState<{ nama: string; harga: string; kategoriId: string; stok: string; isTersedia: boolean; gambar: string; variants: Variant[] }>({ nama: "", harga: "", kategoriId: "", stok: "0", isTersedia: true, gambar: "", variants: [] });
   const [kategoriForm, setKategoriForm] = useState({ nama: "" });
   const [gambarFile, setGambarFile] = useState<File | null>(null);
   const [gambarPreview, setGambarPreview] = useState<string | null>(null);
@@ -25,10 +26,10 @@ export default function AdminMenuPage() {
   }, []);
   useEffect(() => { loadData(); }, [loadData]);
 
-  const resetForm = () => { setForm({ nama: "", harga: "", kategoriId: "", stok: "0", isTersedia: true, gambar: "" }); setGambarFile(null); setGambarPreview(null); setEditingId(null); setShowForm(false); };
+  const resetForm = () => { setForm({ nama: "", harga: "", kategoriId: "", stok: "0", isTersedia: true, gambar: "", variants: [] }); setGambarFile(null); setGambarPreview(null); setEditingId(null); setShowForm(false); };
 
   const editMenu = (menu: Menu) => {
-    setForm({ nama: menu.nama, harga: menu.harga.toString(), kategoriId: menu.kategoriId, stok: menu.stok.toString(), isTersedia: menu.isTersedia, gambar: menu.gambar || "" });
+    setForm({ nama: menu.nama, harga: menu.harga.toString(), kategoriId: menu.kategoriId, stok: menu.stok.toString(), isTersedia: menu.isTersedia, gambar: menu.gambar || "", variants: menu.variants || [] });
     setGambarPreview(menu.gambar); setGambarFile(null); setEditingId(menu.id); setShowForm(true);
   };
 
@@ -55,7 +56,7 @@ export default function AdminMenuPage() {
       setUploading(false);
     }
 
-    const body = { nama: form.nama, harga: parseInt(form.harga), kategoriId: form.kategoriId, stok: parseInt(form.stok) || 0, isTersedia: form.isTersedia, gambar: gambarUrl || null };
+    const body = { nama: form.nama, harga: parseInt(form.harga), kategoriId: form.kategoriId, stok: parseInt(form.stok) || 0, isTersedia: form.isTersedia, gambar: gambarUrl || null, variants: form.variants };
     try {
       const res = editingId
         ? await fetch(`/api/menu/${editingId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
@@ -144,6 +145,32 @@ export default function AdminMenuPage() {
                 <label className="block text-sm font-medium text-sage-600 mb-1">Stok</label>
                 <input type="text" value={form.stok} onChange={(e) => setForm({ ...form, stok: e.target.value.replace(/\D/g, "") })} className="w-full border border-sage-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all" placeholder="0" />
               </div>
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-sage-600 mb-2">Varian</label>
+              {form.variants.length === 0 ? (
+                <p className="text-xs text-sage-400 mb-2">Tidak ada varian</p>
+              ) : (
+                <div className="space-y-2 mb-2">
+                  {form.variants.map((v, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <input type="text" value={v.nama} onChange={(e) => {
+                        const newV = [...form.variants]; newV[i] = { ...newV[i], nama: e.target.value }; setForm({ ...form, variants: newV });
+                      }} className="flex-1 border border-sage-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400" placeholder="Nama varian" />
+                      <div className="relative">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sage-400 text-xs">+Rp</span>
+                        <input type="text" value={v.tambahHarga || ""} onChange={(e) => {
+                          const newV = [...form.variants]; newV[i] = { ...newV[i], tambahHarga: parseInt(e.target.value.replace(/\D/g, "")) || 0 }; setForm({ ...form, variants: newV });
+                        }} className="w-28 border border-sage-200 rounded-lg pl-9 pr-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400" placeholder="0" />
+                      </div>
+                      <button type="button" onClick={() => setForm({ ...form, variants: form.variants.filter((_, j) => j !== i) })} className="text-sage-400 hover:text-red-500 transition-colors shrink-0">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button type="button" onClick={() => setForm({ ...form, variants: [...form.variants, { nama: "", tambahHarga: 0 }] })} className="text-xs text-red-600 hover:text-red-700 font-medium transition-colors">+ Tambah Varian</button>
             </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-sage-600 mb-1">Gambar</label>

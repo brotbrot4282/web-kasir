@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateNoTransaksi } from "@/lib/utils";
 
+type Variant = { nama: string; tambahHarga: number };
+
+function hitungHarga(menu: { harga: number; variants: Variant[] | null }, variantName?: string | null): number {
+  if (!variantName || !menu.variants) return menu.harga;
+  const v = menu.variants.find((v) => v.nama === variantName);
+  return menu.harga + (v?.tambahHarga ?? 0);
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const page = parseInt(searchParams.get("page") || "1");
@@ -50,6 +58,7 @@ export async function POST(request: NextRequest) {
       harga: number;
       jumlah: number;
       subtotal: number;
+      variant: string | null;
     }> = [];
 
     for (const item of items) {
@@ -73,15 +82,19 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const subtotal = menu.harga * item.jumlah;
+      const variants = menu.variants as Variant[] | null;
+      const harga = hitungHarga({ harga: menu.harga, variants }, item.variant);
+      const namaMenu = item.variant ? `${menu.nama} - ${item.variant}` : menu.nama;
+      const subtotal = harga * item.jumlah;
       totalHarga += subtotal;
 
       itemData.push({
         menuId: menu.id,
-        namaMenu: menu.nama,
-        harga: menu.harga,
+        namaMenu,
+        harga,
         jumlah: item.jumlah,
         subtotal,
+        variant: item.variant ?? null,
       });
     }
 

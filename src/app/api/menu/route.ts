@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
         kategoriId,
         gambar: gambar || null,
         stok: stok ?? 0,
+        variants: body.variants ?? [],
       },
       include: { kategori: true },
     });

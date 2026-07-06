@@ -26,6 +26,7 @@ model Menu {
   gambar     String?
   stok       Int             @default(0)
   isTersedia Boolean         @default(true) @map("is_tersedia")
+  variants   Json?            @default("[]")
   itemTransaksi ItemTransaksi[]
   createdAt  DateTime        @default(now()) @map("created_at")
   updatedAt  DateTime        @updatedAt @map("updated_at")
@@ -56,6 +57,7 @@ model ItemTransaksi {
   harga       Int
   jumlah      Int
   subtotal    Int
+  variant     String?
   createdAt   DateTime  @default(now()) @map("created_at")
 
   @@map("item_transaksi")

@@ -24,7 +24,7 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
   try {
     const { id } = await params;
     const body = await request.json();
-    const { nama, harga, kategoriId, gambar, stok, isTersedia } = body;
+    const { nama, harga, kategoriId, gambar, stok, isTersedia, variants } = body;
 
     const existing = await prisma.menu.findUnique({ where: { id } });
     if (!existing) {
@@ -51,6 +51,7 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
         ...(gambar !== undefined ? { gambar } : {}),
         ...(stok !== undefined ? { stok } : {}),
         ...(isTersedia !== undefined ? { isTersedia } : {}),
+        ...(variants !== undefined ? { variants } : {}),
       },
       include: { kategori: true },
     });

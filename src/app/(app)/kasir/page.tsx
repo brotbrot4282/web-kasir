@@ -5,12 +5,13 @@ import { formatRupiah } from "@/lib/utils";
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 
+type Variant = { nama: string; tambahHarga: number };
 type Kategori = { id: string; nama: string };
 type Menu = {
   id: string; nama: string; harga: number; stok: number; gambar: string | null;
-  isTersedia: boolean; kategoriId: string; kategori: Kategori;
+  isTersedia: boolean; kategoriId: string; kategori: Kategori; variants: Variant[] | null;
 };
-type KeranjangItem = { menuId: string; nama: string; harga: number; jumlah: number; subtotal: number };
+type KeranjangItem = { key: string; menuId: string; nama: string; harga: number; jumlah: number; subtotal: number; variant: string | null };
 
 export default function KasirPage() {
   const [kategoriList, setKategoriList] = useState<Kategori[]>([]);
@@ -27,6 +28,7 @@ export default function KasirPage() {
     kembalian: number; items: KeranjangItem[];
   } | null>(null);
 
+  const [selectedMenu, setSelectedMenu] = useState<Menu | null>(null);
   const [showClosing, setShowClosing] = useState(false);
   const [closingEsBatu, setClosingEsBatu] = useState("");
   const [closingCup, setClosingCup] = useState("");
@@ -53,25 +55,30 @@ export default function KasirPage() {
 
   const totalKeranjang = keranjang.reduce((sum, item) => sum + item.subtotal, 0);
 
-  const tambahKeKeranjang = useCallback((menu: Menu) => {
+  const tambahKeKeranjang = useCallback((menu: Menu, variantName: string | null) => {
+    const key = `${menu.id}-${variantName || ""}`;
+    const variants = menu.variants;
+    const v = variantName && variants ? variants.find((x) => x.nama === variantName) : null;
+    const harga = menu.harga + (v?.tambahHarga ?? 0);
+    const nama = variantName ? `${menu.nama} - ${variantName}` : menu.nama;
     setKeranjang((prev) => {
-      const existing = prev.find((item) => item.menuId === menu.id);
+      const existing = prev.find((item) => item.key === key);
       if (existing) {
         if (existing.jumlah >= menu.stok && menu.stok > 0) return prev;
         return prev.map((item) =>
-          item.menuId === menu.id
+          item.key === key
             ? { ...item, jumlah: item.jumlah + 1, subtotal: (item.jumlah + 1) * item.harga }
             : item
         );
       }
-      return [...prev, { menuId: menu.id, nama: menu.nama, harga: menu.harga, jumlah: 1, subtotal: menu.harga }];
+      return [...prev, { key, menuId: menu.id, nama, harga, jumlah: 1, subtotal: harga, variant: variantName }];
     });
   }, []);
 
-  const ubahJumlah = (menuId: string, delta: number) => {
+  const ubahJumlah = (key: string, delta: number) => {
     setKeranjang((prev) =>
       prev.map((item) =>
-        item.menuId === menuId
+        item.key === key
           ? { ...item, jumlah: Math.max(0, item.jumlah + delta), subtotal: Math.max(0, item.jumlah + delta) * item.harga }
           : item
       ).filter((item) => item.jumlah > 0)
@@ -89,7 +96,7 @@ export default function KasirPage() {
       const res = await fetch("/api/transaksi", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: keranjang.map((i) => ({ menuId: i.menuId, jumlah: i.jumlah })), totalBayar: bayar }),
+        body: JSON.stringify({ items: keranjang.map((i) => ({ menuId: i.menuId, jumlah: i.jumlah, variant: i.variant })), totalBayar: bayar }),
       });
       if (!res.ok) { const err = await res.json(); throw new Error(err.error || "Gagal"); }
       const data = await res.json();
@@ -212,7 +219,13 @@ export default function KasirPage() {
             {menuFilter.map((menu) => (
               <button
                 key={menu.id}
-                onClick={() => tambahKeKeranjang(menu)}
+                onClick={() => {
+                  if (menu.variants && menu.variants.length > 0) {
+                    setSelectedMenu(menu);
+                  } else {
+                    tambahKeKeranjang(menu, null);
+                  }
+                }}
                 disabled={menu.stok === 0}
                 className={`bg-white border border-sage-200 rounded-xl overflow-hidden text-center transition-all ${
                   menu.stok === 0 ? "opacity-40 cursor-not-allowed" : "hover:border-sage-300 hover:shadow-sm active:bg-sage-50 cursor-pointer"
@@ -267,15 +280,15 @@ export default function KasirPage() {
               </div>
             ) : (
               keranjang.map((item) => (
-                <div key={item.menuId} className="flex items-center gap-2 bg-sage-50 rounded-lg p-2">
+                <div                 key={item.key} className="flex items-center gap-2 bg-sage-50 rounded-lg p-2">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-sage-700 truncate">{item.nama}</p>
                     <p className="text-xs text-sage-400">{formatRupiah(item.harga)}</p>
                   </div>
                   <div className="flex items-center gap-1">
-                    <button onClick={() => ubahJumlah(item.menuId, -1)} className="w-6 h-6 rounded bg-white border border-sage-200 flex items-center justify-center text-sage-500 hover:bg-sage-100 text-xs">-</button>
+                    <button onClick={() => ubahJumlah(item.key, -1)} className="w-6 h-6 rounded bg-white border border-sage-200 flex items-center justify-center text-sage-500 hover:bg-sage-100 text-xs">-</button>
                     <span className="w-5 text-center text-sm font-medium text-sage-700">{item.jumlah}</span>
-                    <button onClick={() => ubahJumlah(item.menuId, 1)} className="w-6 h-6 rounded bg-white border border-sage-200 flex items-center justify-center text-sage-500 hover:bg-sage-100 text-xs">+</button>
+                    <button onClick={() => ubahJumlah(item.key, 1)} className="w-6 h-6 rounded bg-white border border-sage-200 flex items-center justify-center text-sage-500 hover:bg-sage-100 text-xs">+</button>
                   </div>
                   <p className="text-sm font-medium text-sage-800 w-14 text-right">{formatRupiah(item.subtotal)}</p>
                 </div>
@@ -334,6 +347,55 @@ export default function KasirPage() {
         </div>
       </div>
     </div>
+
+      {/* Variant Modal */}
+      <AnimatePresence>
+        {selectedMenu && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => setSelectedMenu(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-xl w-full max-w-xs shadow-xl"
+            >
+              <div className="flex items-center justify-between px-5 pt-5 pb-3">
+                <div>
+                  <h2 className="font-semibold text-sage-800">Pilih Varian</h2>
+                  <p className="text-xs text-sage-400 mt-0.5">{selectedMenu.nama}</p>
+                </div>
+                <button onClick={() => setSelectedMenu(null)} className="w-7 h-7 rounded-lg bg-sage-100 flex items-center justify-center hover:bg-sage-200 transition-colors">
+                  <X className="w-4 h-4 text-sage-500" />
+                </button>
+              </div>
+
+              <div className="px-5 pb-5 space-y-2">
+                {selectedMenu.variants?.map((v) => (
+                  <button
+                    key={v.nama}
+                    onClick={() => {
+                      tambahKeKeranjang(selectedMenu, v.nama);
+                      setSelectedMenu(null);
+                    }}
+                    className="w-full text-left px-4 py-3 rounded-lg border border-sage-200 hover:border-sage-400 hover:bg-sage-50 transition-colors"
+                  >
+                    <span className="text-sm font-medium text-sage-800">{v.nama}</span>
+                    {v.tambahHarga > 0 && (
+                      <span className="text-xs text-sage-400 ml-2">(+{formatRupiah(v.tambahHarga)})</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Closing Modal */}
       <AnimatePresence>
