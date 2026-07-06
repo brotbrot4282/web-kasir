@@ -154,6 +154,7 @@ export default function KasirPage() {
 </style>
 </head>
 <body>
+  <img src="/logo.jpg" style="display:block;margin:0 auto 4px;width:32px;height:32px;border-radius:50%;object-fit:cover;" />
   <div style="text-align:center;font-weight:bold;font-size:14px;margin-bottom:2px;">WARKOP SOEKARDJO</div>
   <div style="text-align:center;font-size:9px;color:#666;">${tanggal} ${jam}</div>
   <div style="text-align:center;font-size:9px;color:#666;">${t.noTransaksi}</div>
