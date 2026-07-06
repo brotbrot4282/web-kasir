@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { mkdir } from "fs/promises";
-import path from "path";
 import sharp from "sharp";
+import { supabase } from "@/lib/supabase";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_SIZE = 5 * 1024 * 1024;
@@ -27,17 +26,28 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(bytes);
 
     const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`;
-    const dir = path.join(process.cwd(), "public", "menu");
-    const filepath = path.join(dir, filename);
 
-    await mkdir(dir, { recursive: true });
-
-    await sharp(buffer)
+    const optimized = await sharp(buffer)
       .resize(800, undefined, { fit: "inside", withoutEnlargement: true })
       .webp({ quality: 80 })
-      .toFile(filepath);
+      .toBuffer();
 
-    return NextResponse.json({ url: `/menu/${filename}` });
+    const { error } = await supabase.storage
+      .from("menu-images")
+      .upload(filename, optimized, {
+        contentType: "image/webp",
+        upsert: true,
+      });
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from("menu-images")
+      .getPublicUrl(filename);
+
+    return NextResponse.json({ url: publicUrlData.publicUrl });
   } catch {
     return NextResponse.json({ error: "Gagal upload file" }, { status: 500 });
   }

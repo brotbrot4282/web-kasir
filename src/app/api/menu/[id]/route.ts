@@ -1,9 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { unlink } from "fs/promises";
-import path from "path";
+import { supabase } from "@/lib/supabase";
 
 type Params = Promise<{ id: string }>;
+
+function getFilenameFromUrl(url: string): string | null {
+  try {
+    const parts = url.split("/");
+    return parts[parts.length - 1] || null;
+  } catch {
+    return null;
+  }
+}
+
+async function deleteImageFromStorage(url: string | null) {
+  if (!url) return;
+  const filename = getFilenameFromUrl(url);
+  if (!filename) return;
+  await supabase.storage.from("menu-images").remove([filename]);
+}
 
 export async function PUT(request: NextRequest, { params }: { params: Params }) {
   try {
@@ -24,8 +39,7 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
     }
 
     if (gambar !== undefined && gambar !== existing.gambar && existing.gambar) {
-      const filepath = path.join(process.cwd(), "public", existing.gambar);
-      try { await unlink(filepath); } catch { /* file sudah tidak ada */ }
+      await deleteImageFromStorage(existing.gambar);
     }
 
     const menu = await prisma.menu.update({
@@ -64,10 +78,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: Params
       );
     }
 
-    if (existing.gambar) {
-      const filepath = path.join(process.cwd(), "public", existing.gambar);
-      try { await unlink(filepath); } catch { /* file sudah tidak ada */ }
-    }
+    await deleteImageFromStorage(existing.gambar);
 
     await prisma.menu.delete({ where: { id } });
 
