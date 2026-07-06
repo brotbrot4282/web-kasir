@@ -224,7 +224,7 @@ export default function KasirPage() {
 
           {transaksiSukses.poinDidapat > 0 && (
             <div className="flex items-center justify-center gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-4">
-              <span className="text-sm font-medium text-amber-700">+{formatRupiah(transaksiSukses.poinDidapat * 1000)} Poin</span>
+              <span className="text-sm font-medium text-amber-700">+{formatRupiah(transaksiSukses.poinDidapat * 10000)} Poin</span>
             </div>
           )}
           {transaksiSukses.memberNama && (
