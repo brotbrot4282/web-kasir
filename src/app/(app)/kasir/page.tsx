@@ -171,6 +171,10 @@ export default function KasirPage() {
   <div style="display:flex;justify-content:space-between;">
     <span>Kembali</span><span>${formatRupiah(t.kembalian)}</span>
   </div>
+  ${t.poinDidapat > 0 ? `<div style="border-top:1px dashed #000;margin:6px 0;"></div>
+  <div style="display:flex;justify-content:space-between;">
+    <span>OV Poin</span><span>+${t.poinDidapat} poin</span>
+  </div>` : ""}
   <div style="border-top:1px dashed #000;margin:6px 0;"></div>
   <div style="text-align:center;font-weight:bold;margin-top:6px;">Terima kasih</div>
   <div style="text-align:center;font-size:9px;color:#666;">Barang yang sudah dibeli</div>
@@ -225,7 +229,7 @@ export default function KasirPage() {
 
           {transaksiSukses.poinDidapat > 0 && (
             <div className="flex items-center justify-center gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-4">
-              <span className="text-sm font-medium text-amber-700">+{formatRupiah(transaksiSukses.poinDidapat * 10000)} Poin</span>
+              <span className="text-sm font-medium text-amber-700">+{formatRupiah(transaksiSukses.poinDidapat * 15000)} Poin</span>
             </div>
           )}
           {transaksiSukses.memberNama && (

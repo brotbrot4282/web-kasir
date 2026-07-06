@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
 
     let poinDidapat = 0;
     if (member) {
-      poinDidapat = Math.floor(totalHarga / 10000);
+      poinDidapat = Math.floor(totalHarga / 15000);
       await prisma.rewardPoin.create({
         data: {
           memberId: member.id,
