@@ -242,6 +242,41 @@ export default function KasirPage() {
           )}
         </div>
 
+        {transaksiSukses.noWa && (
+          <a
+            href={(() => {
+              const no = transaksiSukses.noWa!.replace(/^0+/, "62");
+              const poinFmt = new Intl.NumberFormat("id-ID").format(transaksiSukses.poinDidapat);
+              const pesan = [
+                `Dear ${transaksiSukses.memberNama || "Customer"},`,
+                "",
+                "Terimakasih telah melakukan transaksi di WARKOP SOEKARDJO",
+                "Berikut adalah INVOICE transaksi Anda :",
+                "",
+                `* No Invoice : ${transaksiSukses.noTransaksi}`,
+                `* TOTAL TRANSAKSI : ${formatRupiah(transaksiSukses.totalHarga)}`,
+                `* Poin Didapat : ${poinFmt} OV POINT`,
+                "",
+                "Untuk melihat rincian transaksi dan point reward yang Anda dapatkan (OV POINT) klik link berikut",
+                `${window.location.origin}/invoice/${transaksiSukses.publicId}`,
+                "",
+                "*WARKOP SOEKARDJO (17.00 - 23.00)*",
+                "",
+                "Update info kegiatan menarik follow : https://www.instagram.com/warkop.soekardjo/",
+                "",
+                "Have a Great Day,",
+                "Management WARKOP SOEKARDJO",
+                "#ojolalibaliomah",
+                "#thefriendlyvapestoreinthetown",
+              ].join("\n");
+              return `https://wa.me/${no}?text=${encodeURIComponent(pesan)}`;
+            })()}
+            target="_blank"
+            className="block mt-3 text-center bg-emerald-50 text-emerald-600 border border-emerald-200 py-2.5 rounded-xl font-medium hover:bg-emerald-100 transition-colors text-sm no-print"
+          >
+            Kirim WA Manual
+          </a>
+        )}
         <div className="flex gap-3 mt-4 no-print">
           <button onClick={() => cetakStruk("customer")} className="flex-1 bg-sage-600 text-white py-2.5 rounded-xl font-medium hover:bg-sage-700 transition-colors text-sm">
             Cetak Customer
