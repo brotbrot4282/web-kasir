@@ -53,14 +53,14 @@ export default function LaporanPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <button onClick={hariIni} className="px-3 py-1.5 bg-sage-100 text-sage-600 rounded-lg text-sm font-medium hover:bg-sage-200 transition-colors">Hari Ini</button>
-        <button onClick={mingguIni} className="px-3 py-1.5 bg-sage-100 text-sage-600 rounded-lg text-sm font-medium hover:bg-sage-200 transition-colors">7 Hari</button>
-        <button onClick={bulanIni} className="px-3 py-1.5 bg-sage-100 text-sage-600 rounded-lg text-sm font-medium hover:bg-sage-200 transition-colors">Bulan Ini</button>
+        <button onClick={hariIni} className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors">Hari Ini</button>
+        <button onClick={mingguIni} className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors">7 Hari</button>
+        <button onClick={bulanIni} className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors">Bulan Ini</button>
         <form onSubmit={cari} className="flex items-center gap-2 ml-auto">
-          <input type="date" value={dari} onChange={(e) => setDari(e.target.value)} className="border border-sage-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400" />
+          <input type="date" value={dari} onChange={(e) => setDari(e.target.value)} className="border border-sage-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400" />
           <span className="text-sage-400 text-sm">–</span>
-          <input type="date" value={sampai} onChange={(e) => setSampai(e.target.value)} className="border border-sage-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400" />
-          <button type="submit" className="bg-sage-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-sage-700 transition-colors">Cari</button>
+          <input type="date" value={sampai} onChange={(e) => setSampai(e.target.value)} className="border border-sage-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400" />
+          <button type="submit" className="bg-red-800 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-red-900 transition-colors">Cari</button>
         </form>
       </div>
 
@@ -101,10 +101,10 @@ export default function LaporanPage() {
                   </thead>
                   <tbody className="divide-y divide-sage-100">
                     {closingData.map((c) => (
-                      <tr key={c.id} className="hover:bg-sage-50 transition-colors">
+                      <tr key={c.id} className="hover:bg-red-50 transition-colors">
                         <td className="px-4 py-3 text-xs text-sage-500">{formatDate(new Date(c.tanggal))}</td>
                         <td className="px-4 py-3">
-                          <span className="text-xs font-medium bg-sage-100 text-sage-600 px-2 py-0.5 rounded">
+                          <span className="text-xs font-medium bg-red-50 text-red-600 px-2 py-0.5 rounded">
                             {c.shift === "SHIFT_1" ? "Shift 1" : "Shift 2"}
                           </span>
                         </td>
@@ -153,13 +153,13 @@ export default function LaporanPage() {
                 </thead>
                 <tbody className="divide-y divide-sage-100">
                   {data.transaksi.map((t) => (
-                    <tr key={t.id} className="hover:bg-sage-50 transition-colors">
+                    <tr key={t.id} className="hover:bg-red-50 transition-colors">
                       <td className="px-4 py-3.5 font-mono text-xs text-sage-400">{t.noTransaksi}</td>
                       <td className="px-4 py-3.5 text-right font-medium text-sage-800">{formatRupiah(t.totalHarga)}</td>
                       <td className="px-4 py-3.5 text-center text-sage-500">{t.itemTransaksi.reduce((s, i) => s + i.jumlah, 0)}</td>
                       <td className="px-4 py-3.5 text-center text-sage-400 text-xs">{formatDate(new Date(t.createdAt))}</td>
                       <td className="px-4 py-3.5 text-center">
-                        <button onClick={() => setDetail(t)} className="text-sage-600 hover:text-sage-700 text-sm font-medium transition-colors">
+                        <button onClick={() => setDetail(t)} className="text-red-600 hover:text-red-700 text-sm font-medium transition-colors">
                           Lihat
                         </button>
                       </td>
@@ -209,7 +209,7 @@ export default function LaporanPage() {
                   <tfoot className="border-t-2 border-sage-200">
                     <tr><td colSpan={3} className="py-2.5 text-right font-semibold text-sage-800">Total</td><td className="py-2.5 text-right font-bold text-sage-800">{formatRupiah(detail.totalHarga)}</td></tr>
                     <tr className="text-sage-500"><td colSpan={3} className="py-1 text-right">Bayar</td><td className="py-1 text-right">{formatRupiah(detail.totalBayar)}</td></tr>
-                    <tr className="text-sage-600 font-medium"><td colSpan={3} className="py-1 text-right">Kembali</td><td className="py-1 text-right">{formatRupiah(detail.kembalian)}</td></tr>
+                    <tr className="text-red-600 font-medium"><td colSpan={3} className="py-1 text-right">Kembali</td><td className="py-1 text-right">{formatRupiah(detail.kembalian)}</td></tr>
                   </tfoot>
                 </table>
               </div>

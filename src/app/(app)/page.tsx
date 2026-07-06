@@ -254,7 +254,7 @@ export default function Dashboard() {
           title="Total Omset"
           rawValue={data?.ringkasan.totalOmset ?? 0}
           icon={DollarSign}
-          gradient="bg-gradient-to-br from-sage-600 to-sage-700"
+          gradient="bg-gradient-to-br from-red-800 to-red-900"
           delay={0.1}
           isCurrency
         />
@@ -262,14 +262,14 @@ export default function Dashboard() {
           title="Total Transaksi"
           rawValue={data?.ringkasan.totalTransaksi ?? 0}
           icon={ShoppingCart}
-          gradient="bg-gradient-to-br from-sage-600 to-sage-700"
+          gradient="bg-gradient-to-br from-red-800 to-red-900"
           delay={0.2}
         />
         <AnimatedStatCard
           title="Item Terjual"
           rawValue={data?.ringkasan.totalItem ?? 0}
           icon={Package}
-          gradient="bg-gradient-to-br from-sage-600 to-sage-700"
+          gradient="bg-gradient-to-br from-red-800 to-red-900"
           delay={0.3}
         />
       </div>
@@ -294,7 +294,7 @@ export default function Dashboard() {
       >
         <Link
           href="/kasir"
-          className="group relative flex items-center gap-4 bg-gradient-to-br from-sage-600 to-sage-700 rounded-xl p-5 text-white overflow-hidden hover:from-sage-700 hover:to-sage-800 transition-all shadow-md hover:shadow-lg"
+          className="group relative flex items-center gap-4 bg-gradient-to-br from-red-800 to-red-900 rounded-xl p-5 text-white overflow-hidden hover:from-red-900 hover:to-red-950 transition-all shadow-md hover:shadow-lg"
         >
           <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
           <div className="relative z-10 w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center">

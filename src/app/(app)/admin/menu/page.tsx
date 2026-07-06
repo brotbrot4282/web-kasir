@@ -100,7 +100,7 @@ export default function AdminMenuPage() {
           <h1 className="text-xl font-bold text-sage-800">Menu</h1>
           <p className="text-sm text-sage-500 mt-0.5">Kelola menu makanan dan minuman</p>
         </div>
-        <button onClick={() => { resetForm(); setShowForm(true); }} className="inline-flex items-center gap-2 bg-sage-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-sage-700 transition-colors shadow-sm">
+        <button onClick={() => { resetForm(); setShowForm(true); }} className="inline-flex items-center gap-2 bg-red-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-900 transition-colors shadow-sm">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
           Tambah Menu
         </button>
@@ -122,12 +122,12 @@ export default function AdminMenuPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-sage-600 mb-1">Nama Menu</label>
-                <input type="text" value={form.nama} onChange={(e) => setForm({ ...form, nama: e.target.value })} className="w-full border border-sage-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all" placeholder="Nama menu" />
+                <input type="text" value={form.nama} onChange={(e) => setForm({ ...form, nama: e.target.value })} className="w-full border border-sage-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all" placeholder="Nama menu" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-sage-600 mb-1">Kategori</label>
                 <div className="relative">
-                  <select value={form.kategoriId} onChange={(e) => setForm({ ...form, kategoriId: e.target.value })} className="w-full appearance-none border border-sage-200 rounded-lg px-3 py-2 pr-9 text-sm bg-white text-sage-800 cursor-pointer hover:border-sage-400 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all">
+                  <select value={form.kategoriId} onChange={(e) => setForm({ ...form, kategoriId: e.target.value })} className="w-full appearance-none border border-sage-200 rounded-lg px-3 py-2 pr-9 text-sm bg-white text-sage-800 cursor-pointer hover:border-sage-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all">
                     <option value="" className="text-sage-400">-- Pilih --</option>
                     {kategoriList.map((k) => (<option key={k.id} value={k.id}>{k.nama}</option>))}
                   </select>
@@ -138,11 +138,11 @@ export default function AdminMenuPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-sage-600 mb-1">Harga (Rp)</label>
-                <input type="text" value={form.harga} onChange={(e) => setForm({ ...form, harga: e.target.value.replace(/\D/g, "") })} className="w-full border border-sage-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all" placeholder="0" />
+                <input type="text" value={form.harga} onChange={(e) => setForm({ ...form, harga: e.target.value.replace(/\D/g, "") })} className="w-full border border-sage-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all" placeholder="0" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-sage-600 mb-1">Stok</label>
-                <input type="text" value={form.stok} onChange={(e) => setForm({ ...form, stok: e.target.value.replace(/\D/g, "") })} className="w-full border border-sage-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all" placeholder="0" />
+                <input type="text" value={form.stok} onChange={(e) => setForm({ ...form, stok: e.target.value.replace(/\D/g, "") })} className="w-full border border-sage-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all" placeholder="0" />
               </div>
             </div>
             <div className="md:col-span-2">
@@ -164,7 +164,7 @@ export default function AdminMenuPage() {
                         setGambarPreview(URL.createObjectURL(file));
                       }
                     }}
-                    className="w-full text-sm text-sage-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-sage-100 file:text-sage-600 hover:file:bg-sage-200 file:transition-colors file:cursor-pointer cursor-pointer"
+                    className="w-full text-sm text-sage-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-sage-100 file:text-sage-600 hover:file:bg-red-100 file:transition-colors file:cursor-pointer cursor-pointer"
                   />
                   {gambarPreview && (
                     <button type="button" onClick={() => { setGambarFile(null); setGambarPreview(null); setForm((f) => ({ ...f, gambar: "" })); }} className="text-xs text-sage-400 hover:text-red-500 mt-1.5 transition-colors">
@@ -175,14 +175,14 @@ export default function AdminMenuPage() {
               </div>
             </div>
             <label className="flex items-center gap-2 cursor-pointer">
-              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${form.isTersedia ? "bg-sage-600 border-sage-600" : "border-sage-300"}`}>
+              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${form.isTersedia ? "bg-red-800 border-red-800" : "border-sage-300"}`}>
                 {form.isTersedia && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>}
               </div>
               <span className="text-sm text-sage-600">Tersedia</span>
             </label>
             <div className="flex gap-2 pt-1">
-              <button type="submit" className="flex-1 bg-sage-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-sage-700 transition-colors">{editingId ? "Update" : "Simpan"}</button>
-              <button type="button" onClick={resetForm} className="flex-1 bg-sage-100 text-sage-600 px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-sage-200 transition-colors">Batal</button>
+              <button type="submit" className="flex-1 bg-red-800 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-red-900 transition-colors">{editingId ? "Update" : "Simpan"}</button>
+              <button type="button" onClick={resetForm} className="flex-1 bg-red-50 text-red-600 px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors">Batal</button>
             </div>
           </form>
         </div>
@@ -204,7 +204,7 @@ export default function AdminMenuPage() {
             </thead>
             <tbody className="divide-y divide-sage-100">
               {menuList.map((menu) => (
-                <tr key={menu.id} className="hover:bg-sage-50 transition-colors">
+                <tr key={menu.id} className="hover:bg-red-50 transition-colors">
                   <td className="px-4 py-3.5">
                     {menu.gambar ? (
                       <img src={menu.gambar} alt={menu.nama} className="w-10 h-10 rounded-lg object-cover border border-sage-200" />
@@ -217,20 +217,20 @@ export default function AdminMenuPage() {
                     )}
                   </td>
                   <td className="px-4 py-3.5 font-medium text-sage-800">{menu.nama}</td>
-                  <td className="px-4 py-3.5"><span className="text-xs bg-sage-100 text-sage-500 px-2 py-0.5 rounded">{menu.kategori.nama}</span></td>
+                  <td className="px-4 py-3.5"><span className="text-xs bg-red-50 text-red-500 px-2 py-0.5 rounded">{menu.kategori.nama}</span></td>
                   <td className="px-4 py-3.5 text-right font-medium text-sage-800">{formatRupiah(menu.harga)}</td>
                   <td className="px-4 py-3.5 text-center">
-                    <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${menu.stok <= 5 ? "bg-red-50 text-red-500" : "bg-sage-100 text-sage-600"}`}>{menu.stok}</span>
+                    <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${menu.stok <= 5 ? "bg-red-50 text-red-500" : "bg-red-50 text-red-600"}`}>{menu.stok}</span>
                   </td>
                   <td className="px-4 py-3.5 text-center">
-                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium ${menu.isTersedia ? "bg-sage-100 text-sage-600" : "bg-red-50 text-red-400"}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${menu.isTersedia ? "bg-sage-500" : "bg-red-400"}`} />
+                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium ${menu.isTersedia ? "bg-red-50 text-red-600" : "bg-red-50 text-red-400"}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${menu.isTersedia ? "bg-red-600" : "bg-red-400"}`} />
                       {menu.isTersedia ? "Tersedia" : "Habis"}
                     </span>
                   </td>
                     <td className="px-4 py-3.5 text-center">
-                    <button onClick={() => editMenu(menu)} className="text-sage-500 hover:text-sage-700 text-sm font-medium mr-2 transition-colors">Edit</button>
-                    <button onClick={() => hapusMenu(menu.id)} className="text-sage-500 hover:text-red-500 text-sm font-medium transition-colors">Hapus</button>
+                    <button onClick={() => editMenu(menu)} className="text-red-600 hover:text-red-700 text-sm font-medium mr-2 transition-colors">Edit</button>
+                    <button onClick={() => hapusMenu(menu.id)} className="text-red-600 hover:text-red-500 text-sm font-medium transition-colors">Hapus</button>
                   </td>
                 </tr>
               ))}
@@ -245,12 +245,12 @@ export default function AdminMenuPage() {
       <div className="bg-white border border-sage-200 rounded-xl p-5">
         <h3 className="font-semibold text-sm text-sage-800 mb-3">Kategori</h3>
         <form onSubmit={simpanKategori} className="flex gap-2 mb-3">
-          <input type="text" value={kategoriForm.nama} onChange={(e) => setKategoriForm({ nama: e.target.value })} placeholder="Nama kategori baru" className="flex-1 border border-sage-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all" />
-          <button type="submit" className="bg-sage-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-sage-700 transition-colors">Tambah</button>
+          <input type="text" value={kategoriForm.nama} onChange={(e) => setKategoriForm({ nama: e.target.value })} placeholder="Nama kategori baru" className="flex-1 border border-sage-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all" />
+          <button type="submit" className="bg-red-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-900 transition-colors">Tambah</button>
         </form>
         <div className="flex flex-wrap gap-2">
           {kategoriList.map((k) => (
-            <div key={k.id} className="inline-flex items-center gap-1.5 bg-sage-50 rounded-lg px-3 py-1.5 text-sm text-sage-600">
+            <div key={k.id} className="inline-flex items-center gap-1.5 bg-red-50 rounded-lg px-3 py-1.5 text-sm text-sage-600">
               <span>{k.nama} <span className="text-sage-400">({k._count?.menu ?? 0})</span></span>
               <button onClick={() => hapusKategori(k.id)} className="text-sage-400 hover:text-red-500 transition-colors">
                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>

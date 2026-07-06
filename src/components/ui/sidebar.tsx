@@ -119,14 +119,14 @@ export default function Sidebar({
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex flex-col fixed left-0 top-0 h-dvh w-64 bg-sage-800 z-40">
+      <aside className="hidden lg:flex flex-col fixed left-0 top-0 h-dvh w-64 bg-red-900 z-40">
         {sidebarContent}
       </aside>
 
       {/* Mobile hamburger */}
       <button
         onClick={() => setIsOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-50 w-10 h-10 rounded-xl bg-sage-800 shadow-lg flex items-center justify-center text-white hover:bg-sage-700 transition-colors"
+        className="lg:hidden fixed top-4 left-4 z-50 w-10 h-10 rounded-xl bg-red-900 shadow-lg flex items-center justify-center text-white hover:bg-red-800 transition-colors"
         aria-label="Buka menu"
       >
         <Menu className="w-5 h-5" />
@@ -151,7 +151,7 @@ export default function Sidebar({
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="lg:hidden fixed left-0 top-0 h-dvh w-64 bg-sage-800 z-50"
+              className="lg:hidden fixed left-0 top-0 h-dvh w-64 bg-red-900 z-50"
             >
               <button
                 onClick={() => setIsOpen(false)}
