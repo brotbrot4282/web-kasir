@@ -26,11 +26,12 @@ export default function KasirPage() {
   const [transaksiSukses, setTransaksiSukses] = useState<{
     noTransaksi: string; totalHarga: number; totalBayar: number;
     kembalian: number; items: KeranjangItem[];
-    poinDidapat: number; publicId: string; noWa: string | null;
+    poinDidapat: number; publicId: string; noWa: string | null; memberNama?: string;
   } | null>(null);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [noWa, setNoWa] = useState("");
+  const [memberNama, setMemberNama] = useState("");
   const [selectedMenu, setSelectedMenu] = useState<Menu | null>(null);
   const [showClosing, setShowClosing] = useState(false);
   const [closingEsBatu, setClosingEsBatu] = useState("");
@@ -99,12 +100,12 @@ export default function KasirPage() {
       const res = await fetch("/api/transaksi", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: keranjang.map((i) => ({ menuId: i.menuId, jumlah: i.jumlah, variant: i.variant })), totalBayar: bayar, noWa: noWa.trim() || undefined }),
+        body: JSON.stringify({ items: keranjang.map((i) => ({ menuId: i.menuId, jumlah: i.jumlah, variant: i.variant })), totalBayar: bayar, noWa: noWa.trim() || undefined, memberNama: memberNama.trim() || undefined }),
       });
       if (!res.ok) { const err = await res.json(); throw new Error(err.error || "Gagal"); }
       const data = await res.json();
-      setTransaksiSukses({ noTransaksi: data.noTransaksi, totalHarga: data.totalHarga, totalBayar: data.totalBayar, kembalian: data.kembalian, items: [...keranjang], poinDidapat: data.poinDidapat || 0, publicId: data.publicId, noWa: data.noWa || null });
-      setKeranjang([]); setTotalBayar(""); setNoWa(""); setMessage(null);
+      setTransaksiSukses({ noTransaksi: data.noTransaksi, totalHarga: data.totalHarga, totalBayar: data.totalBayar, kembalian: data.kembalian, items: [...keranjang], poinDidapat: data.poinDidapat || 0, publicId: data.publicId, noWa: data.noWa || null, memberNama: memberNama.trim() || undefined });
+      setKeranjang([]); setTotalBayar(""); setNoWa(""); setMemberNama(""); setMessage(null);
       fetch("/api/menu").then((r) => r.json()).then(setMenuList);
     } catch (err) {
       setMessage({ type: "error", text: err instanceof Error ? err.message : "Gagal bayar" });
@@ -226,6 +227,9 @@ export default function KasirPage() {
               <span className="text-sm font-medium text-amber-700">+{formatRupiah(transaksiSukses.poinDidapat * 1000)} Poin</span>
             </div>
           )}
+          {transaksiSukses.memberNama && (
+            <p className="text-xs text-sage-500 mt-3">Customer: {transaksiSukses.memberNama}</p>
+          )}
           <p className="text-xs text-sage-300 mt-4">Terima kasih atas kunjungan Anda</p>
           {transaksiSukses.publicId && (
             <a
@@ -245,7 +249,7 @@ export default function KasirPage() {
           <button onClick={() => cetakStruk("catatan")} className="flex-1 bg-white text-sage-600 border border-sage-200 py-2.5 rounded-xl font-medium hover:bg-sage-50 transition-colors text-sm">
             Cetak Catatan
           </button>
-          <button onClick={() => setTransaksiSukses(null)} className="flex-1 bg-sage-100 text-sage-600 py-2.5 rounded-xl font-medium hover:bg-sage-200 transition-colors text-sm">
+          <button onClick={() => { setTransaksiSukses(null); setMemberNama(""); setNoWa(""); }} className="flex-1 bg-sage-100 text-sage-600 py-2.5 rounded-xl font-medium hover:bg-sage-200 transition-colors text-sm">
             Transaksi Baru
           </button>
         </div>
@@ -475,6 +479,22 @@ export default function KasirPage() {
                     onChange={(e) => setTotalBayar(e.target.value.replace(/\D/g, ""))}
                     placeholder="0"
                     className="w-full border border-sage-200 rounded-lg pl-9 pr-3 py-2.5 text-right text-lg font-bold text-sage-800 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-medium text-sage-500">Nama (opsional)</label>
+                <div className="relative">
+                  <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sage-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                  </svg>
+                  <input
+                    type="text"
+                    value={memberNama}
+                    onChange={(e) => setMemberNama(e.target.value)}
+                    placeholder="Nama customer"
+                    className="w-full border border-sage-200 rounded-lg pl-9 pr-3 py-2.5 text-sm text-sage-800 placeholder:text-sage-400 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all bg-white"
                   />
                 </div>
               </div>

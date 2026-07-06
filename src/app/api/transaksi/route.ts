@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { items, totalBayar, noWa } = body;
+    const { items, totalBayar, noWa, memberNama } = body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: "Minimal satu item diperlukan" }, { status: 400 });
@@ -115,11 +115,25 @@ export async function POST(request: NextRequest) {
 
     let member = null;
     if (noWa && typeof noWa === "string" && noWa.trim()) {
-      member = await prisma.member.upsert({
-        where: { noWa: noWa.trim() },
-        update: {},
-        create: { noWa: noWa.trim() },
-      });
+      const noWaTrimmed = noWa.trim();
+      const existing = await prisma.member.findUnique({ where: { noWa: noWaTrimmed } });
+      if (existing) {
+        if (!existing.nama && memberNama && typeof memberNama === "string" && memberNama.trim()) {
+          member = await prisma.member.update({
+            where: { noWa: noWaTrimmed },
+            data: { nama: memberNama.trim() },
+          });
+        } else {
+          member = existing;
+        }
+      } else {
+        member = await prisma.member.create({
+          data: {
+            noWa: noWaTrimmed,
+            nama: (memberNama && typeof memberNama === "string" && memberNama.trim()) ? memberNama.trim() : null,
+          },
+        });
+      }
     }
 
     const transaksi = await prisma.transaksi.create({
@@ -167,24 +181,26 @@ export async function POST(request: NextRequest) {
       try {
         const invoiceUrl = `http://localhost:3000/invoice/${transaksi.publicId}`;
         const pesan = [
-          `*${BRAND_NAME}*`,
+          `Dear ${member.nama || "Customer"},`,
           "",
-          `Halo ${member.nama || "Customer"},`,
+          `Terimakasih telah melakukan transaksi di ${BRAND_NAME}`,
+          "Berikut adalah INVOICE transaksi Anda :",
           "",
-          `Terima kasih telah melakukan transaksi di ${BRAND_NAME}`,
-          "Berikut INVOICE transaksi Anda :",
+          `* No Invoice : ${transaksi.noTransaksi}`,
+          `* TOTAL TRANSAKSI : ${formatRupiah(transaksi.totalHarga)}`,
+          `* Poin Didapat : ${formatPoin(poinDidapat)} OV POINT`,
           "",
-          `No Invoice : ${transaksi.noTransaksi}`,
-          `TOTAL TRANSAKSI : ${formatRupiah(transaksi.totalHarga)}`,
-          `Poin Didapat : ${formatPoin(poinDidapat)} OV POINT`,
-          "",
-          "Untuk melihat rincian transaksi klik link berikut",
+          "Untuk melihat rincian transaksi dan point reward yang Anda dapatkan (OV POINT) klik link berikut",
           invoiceUrl,
+          "",
+          `*${BRAND_NAME} (17.00 - 23.00)*`,
           "",
           `Update info kegiatan menarik follow : ${INSTAGRAM_URL}`,
           "",
           "Have a Great Day,",
-          BRAND_NAME,
+          "Management WARKOP SOEKARDJO",
+          "#ojolalibaliomah",
+          "#thefriendlyvapestoreinthetown",
         ].join("\n");
         await kirimWA(noWa, pesan);
       } catch (waErr) {
