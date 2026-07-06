@@ -261,13 +261,30 @@ export default function KasirPage() {
         </div>
 
         <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1 no-print">
-          <button onClick={() => setKategoriAktif("")} className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-            kategoriAktif === "" ? "bg-sage-600 text-white shadow-sm" : "bg-white text-sage-500 border border-sage-200 hover:border-sage-300 hover:text-sage-700"
-          }`}>Semua</button>
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setKategoriAktif("")}
+            className={`shrink-0 px-3.5 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-200 ${
+              kategoriAktif === ""
+                ? "bg-sage-600 text-white shadow-sm shadow-sage-200"
+                : "bg-white text-sage-500 border border-sage-200 hover:border-sage-300 hover:text-sage-700 hover:bg-sage-50"
+            }`}
+          >
+            Semua
+          </motion.button>
           {kategoriList.map((k) => (
-            <button key={k.id} onClick={() => setKategoriAktif(k.id)} className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-              kategoriAktif === k.id ? "bg-sage-600 text-white shadow-sm" : "bg-white text-sage-500 border border-sage-200 hover:border-sage-300 hover:text-sage-700"
-            }`}>{k.nama}</button>
+            <motion.button
+              key={k.id}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setKategoriAktif(k.id)}
+              className={`shrink-0 px-3.5 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-200 ${
+                kategoriAktif === k.id
+                  ? "bg-sage-600 text-white shadow-sm shadow-sage-200"
+                  : "bg-white text-sage-500 border border-sage-200 hover:border-sage-300 hover:text-sage-700 hover:bg-sage-50"
+              }`}
+            >
+              {k.nama}
+            </motion.button>
           ))}
         </div>
 
@@ -280,10 +297,10 @@ export default function KasirPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Cari menu..."
-            className="w-full border border-sage-200 rounded-lg pl-9 pr-3 py-2 text-sm bg-white text-sage-800 placeholder:text-sage-400 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all"
+            className="w-full border border-sage-200 rounded-xl pl-9 pr-9 py-2.5 text-sm bg-white text-sage-800 placeholder:text-sage-400 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all shadow-sm"
           />
           {search && (
-            <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-sage-400 hover:text-sage-600 transition-colors">
+            <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-sage-400 hover:text-sage-600 hover:bg-sage-100 rounded-lg p-1 transition-all">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -293,13 +310,22 @@ export default function KasirPage() {
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="animate-pulse text-sage-400">Memuat menu...</div>
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-8 h-8 border-2 border-sage-200 border-t-sage-600 rounded-full animate-spin" />
+              <div className="text-sm text-sage-400 font-medium">Memuat menu...</div>
+            </div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
-            {menuFilter.map((menu) => (
-              <button
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2.5">
+            <AnimatePresence>
+            {menuFilter.map((menu, idx) => (
+              <motion.button
                 key={menu.id}
+                layout
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.2, delay: idx * 0.03 }}
                 onClick={() => {
                   if (menu.variants && menu.variants.length > 0) {
                     setSelectedMenu(menu);
@@ -308,44 +334,70 @@ export default function KasirPage() {
                   }
                 }}
                 disabled={menu.stok === 0}
-                className={`bg-white border border-sage-200 rounded-xl overflow-hidden text-center transition-all ${
-                  menu.stok === 0 ? "opacity-40 cursor-not-allowed" : "hover:border-sage-300 hover:shadow-sm active:bg-sage-50 cursor-pointer"
+                className={`relative group bg-white border border-sage-200 rounded-xl overflow-hidden text-left transition-all duration-200 ${
+                  menu.stok === 0
+                    ? "opacity-45 cursor-not-allowed"
+                    : "hover:border-sage-400 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:shadow-md cursor-pointer"
                 }`}
               >
+                {menu.variants && menu.variants.length > 0 && (
+                  <span className="absolute top-2 right-2 z-10 bg-amber-50 text-amber-700 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border border-amber-200 shadow-sm">
+                    Varian
+                  </span>
+                )}
+                {menu.stok === 0 && (
+                  <span className="absolute top-2 left-2 z-10 bg-rose-50 text-rose-700 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-rose-200 shadow-sm">
+                    Habis
+                  </span>
+                )}
+                {menu.stok > 0 && menu.stok <= 5 && (
+                  <span className="absolute top-2 left-2 z-10 bg-amber-50 text-amber-700 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-amber-200 shadow-sm">
+                    Sisa {menu.stok}
+                  </span>
+                )}
                 {menu.gambar ? (
-                  <div className="w-full h-28 bg-sage-50">
-                    <img src={menu.gambar} alt={menu.nama} className="w-full h-full object-cover" loading="lazy" />
+                  <div className="w-full h-28 sm:h-32 bg-sage-50 overflow-hidden">
+                    <img src={menu.gambar} alt={menu.nama} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" />
                   </div>
                 ) : (
-                  <div className="w-full h-28 bg-sage-50 flex items-center justify-center">
-                    <svg className="w-8 h-8 text-sage-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <div className="w-full h-28 sm:h-32 bg-gradient-to-br from-sage-50 to-sage-100 flex items-center justify-center">
+                    <svg className="w-9 h-9 text-sage-300 transition-transform duration-300 group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
                     </svg>
                   </div>
                 )}
-                <div className="p-3">
-                  <p className="font-medium text-sm text-sage-800 truncate">{menu.nama}</p>
-                  <p className="text-sage-600 font-semibold text-sm mt-0.5">{formatRupiah(menu.harga)}</p>
-                  {menu.stok <= 5 && menu.stok > 0 && <p className="text-[11px] text-sage-400 mt-0.5">Sisa {menu.stok}</p>}
-                  {menu.stok === 0 && <p className="text-[11px] text-sage-400 mt-0.5">Habis</p>}
+                <div className="p-3 space-y-1">
+                  <p className="font-medium text-sm text-sage-800 truncate leading-tight">{menu.nama}</p>
+                  <p className="text-sm text-sage-700 font-bold">{formatRupiah(menu.harga)}</p>
                 </div>
-              </button>
+              </motion.button>
             ))}
+            </AnimatePresence>
             {menuFilter.length === 0 && (
-              <div className="col-span-full text-center py-16 text-sage-400">
-                <p className="text-sm">Tidak ada menu tersedia</p>
-              </div>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="col-span-full text-center py-16"
+              >
+                <div className="w-14 h-14 rounded-full bg-sage-100 flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-7 h-7 text-sage-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                  </svg>
+                </div>
+                <p className="text-sm text-sage-500 font-medium">Menu tidak tersedia</p>
+                <p className="text-xs text-sage-400 mt-1">Pilih kategori lain atau ubah pencarian</p>
+              </motion.div>
             )}
           </div>
         )}
       </div>
 
       <div className="w-full lg:w-80 xl:w-96 no-print">
-        <div className="bg-white border border-sage-200 rounded-xl p-4 sticky top-16">
+        <div className="bg-white border border-sage-200 rounded-xl shadow-sm p-4 sticky top-16">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold text-sm text-sage-800">Pesanan</h2>
             {keranjang.length > 0 && (
-              <span className="text-xs bg-sage-100 text-sage-600 px-2 py-0.5 rounded font-medium">
+              <span className="text-xs bg-sage-100 text-sage-600 px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap">
                 {keranjang.reduce((s, i) => s + i.jumlah, 0)} item
               </span>
             )}
@@ -353,68 +405,89 @@ export default function KasirPage() {
 
           <div className={`${keranjang.length > 0 ? "space-y-1.5 max-h-72 overflow-y-auto mb-4" : ""}`}>
             {keranjang.length === 0 ? (
-              <div className="text-center py-10">
-                <svg className="w-8 h-8 text-sage-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0l-3-3m3 3l3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
-                </svg>
-                <p className="text-sm text-sage-400">Belum ada item</p>
+              <div className="text-center py-12">
+                <div className="w-12 h-12 rounded-full bg-sage-50 flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-6 h-6 text-sage-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0l-3-3m3 3l3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                  </svg>
+                </div>
+                <p className="text-sm font-medium text-sage-400">Belum ada item</p>
+                <p className="text-xs text-sage-300 mt-1">Klik menu untuk menambah pesanan</p>
               </div>
             ) : (
-              keranjang.map((item) => (
-                <div                 key={item.key} className="flex items-center gap-2 bg-sage-50 rounded-lg p-2">
+              <AnimatePresence initial={false}>
+              {keranjang.map((item, idx) => (
+                <motion.div
+                  key={item.key}
+                  layout
+                  initial={{ opacity: 0, x: -12, height: 0 }}
+                  animate={{ opacity: 1, x: 0, height: "auto" }}
+                  exit={{ opacity: 0, x: 12, height: 0 }}
+                  transition={{ duration: 0.2, delay: idx * 0.02 }}
+                  className="flex items-center gap-2 bg-white border border-sage-200 rounded-lg p-2.5 shadow-sm"
+                >
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-sage-700 truncate">{item.nama}</p>
-                    <p className="text-xs text-sage-400">{formatRupiah(item.harga)}</p>
+                    <p className="text-sm font-medium text-sage-800 truncate">{item.nama}</p>
+                    <p className="text-xs text-sage-400">{formatRupiah(item.harga)} / item</p>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => ubahJumlah(item.key, -1)} className="w-6 h-6 rounded bg-white border border-sage-200 flex items-center justify-center text-sage-500 hover:bg-sage-100 text-xs">-</button>
-                    <span className="w-5 text-center text-sm font-medium text-sage-700">{item.jumlah}</span>
-                    <button onClick={() => ubahJumlah(item.key, 1)} className="w-6 h-6 rounded bg-white border border-sage-200 flex items-center justify-center text-sage-500 hover:bg-sage-100 text-xs">+</button>
+                  <div className="flex items-center gap-1.5">
+                    <button onClick={() => ubahJumlah(item.key, -1)} className="w-7 h-7 rounded-lg bg-white border border-sage-200 flex items-center justify-center text-sage-500 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors text-sm font-bold">-</button>
+                    <span className="w-6 text-center text-sm font-bold text-sage-800">{item.jumlah}</span>
+                    <button onClick={() => ubahJumlah(item.key, 1)} className="w-7 h-7 rounded-lg bg-white border border-sage-200 flex items-center justify-center text-sage-500 hover:bg-sage-100 hover:text-sage-700 hover:border-sage-300 transition-colors text-sm font-bold">+</button>
                   </div>
-                  <p className="text-sm font-medium text-sage-800 w-14 text-right">{formatRupiah(item.subtotal)}</p>
-                </div>
-              ))
+                  <p className="text-sm font-bold text-sage-800 w-16 text-right">{formatRupiah(item.subtotal)}</p>
+                </motion.div>
+              ))}
+              </AnimatePresence>
             )}
           </div>
 
           {keranjang.length > 0 && (
             <div className="border-t border-sage-200 pt-3 space-y-3">
-              <div className="flex justify-between items-baseline">
-                <span className="text-sm text-sage-500">Total</span>
-                <span className="text-lg font-bold text-sage-800">{formatRupiah(totalKeranjang)}</span>
+              <div className="flex items-center justify-between bg-sage-50 rounded-lg px-3 py-2 -mx-1">
+                <span className="text-sm font-semibold text-sage-600">Total Pesanan</span>
+                <span className="text-xl font-bold text-sage-800 tracking-tight">{formatRupiah(totalKeranjang)}</span>
               </div>
 
-              <div>
-                <label className="block text-xs text-sage-500 mb-1">Jumlah Bayar</label>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-medium text-sage-500">Jumlah Bayar</label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-sage-400">Rp</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-sage-400">Rp</span>
                   <input
                     type="text"
                     value={totalBayar}
                     onChange={(e) => setTotalBayar(e.target.value.replace(/\D/g, ""))}
                     placeholder="0"
-                    className="w-full border border-sage-200 rounded-lg pl-9 pr-3 py-2 text-right text-base font-bold text-sage-800 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all"
+                    className="w-full border border-sage-200 rounded-lg pl-9 pr-3 py-2.5 text-right text-lg font-bold text-sage-800 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all bg-white"
                   />
                 </div>
               </div>
 
               {totalBayar && parseInt(totalBayar) >= totalKeranjang && (
-                <div className="flex justify-between text-sm text-sage-600 font-medium bg-sage-50 rounded-lg px-3 py-1.5">
-                  <span>Kembali</span>
-                  <span>{formatRupiah(parseInt(totalBayar) - totalKeranjang)}</span>
+                <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                  <span className="text-sm font-medium text-emerald-700">Kembalian</span>
+                  <span className="text-base font-bold text-emerald-700">{formatRupiah(parseInt(totalBayar) - totalKeranjang)}</span>
                 </div>
               )}
 
               {message && (
-                <div className={`text-sm p-2.5 rounded-lg ${message.type === "error" ? "bg-red-50 text-red-500" : "bg-sage-100 text-sage-700"}`}>
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`text-sm p-2.5 rounded-lg font-medium ${
+                    message.type === "error"
+                      ? "bg-rose-50 text-rose-600 border border-rose-200"
+                      : "bg-sage-100 text-sage-700"
+                  }`}
+                >
                   {message.text}
-                </div>
+                </motion.div>
               )}
 
               <button
                 onClick={bayar}
                 disabled={keranjang.length === 0 || submitting}
-                className="w-full bg-sage-600 text-white py-2.5 rounded-lg font-semibold text-sm hover:bg-sage-700 disabled:bg-sage-100 disabled:text-sage-400 disabled:cursor-not-allowed transition-colors"
+                className="w-full bg-sage-600 text-white py-3 rounded-lg font-bold text-sm hover:bg-sage-700 disabled:bg-sage-100 disabled:text-sage-400 disabled:cursor-not-allowed transition-all duration-200 active:scale-[0.98]"
               >
                 {submitting ? (
                   <span className="flex items-center justify-center gap-2">
