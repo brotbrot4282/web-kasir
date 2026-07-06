@@ -5,6 +5,9 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const dari = searchParams.get("dari");
   const sampai = searchParams.get("sampai");
+  const page = parseInt(searchParams.get("page") || "1");
+  const limit = parseInt(searchParams.get("limit") || "10");
+  const skip = (page - 1) * limit;
 
   const dateFilter: Record<string, Date> = {};
   if (dari) dateFilter.gte = new Date(dari + "T00:00:00+07:00");
@@ -12,33 +15,45 @@ export async function GET(request: NextRequest) {
 
   const where = dari || sampai ? { createdAt: dateFilter } : {};
 
-  const transaksi = await prisma.transaksi.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-    include: {
-      itemTransaksi: true,
-    },
-  });
+  const [total, aggTransaksi, transaksi, menuTerlaris] = await Promise.all([
+    prisma.transaksi.count({ where }),
+    prisma.transaksi.aggregate({
+      where,
+      _sum: { totalHarga: true },
+    }),
+    prisma.transaksi.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+      include: {
+        itemTransaksi: true,
+      },
+    }),
+    prisma.itemTransaksi.groupBy({
+      by: ["menuId", "namaMenu"],
+      _sum: { jumlah: true },
+      where: dari || sampai ? {
+        transaksi: { createdAt: dateFilter },
+      } : {},
+      orderBy: { _sum: { jumlah: "desc" } },
+      take: 10,
+    }),
+  ]);
 
-  const totalOmset = transaksi.reduce((sum, t) => sum + t.totalHarga, 0);
-  const totalTransaksi = transaksi.length;
-  const totalItem = transaksi.reduce((sum, t) => sum + t.itemTransaksi.reduce((s, i) => s + i.jumlah, 0), 0);
+  const totalOmset = aggTransaksi._sum.totalHarga || 0;
 
-  const menuTerlaris = await prisma.itemTransaksi.groupBy({
-    by: ["menuId", "namaMenu"],
+  const itemAgg = await prisma.itemTransaksi.aggregate({
+    where: dari || sampai ? { transaksi: { createdAt: dateFilter } } : {},
     _sum: { jumlah: true },
-    where: dari || sampai ? {
-      transaksi: { createdAt: dateFilter },
-    } : {},
-    orderBy: { _sum: { jumlah: "desc" } },
-    take: 10,
   });
+  const totalItem = itemAgg._sum.jumlah || 0;
 
   return NextResponse.json({
     transaksi,
     ringkasan: {
       totalOmset,
-      totalTransaksi,
+      totalTransaksi: total,
       totalItem,
     },
     menuTerlaris: menuTerlaris.map((m) => ({
@@ -46,5 +61,8 @@ export async function GET(request: NextRequest) {
       namaMenu: m.namaMenu,
       totalTerjual: m._sum.jumlah ?? 0,
     })),
+    total,
+    totalPages: Math.ceil(total / limit),
+    page,
   });
 }

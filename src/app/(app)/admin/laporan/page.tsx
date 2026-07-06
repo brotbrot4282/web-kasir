@@ -10,7 +10,7 @@ type Transaksi = {
   kembalian: number; createdAt: string;
   itemTransaksi: Array<{ id: string; namaMenu: string; harga: number; jumlah: number; subtotal: number }>;
 };
-type LaporanData = { ringkasan: Ringkasan; menuTerlaris: MenuTerlaris[]; transaksi: Transaksi[] };
+type LaporanData = { ringkasan: Ringkasan; menuTerlaris: MenuTerlaris[]; transaksi: Transaksi[]; total: number; totalPages: number; page: number };
 type ClosingItem = { id: string; tanggal: string; shift: string; esBatu: number; cupTerjual: number; user: { nama: string } };
 
 export default function LaporanPage() {
@@ -20,30 +20,34 @@ export default function LaporanPage() {
   const [sampai, setSampai] = useState("");
   const [detail, setDetail] = useState<Transaksi | null>(null);
   const [closingData, setClosingData] = useState<ClosingItem[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
-  const loadData = (d?: string, s?: string) => {
+  const loadData = (d?: string, s?: string, p?: number) => {
     setLoading(true);
     const params = new URLSearchParams();
     if (d) params.set("dari", d);
     if (s) params.set("sampai", s);
+    if (p) params.set("page", String(p));
     const paramsStr = params.toString();
     Promise.all([
       fetch(`/api/laporan?${paramsStr}`).then((r) => r.json()) as Promise<LaporanData>,
       fetch(`/api/closing?${paramsStr}`).then((r) => r.json()) as Promise<ClosingItem[]>,
     ]).then(([lapData, closings]) => {
       setData(lapData);
+      setTotalPages(lapData.totalPages);
       setClosingData(closings);
     }).finally(() => setLoading(false));
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { setPage(1); loadData(); }, []);
 
-  const cari = (e: React.FormEvent) => { e.preventDefault(); loadData(dari || undefined, sampai || undefined); };
+  const cari = (e: React.FormEvent) => { e.preventDefault(); setPage(1); loadData(dari || undefined, sampai || undefined); };
   const getLocalDate = (d: Date) =>
     new Intl.DateTimeFormat("fr-CA", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
-  const hariIni = () => { const t = getLocalDate(new Date()); setDari(t); setSampai(t); loadData(t, t); };
-  const mingguIni = () => { const skrg = new Date(); const t = getLocalDate(skrg); const w = new Date(skrg); w.setDate(w.getDate() - 7); const d = getLocalDate(w); setDari(d); setSampai(t); loadData(d, t); };
-  const bulanIni = () => { const skrg = new Date(); const t = getLocalDate(skrg); const b = getLocalDate(new Date(skrg.getFullYear(), skrg.getMonth(), 1)); setDari(b); setSampai(t); loadData(b, t); };
+  const hariIni = () => { const t = getLocalDate(new Date()); setDari(t); setSampai(t); setPage(1); loadData(t, t); };
+  const mingguIni = () => { const skrg = new Date(); const t = getLocalDate(skrg); const w = new Date(skrg); w.setDate(w.getDate() - 7); const d = getLocalDate(w); setDari(d); setSampai(t); setPage(1); loadData(d, t); };
+  const bulanIni = () => { const skrg = new Date(); const t = getLocalDate(skrg); const b = getLocalDate(new Date(skrg.getFullYear(), skrg.getMonth(), 1)); setDari(b); setSampai(t); setPage(1); loadData(b, t); };
 
   return (
     <div className="space-y-6">
@@ -172,6 +176,38 @@ export default function LaporanPage() {
               </table>
             </div>
           </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 pt-2">
+              <button
+                onClick={() => { const p = page - 1; setPage(p); loadData(dari || undefined, sampai || undefined, p); }}
+                disabled={page <= 1}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium border border-sage-200 text-sage-600 hover:bg-sage-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Sebelumnya
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => { setPage(p); loadData(dari || undefined, sampai || undefined, p); }}
+                  className={`min-w-[2rem] px-2 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    p === page
+                      ? "bg-red-800 text-white"
+                      : "border border-sage-200 text-sage-600 hover:bg-sage-50"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+              <button
+                onClick={() => { const p = page + 1; setPage(p); loadData(dari || undefined, sampai || undefined, p); }}
+                disabled={page >= totalPages}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium border border-sage-200 text-sage-600 hover:bg-sage-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Selanjutnya
+              </button>
+            </div>
+          )}
 
           {detail && (
             <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/20 backdrop-blur-sm" onClick={() => setDetail(null)}>
