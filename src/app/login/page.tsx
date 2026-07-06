@@ -173,7 +173,7 @@ export default function LoginPage() {
           transition={{ duration: 0.5, delay: 0.4 }}
           className="text-center text-xs text-sage-300 mt-6"
         >
-          &copy; {new Date().getFullYear()} Warmindo Kasir &middot;
+          &copy; {new Date().getFullYear()} WARKOP SOEKARDJO &middot;
           Made by{" "}
           <a
             href="https://rafcode.vercel.app/"

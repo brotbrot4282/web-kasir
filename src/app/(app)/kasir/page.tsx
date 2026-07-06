@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { formatRupiah } from "@/lib/utils";
+import { motion, AnimatePresence } from "motion/react";
+import { X } from "lucide-react";
 
 type Kategori = { id: string; nama: string };
 type Menu = {
@@ -24,6 +26,12 @@ export default function KasirPage() {
     noTransaksi: string; totalHarga: number; totalBayar: number;
     kembalian: number; items: KeranjangItem[];
   } | null>(null);
+
+  const [showClosing, setShowClosing] = useState(false);
+  const [closingEsBatu, setClosingEsBatu] = useState("");
+  const [closingCup, setClosingCup] = useState("");
+  const [closingLoading, setClosingLoading] = useState(false);
+  const [closingMsg, setClosingMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -102,7 +110,7 @@ export default function KasirPage() {
           <div className="w-12 h-12 rounded-full bg-sage-100 flex items-center justify-center mx-auto mb-3">
             <span className="text-lg font-bold text-sage-600">W</span>
           </div>
-          <h2 className="font-bold text-lg text-sage-800">Warmindo</h2>
+          <h2 className="font-bold text-lg text-sage-800">WARKOP SOEKARDJO</h2>
           <p className="text-xs text-sage-400 mt-0.5">Struk Pembayaran</p>
           <p className="text-xs font-mono text-sage-300 mt-1">{transaksiSukses.noTransaksi}</p>
 
@@ -143,6 +151,7 @@ export default function KasirPage() {
   }
 
   return (
+    <>
     <div className="flex flex-col lg:flex-row gap-6">
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-5">
@@ -150,10 +159,16 @@ export default function KasirPage() {
             <h1 className="text-lg font-semibold text-sage-800">Kasir</h1>
             <p className="text-xs text-sage-400 mt-0.5">{new Date().toLocaleDateString("id-ID", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
           </div>
-          <div className="w-8 h-8 rounded-full bg-sage-100 flex items-center justify-center">
-            <svg className="w-4 h-4 text-sage-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12" />
-            </svg>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowClosing(true)}
+              className="flex items-center gap-1.5 bg-sage-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-sage-700 transition-colors shadow-sm"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Tutup Shift
+            </button>
           </div>
         </div>
 
@@ -319,5 +334,114 @@ export default function KasirPage() {
         </div>
       </div>
     </div>
+
+      {/* Closing Modal */}
+      <AnimatePresence>
+        {showClosing && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => setShowClosing(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-xl w-full max-w-sm shadow-xl"
+            >
+              <div className="flex items-center justify-between px-5 pt-5 pb-3">
+                <div>
+                  <h2 className="font-semibold text-sage-800">Tutup Shift</h2>
+                  <p className="text-xs text-sage-400 mt-0.5">Catat pemakaian hari ini</p>
+                </div>
+                <button onClick={() => setShowClosing(false)} className="w-7 h-7 rounded-lg bg-sage-100 flex items-center justify-center hover:bg-sage-200 transition-colors">
+                  <X className="w-4 h-4 text-sage-500" />
+                </button>
+              </div>
+
+              <div className="px-5 pb-5 space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-sage-600 mb-1">Es Batu (plastik)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={closingEsBatu}
+                    onChange={(e) => setClosingEsBatu(e.target.value)}
+                    placeholder="0"
+                    className="w-full border border-sage-200 rounded-lg px-3 py-2 text-sm text-sage-800 placeholder:text-sage-400 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-sage-600 mb-1">Cup Terjual</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={closingCup}
+                    onChange={(e) => setClosingCup(e.target.value)}
+                    placeholder="0"
+                    className="w-full border border-sage-200 rounded-lg px-3 py-2 text-sm text-sage-800 placeholder:text-sage-400 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all"
+                  />
+                </div>
+
+                {closingMsg && (
+                  <div className={`text-sm p-2.5 rounded-lg ${closingMsg.type === "error" ? "bg-red-50 text-red-500" : "bg-emerald-50 text-emerald-600"}`}>
+                    {closingMsg.text}
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-1">
+                  <button
+                    onClick={() => { setShowClosing(false); setClosingMsg(null); }}
+                    className="flex-1 border border-sage-200 text-sage-600 py-2 rounded-lg font-medium text-sm hover:bg-sage-50 transition-colors"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    onClick={async () => {
+                      setClosingMsg(null);
+                      setClosingLoading(true);
+                      try {
+                        const res = await fetch("/api/closing", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            esBatu: parseInt(closingEsBatu) || 0,
+                            cupTerjual: parseInt(closingCup) || 0,
+                          }),
+                        });
+                        if (!res.ok) {
+                          const err = await res.json();
+                          throw new Error(err.error || "Gagal");
+                        }
+                        setClosingMsg({ type: "success", text: "Laporan closing berhasil disimpan!" });
+                        setClosingEsBatu("");
+                        setClosingCup("");
+                        setTimeout(() => { setShowClosing(false); setClosingMsg(null); }, 1500);
+                      } catch (err) {
+                        setClosingMsg({ type: "error", text: err instanceof Error ? err.message : "Gagal menyimpan" });
+                      } finally {
+                        setClosingLoading(false);
+                      }
+                    }}
+                    disabled={closingLoading}
+                    className="flex-1 bg-sage-600 text-white py-2 rounded-lg font-medium text-sm hover:bg-sage-700 disabled:bg-sage-300 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {closingLoading ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Menyimpan...
+                      </span>
+                    ) : "Simpan Closing"}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }

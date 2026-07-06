@@ -76,10 +76,11 @@ model User {
   username  String   @unique
   password  String
   nama      String
-  role      Role     @default(OWNER)
-  shift     Shift?
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  role         Role           @default(OWNER)
+  shift        Shift?
+  dailyReports DailyReport[]
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
 
   @@map("users")
 }
@@ -93,4 +94,19 @@ model Stok {
   updatedAt  DateTime @updatedAt @map("updated_at")
 
   @@map("stok")
+}
+
+model DailyReport {
+  id         String   @id @default(uuid()) @db.Uuid
+  tanggal    DateTime
+  shift      Shift
+  userId     String   @map("user_id") @db.Uuid
+  user       User     @relation(fields: [userId], references: [id])
+  esBatu     Int      @default(0) @map("es_batu")
+  cupTerjual Int      @default(0) @map("cup_terjual")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@unique([tanggal, shift])
+  @@map("daily_report")
 }

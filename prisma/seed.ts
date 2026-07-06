@@ -22,7 +22,7 @@ async function main() {
     create: {
       username: "admin@warmindo",
       password,
-      nama: "Admin Warmindo",
+      nama: "Admin WARKOP SOEKARDJO",
       role: "OWNER",
     },
   });

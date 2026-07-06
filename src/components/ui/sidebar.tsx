@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   LayoutDashboard, Receipt, UtensilsCrossed, Package,
-  BarChart3, LogOut, Menu, X, Store, User,
+  BarChart3, LogOut, Menu, X, User,
 } from "lucide-react";
 
 type Role = "OWNER" | "KASIR";
@@ -52,13 +52,10 @@ export default function Sidebar({
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Brand */}
-      <Link href={role === "OWNER" ? "/" : "/kasir"} className="flex items-center gap-3 px-6 py-6">
-        <div className="w-9 h-9 rounded-lg bg-white/15 flex items-center justify-center">
-          <Store className="w-5 h-5 text-white" />
-        </div>
+      <Link href={role === "OWNER" ? "/" : "/kasir"} className="flex items-center px-6 py-6">
         <div>
-          <p className="text-sm font-semibold text-white leading-tight">Warmindo</p>
-          <p className="text-[11px] text-sage-300 leading-tight">Kasir</p>
+          <p className="text-sm font-semibold text-white leading-tight">WARKOP</p>
+          <p className="text-[11px] text-sage-300 leading-tight">SOEKARDJO</p>
         </div>
       </Link>
 

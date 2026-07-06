@@ -52,7 +52,7 @@ export default function Navigation() {
             <div className="w-7 h-7 rounded-md bg-sage-600 flex items-center justify-center text-white text-xs font-bold group-hover:bg-sage-700 transition-colors">
               W
             </div>
-            <span className="font-semibold text-base text-sage-900">Warmindo</span>
+            <span className="font-semibold text-base text-sage-900">WARKOP SOEKARDJO</span>
           </Link>
 
           <nav className="hidden md:flex items-center gap-0.5">

@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Warmindo Kasir",
-  description: "Sistem Kasir untuk Warmindo",
+  title: "WARKOP SOEKARDJO",
+  description: "Sistem Kasir untuk WARKOP SOEKARDJO",
 };
 
 export default function RootLayout({

@@ -11,6 +11,7 @@ type Transaksi = {
   itemTransaksi: Array<{ id: string; namaMenu: string; harga: number; jumlah: number; subtotal: number }>;
 };
 type LaporanData = { ringkasan: Ringkasan; menuTerlaris: MenuTerlaris[]; transaksi: Transaksi[] };
+type ClosingItem = { id: string; tanggal: string; shift: string; esBatu: number; cupTerjual: number; user: { nama: string } };
 
 export default function LaporanPage() {
   const [data, setData] = useState<LaporanData | null>(null);
@@ -18,13 +19,21 @@ export default function LaporanPage() {
   const [dari, setDari] = useState("");
   const [sampai, setSampai] = useState("");
   const [detail, setDetail] = useState<Transaksi | null>(null);
+  const [closingData, setClosingData] = useState<ClosingItem[]>([]);
 
   const loadData = (d?: string, s?: string) => {
     setLoading(true);
     const params = new URLSearchParams();
     if (d) params.set("dari", d);
     if (s) params.set("sampai", s);
-    fetch(`/api/laporan?${params.toString()}`).then((r) => r.json()).then((d: LaporanData) => setData(d)).finally(() => setLoading(false));
+    const paramsStr = params.toString();
+    Promise.all([
+      fetch(`/api/laporan?${paramsStr}`).then((r) => r.json()) as Promise<LaporanData>,
+      fetch(`/api/closing?${paramsStr}`).then((r) => r.json()) as Promise<ClosingItem[]>,
+    ]).then(([lapData, closings]) => {
+      setData(lapData);
+      setClosingData(closings);
+    }).finally(() => setLoading(false));
   };
 
   useEffect(() => { loadData(); }, []);
@@ -73,6 +82,42 @@ export default function LaporanPage() {
               <p className="text-xl font-bold text-sage-800 mt-1">{data.ringkasan.totalItem}</p>
             </div>
           </div>
+
+          {closingData.length > 0 && (
+            <div className="bg-white border border-sage-200 rounded-xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-sage-100">
+                <h2 className="text-sm font-semibold text-sage-800">Laporan Closing</h2>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-sage-100">
+                      <th className="text-left px-4 py-3 text-xs font-medium text-sage-500 uppercase">Tanggal</th>
+                      <th className="text-left px-4 py-3 text-xs font-medium text-sage-500 uppercase">Shift</th>
+                      <th className="text-left px-4 py-3 text-xs font-medium text-sage-500 uppercase">Kasir</th>
+                      <th className="text-right px-4 py-3 text-xs font-medium text-sage-500 uppercase">Es Batu</th>
+                      <th className="text-right px-4 py-3 text-xs font-medium text-sage-500 uppercase">Cup Terjual</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-sage-100">
+                    {closingData.map((c) => (
+                      <tr key={c.id} className="hover:bg-sage-50 transition-colors">
+                        <td className="px-4 py-3 text-xs text-sage-500">{formatDate(new Date(c.tanggal))}</td>
+                        <td className="px-4 py-3">
+                          <span className="text-xs font-medium bg-sage-100 text-sage-600 px-2 py-0.5 rounded">
+                            {c.shift === "SHIFT_1" ? "Shift 1" : "Shift 2"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sage-700">{c.user.nama}</td>
+                        <td className="px-4 py-3 text-right font-semibold text-sage-800">{c.esBatu} <span className="text-xs text-sage-400 font-normal">plastik</span></td>
+                        <td className="px-4 py-3 text-right font-semibold text-sage-800">{c.cupTerjual} <span className="text-xs text-sage-400 font-normal">cup</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {data.menuTerlaris.length > 0 && (
             <div className="bg-white border border-sage-200 rounded-xl p-5">
