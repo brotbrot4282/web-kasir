@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { formatRupiah } from "@/lib/utils";
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
@@ -28,6 +28,7 @@ export default function KasirPage() {
     kembalian: number; items: KeranjangItem[];
   } | null>(null);
 
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const [selectedMenu, setSelectedMenu] = useState<Menu | null>(null);
   const [showClosing, setShowClosing] = useState(false);
   const [closingEsBatu, setClosingEsBatu] = useState("");
@@ -110,6 +111,82 @@ export default function KasirPage() {
     }
   };
 
+  const cetakStruk = useCallback((jenis: "customer" | "catatan") => {
+    if (!transaksiSukses || !iframeRef.current) return;
+    const t = transaksiSukses;
+    const tanggal = new Date().toLocaleDateString("id-ID", {
+      weekday: "long", year: "numeric", month: "long", day: "numeric"
+    });
+    const jam = new Date().toLocaleTimeString("id-ID", {
+      hour: "2-digit", minute: "2-digit"
+    });
+
+    const itemsHtml = t.items.map((item) => {
+      const nm = item.nama.length > 28 ? item.nama.slice(0, 26) + ".." : item.nama;
+      const harga = item.subtotal / item.jumlah;
+      return `
+        <div style="display:flex;justify-content:space-between;">
+          <span>${nm}</span>
+          <span>${formatRupiah(item.subtotal)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:#555;padding-left:4px;">
+          <span>${formatRupiah(harga)} x ${item.jumlah}</span>
+          <span></span>
+        </div>`;
+    }).join("");
+
+    const labelCatatan = jenis === "catatan"
+      ? `<div style="text-align:center;font-weight:bold;font-size:11px;margin:4px 0;letter-spacing:4px;">=== STRUK CATATAN ===</div>`
+      : "";
+
+    const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8">
+<style>
+  @page { size: 58mm auto; margin: 0; }
+  body {
+    font-family: 'Courier New', 'Consolas', 'Lucida Console', monospace;
+    font-size: 11px; line-height: 1.3; padding: 8px 12px; color: #000; margin: 0;
+  }
+</style>
+</head>
+<body>
+  <div style="text-align:center;font-weight:bold;font-size:14px;margin-bottom:2px;">WARKOP SOEKARDJO</div>
+  <div style="text-align:center;font-size:9px;color:#666;">${tanggal} ${jam}</div>
+  <div style="text-align:center;font-size:9px;color:#666;">${t.noTransaksi}</div>
+  ${labelCatatan}
+  <div style="border-top:1px dashed #000;margin:6px 0;"></div>
+  ${itemsHtml}
+  <div style="border-top:1px dashed #000;margin:6px 0;"></div>
+  <div style="display:flex;justify-content:space-between;font-weight:bold;">
+    <span>TOTAL</span><span>${formatRupiah(t.totalHarga)}</span>
+  </div>
+  <div style="display:flex;justify-content:space-between;">
+    <span>Bayar</span><span>${formatRupiah(t.totalBayar)}</span>
+  </div>
+  <div style="display:flex;justify-content:space-between;">
+    <span>Kembali</span><span>${formatRupiah(t.kembalian)}</span>
+  </div>
+  <div style="border-top:1px dashed #000;margin:6px 0;"></div>
+  <div style="text-align:center;font-weight:bold;margin-top:6px;">Terima kasih</div>
+  <div style="text-align:center;font-size:9px;color:#666;">Barang yang sudah dibeli</div>
+  <div style="text-align:center;font-size:9px;color:#666;">tidak dapat dikembalikan</div>
+</body></html>`;
+
+    const iframe = iframeRef.current;
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (doc) {
+      iframe.style.display = "block";
+      doc.open();
+      doc.write(html);
+      doc.close();
+      setTimeout(() => {
+        iframe.contentWindow?.print();
+        setTimeout(() => { iframe.style.display = "none"; }, 500);
+      }, 300);
+    }
+  }, [transaksiSukses]);
+
   if (transaksiSukses) {
     return (
       <div className="max-w-sm mx-auto">
@@ -146,13 +223,17 @@ export default function KasirPage() {
         </div>
 
         <div className="flex gap-3 mt-4 no-print">
-          <button onClick={() => window.print()} className="flex-1 bg-sage-600 text-white py-2.5 rounded-xl font-medium hover:bg-sage-700 transition-colors text-sm">
-            Cetak Struk
+          <button onClick={() => cetakStruk("customer")} className="flex-1 bg-sage-600 text-white py-2.5 rounded-xl font-medium hover:bg-sage-700 transition-colors text-sm">
+            Cetak Customer
+          </button>
+          <button onClick={() => cetakStruk("catatan")} className="flex-1 bg-white text-sage-600 border border-sage-200 py-2.5 rounded-xl font-medium hover:bg-sage-50 transition-colors text-sm">
+            Cetak Catatan
           </button>
           <button onClick={() => setTransaksiSukses(null)} className="flex-1 bg-sage-100 text-sage-600 py-2.5 rounded-xl font-medium hover:bg-sage-200 transition-colors text-sm">
             Transaksi Baru
           </button>
         </div>
+        <iframe ref={iframeRef} style={{ display: "none", width: 0, height: 0, border: 0, position: "absolute" }} title="print-frame" />
       </div>
     );
   }
