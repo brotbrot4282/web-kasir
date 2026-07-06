@@ -3,7 +3,7 @@
 import { useState, FormEvent, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { Store, User, Lock, Eye, EyeOff } from "lucide-react";
+import { User, Lock, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -44,12 +44,12 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-dvh flex items-center justify-center bg-sage-700 overflow-hidden">
+    <div className="relative min-h-dvh flex items-center justify-center bg-red-900 overflow-hidden">
       {/* Decorative blobs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-sage-600/20 blur-3xl" />
-        <div className="absolute -bottom-40 -left-32 w-[28rem] h-[28rem] rounded-full bg-sage-500/15 blur-3xl" />
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-80 h-80 rounded-full bg-sage-600/10 blur-3xl" />
+        <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-red-800/30 blur-3xl" />
+        <div className="absolute -bottom-40 -left-32 w-[28rem] h-[28rem] rounded-full bg-red-800/20 blur-3xl" />
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-80 h-80 rounded-full bg-red-800/15 blur-3xl" />
       </div>
 
       <motion.div
@@ -59,7 +59,7 @@ export default function LoginPage() {
         className="relative w-full max-w-sm mx-4"
       >
         {/* Card */}
-        <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-10 shadow-2xl shadow-black/10 border border-white/20">
+        <div className="bg-white rounded-3xl p-10 shadow-2xl shadow-black/10">
           {/* Brand */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -67,13 +67,9 @@ export default function LoginPage() {
             transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
             className="text-center mb-9"
           >
-            <motion.div
-              animate={{ rotate: [0, -5, 5, 0] }}
-              transition={{ duration: 0.6, delay: 0.8, ease: "easeInOut" }}
-              className="w-16 h-16 rounded-2xl bg-gradient-to-br from-sage-600 to-sage-700 flex items-center justify-center mx-auto mb-5 shadow-lg shadow-sage-600/30"
-            >
-              <Store className="w-8 h-8 text-white" />
-            </motion.div>
+            <div className="w-20 h-20 mx-auto mb-5 overflow-hidden rounded-2xl shadow-lg shadow-black/10">
+              <img src="/logo.jpg" alt="WARKOP SOEKARDJO" className="w-full h-full object-cover" />
+            </div>
             <h1 className="text-2xl font-bold text-sage-800 tracking-tight">Warkop Soekardjo</h1>
             <p className="text-sm text-sage-400 mt-1.5 font-medium">Silakan masuk untuk melanjutkan</p>
           </motion.div>
@@ -110,7 +106,7 @@ export default function LoginPage() {
                   placeholder="Masukkan username"
                   required
                   autoFocus
-                  className="w-full border border-sage-200/70 bg-white/70 rounded-xl pl-10 pr-4 py-3 text-sm text-sage-800 placeholder:text-sage-300 focus:outline-none focus:ring-2 focus:ring-sage-500/30 focus:border-sage-400 transition-all duration-200"
+                  className="w-full border border-sage-200/70 bg-white rounded-xl pl-10 pr-4 py-3 text-sm text-sage-800 placeholder:text-sage-300 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all duration-200"
                 />
               </div>
             </div>
@@ -127,7 +123,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Masukkan password"
                   required
-                  className="w-full border border-sage-200/70 bg-white/70 rounded-xl pl-10 pr-11 py-3 text-sm text-sage-800 placeholder:text-sage-300 focus:outline-none focus:ring-2 focus:ring-sage-500/30 focus:border-sage-400 transition-all duration-200"
+                  className="w-full border border-sage-200/70 bg-white rounded-xl pl-10 pr-11 py-3 text-sm text-sage-800 placeholder:text-sage-300 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all duration-200"
                 />
                 <button
                   type="button"
@@ -149,7 +145,7 @@ export default function LoginPage() {
               disabled={loading}
               whileHover={!loading ? { scale: 1.02 } : {}}
               whileTap={!loading ? { scale: 0.98 } : {}}
-              className="w-full bg-gradient-to-br from-sage-600 to-sage-700 text-white rounded-xl px-4 py-3 text-sm font-semibold shadow-lg shadow-sage-600/25 hover:shadow-xl hover:shadow-sage-600/35 hover:from-sage-700 hover:to-sage-800 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none transition-all duration-200"
+              className="w-full bg-gradient-to-br from-red-800 to-red-900 text-white rounded-xl px-4 py-3 text-sm font-semibold shadow-lg shadow-red-800/30 hover:shadow-xl hover:shadow-red-800/40 hover:from-red-900 hover:to-red-950 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none transition-all duration-200"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -171,7 +167,7 @@ export default function LoginPage() {
           initial={{ opacity: 0 }}
           animate={mounted ? { opacity: 1 } : {}}
           transition={{ duration: 0.5, delay: 0.4 }}
-          className="text-center text-xs text-sage-300 mt-6"
+          className="text-center text-xs text-red-200/70 mt-6"
         >
           &copy; {new Date().getFullYear()} WARKOP SOEKARDJO &middot;
           Made by{" "}
@@ -179,7 +175,7 @@ export default function LoginPage() {
             href="https://rafcode.vercel.app/"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sage-200 hover:text-white underline underline-offset-2 transition-colors"
+            className="text-red-200 hover:text-white underline underline-offset-2 transition-colors"
           >
             Rafcode
           </a>
