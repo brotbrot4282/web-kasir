@@ -52,7 +52,8 @@ export default function Sidebar({
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Brand */}
-      <Link href={role === "OWNER" ? "/" : "/kasir"} className="flex items-center px-6 py-6">
+      <Link href={role === "OWNER" ? "/" : "/kasir"} className="flex items-center gap-3 px-6 py-6">
+        <img src="/logo.jpg" alt="WARKOP SOEKARDJO" className="w-10 h-10 rounded-full object-cover ring-2 ring-white/20" />
         <div>
           <p className="text-sm font-semibold text-white leading-tight">WARKOP</p>
           <p className="text-[11px] text-sage-300 leading-tight">SOEKARDJO</p>

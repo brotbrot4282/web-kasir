@@ -4,6 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "WARKOP SOEKARDJO",
   description: "Sistem Kasir untuk WARKOP SOEKARDJO",
+  icons: { icon: "/logo.jpg" },
 };
 
 export default function RootLayout({
