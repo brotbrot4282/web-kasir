@@ -158,6 +158,7 @@ export default function KasirPage() {
   <div style="text-align:center;font-weight:bold;font-size:14px;margin-bottom:2px;">WARKOP SOEKARDJO</div>
   <div style="text-align:center;font-size:9px;color:#666;">${tanggal} ${jam}</div>
   <div style="text-align:center;font-size:9px;color:#666;">${t.noTransaksi}</div>
+  ${t.memberNama ? `<div style="text-align:center;font-size:9px;color:#666;margin-top:2px;">${t.memberNama}${t.noWa ? ` (${t.noWa})` : ""}</div>` : ""}
   ${labelCatatan}
   <div style="border-top:1px dashed #000;margin:6px 0;"></div>
   ${itemsHtml}
@@ -279,7 +280,7 @@ export default function KasirPage() {
             target="_blank"
             className="block mt-3 text-center bg-emerald-50 text-emerald-600 border border-emerald-200 py-2.5 rounded-xl font-medium hover:bg-emerald-100 transition-colors text-sm no-print"
           >
-            Kirim WA Manual
+            Kirim WA 
           </a>
         )}
         <div className="flex gap-3 mt-4 no-print">
