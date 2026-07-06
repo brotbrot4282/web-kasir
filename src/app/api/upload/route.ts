@@ -32,23 +32,45 @@ export async function POST(request: NextRequest) {
       .webp({ quality: 80 })
       .toBuffer();
 
-    const { error } = await supabase.storage
+    // validasi hasil sharp
+    const meta = await sharp(optimized).metadata();
+    if (!meta.format || !meta.width || !meta.height) {
+      return NextResponse.json({ error: "Gagal memproses gambar" }, { status: 500 });
+    }
+
+    const { error: uploadError } = await supabase.storage
       .from("menu-images")
       .upload(filename, optimized, {
         contentType: "image/webp",
         upsert: true,
       });
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (uploadError) {
+      return NextResponse.json({ error: uploadError.message }, { status: 500 });
     }
 
+    // verifikasi: download balik & cek validitas
     const { data: publicUrlData } = supabase.storage
       .from("menu-images")
       .getPublicUrl(filename);
 
+    const verifyRes = await fetch(publicUrlData.publicUrl);
+    if (!verifyRes.ok) {
+      await supabase.storage.from("menu-images").remove([filename]);
+      return NextResponse.json({ error: "Gagal verifikasi gambar" }, { status: 500 });
+    }
+
+    const verifyBuf = Buffer.from(await verifyRes.arrayBuffer());
+    try {
+      await sharp(verifyBuf).metadata();
+    } catch {
+      await supabase.storage.from("menu-images").remove([filename]);
+      return NextResponse.json({ error: "Gambar corrupt setelah upload" }, { status: 500 });
+    }
+
     return NextResponse.json({ url: publicUrlData.publicUrl });
-  } catch {
-    return NextResponse.json({ error: "Gagal upload file" }, { status: 500 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Gagal upload file";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
