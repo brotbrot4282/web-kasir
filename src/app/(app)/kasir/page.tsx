@@ -26,9 +26,11 @@ export default function KasirPage() {
   const [transaksiSukses, setTransaksiSukses] = useState<{
     noTransaksi: string; totalHarga: number; totalBayar: number;
     kembalian: number; items: KeranjangItem[];
+    poinDidapat: number; publicId: string; noWa: string | null;
   } | null>(null);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [noWa, setNoWa] = useState("");
   const [selectedMenu, setSelectedMenu] = useState<Menu | null>(null);
   const [showClosing, setShowClosing] = useState(false);
   const [closingEsBatu, setClosingEsBatu] = useState("");
@@ -97,12 +99,12 @@ export default function KasirPage() {
       const res = await fetch("/api/transaksi", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: keranjang.map((i) => ({ menuId: i.menuId, jumlah: i.jumlah, variant: i.variant })), totalBayar: bayar }),
+        body: JSON.stringify({ items: keranjang.map((i) => ({ menuId: i.menuId, jumlah: i.jumlah, variant: i.variant })), totalBayar: bayar, noWa: noWa.trim() || undefined }),
       });
       if (!res.ok) { const err = await res.json(); throw new Error(err.error || "Gagal"); }
       const data = await res.json();
-      setTransaksiSukses({ noTransaksi: data.noTransaksi, totalHarga: data.totalHarga, totalBayar: data.totalBayar, kembalian: data.kembalian, items: [...keranjang] });
-      setKeranjang([]); setTotalBayar(""); setMessage(null);
+      setTransaksiSukses({ noTransaksi: data.noTransaksi, totalHarga: data.totalHarga, totalBayar: data.totalBayar, kembalian: data.kembalian, items: [...keranjang], poinDidapat: data.poinDidapat || 0, publicId: data.publicId, noWa: data.noWa || null });
+      setKeranjang([]); setTotalBayar(""); setNoWa(""); setMessage(null);
       fetch("/api/menu").then((r) => r.json()).then(setMenuList);
     } catch (err) {
       setMessage({ type: "error", text: err instanceof Error ? err.message : "Gagal bayar" });
@@ -219,7 +221,21 @@ export default function KasirPage() {
             </div>
           </div>
 
-          <p className="text-xs text-sage-300 mt-5">Terima kasih atas kunjungan Anda</p>
+          {transaksiSukses.poinDidapat > 0 && (
+            <div className="flex items-center justify-center gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-4">
+              <span className="text-sm font-medium text-amber-700">+{formatRupiah(transaksiSukses.poinDidapat * 1000)} Poin</span>
+            </div>
+          )}
+          <p className="text-xs text-sage-300 mt-4">Terima kasih atas kunjungan Anda</p>
+          {transaksiSukses.publicId && (
+            <a
+              href={`/invoice/${transaksiSukses.publicId}`}
+              target="_blank"
+              className="block mt-2 text-xs text-sage-400 hover:text-sage-600 transition-colors underline underline-offset-2"
+            >
+              Lihat invoice online
+            </a>
+          )}
         </div>
 
         <div className="flex gap-3 mt-4 no-print">
@@ -459,6 +475,22 @@ export default function KasirPage() {
                     onChange={(e) => setTotalBayar(e.target.value.replace(/\D/g, ""))}
                     placeholder="0"
                     className="w-full border border-sage-200 rounded-lg pl-9 pr-3 py-2.5 text-right text-lg font-bold text-sage-800 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-medium text-sage-500">No. WhatsApp (opsional)</label>
+                <div className="relative">
+                  <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sage-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+                  </svg>
+                  <input
+                    type="text"
+                    value={noWa}
+                    onChange={(e) => setNoWa(e.target.value.replace(/\D/g, ""))}
+                    placeholder="08xxxxxxxxxx"
+                    className="w-full border border-sage-200 rounded-lg pl-9 pr-3 py-2.5 text-sm text-sage-800 placeholder:text-sage-400 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all bg-white"
                   />
                 </div>
               </div>

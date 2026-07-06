@@ -34,13 +34,44 @@ model Menu {
   @@map("menu")
 }
 
+model Member {
+  id        String   @id @default(uuid()) @db.Uuid
+  noWa      String   @unique
+  nama      String?
+  poin      Int      @default(0)
+  transaksi Transaksi[]
+  rewardPoin RewardPoin[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("member")
+}
+
+model RewardPoin {
+  id          String     @id @default(uuid()) @db.Uuid
+  memberId    String     @map("member_id") @db.Uuid
+  member      Member     @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  transaksiId String?    @map("transaksi_id") @db.Uuid
+  transaksi   Transaksi? @relation(fields: [transaksiId], references: [id], onDelete: SetNull)
+  poin        Int
+  keterangan  String?
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  @@map("reward_poin")
+}
+
 model Transaksi {
   id          String          @id @default(uuid()) @db.Uuid
+    publicId    String          @unique @default(uuid()) @map("public_id")
   noTransaksi String          @unique @map("no_transaksi")
   totalHarga  Int             @map("total_harga")
   totalBayar  Int             @map("total_bayar")
   kembalian   Int             @default(0)
+  noWa        String?         @map("no_wa")
+  memberId    String?         @map("member_id") @db.Uuid
+  member      Member?         @relation(fields: [memberId], references: [id])
   itemTransaksi ItemTransaksi[]
+  rewardPoin  RewardPoin[]
   createdAt   DateTime        @default(now()) @map("created_at")
   updatedAt   DateTime        @updatedAt @map("updated_at")
 

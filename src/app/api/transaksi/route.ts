@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { generateNoTransaksi } from "@/lib/utils";
+import { generateNoTransaksi, formatRupiah } from "@/lib/utils";
+import { kirimWA } from "@/lib/fonnte";
+
+const BRAND_NAME = process.env.BRAND_NAME || "WARKOP SOEKARDJO";
+const INSTAGRAM_URL = process.env.INSTAGRAM_URL || "https://www.instagram.com/warkop.soekardjo/";
 
 type Variant = { nama: string; tambahHarga: number };
 
@@ -8,6 +12,10 @@ function hitungHarga(menu: { harga: number; variants: Variant[] | null }, varian
   if (!variantName || !menu.variants) return menu.harga;
   const v = menu.variants.find((v) => v.nama === variantName);
   return menu.harga + (v?.tambahHarga ?? 0);
+}
+
+function formatPoin(n: number): string {
+  return new Intl.NumberFormat("id-ID").format(n);
 }
 
 export async function GET(request: NextRequest) {
@@ -41,7 +49,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { items, totalBayar } = body;
+    const { items, totalBayar, noWa } = body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: "Minimal satu item diperlukan" }, { status: 400 });
@@ -105,12 +113,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let member = null;
+    if (noWa && typeof noWa === "string" && noWa.trim()) {
+      member = await prisma.member.upsert({
+        where: { noWa: noWa.trim() },
+        update: {},
+        create: { noWa: noWa.trim() },
+      });
+    }
+
     const transaksi = await prisma.transaksi.create({
       data: {
         noTransaksi: generateNoTransaksi(),
         totalHarga,
         totalBayar,
         kembalian: totalBayar - totalHarga,
+        noWa: noWa?.trim() || null,
+        memberId: member?.id || null,
         itemTransaksi: {
           create: itemData,
         },
@@ -129,7 +148,54 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json(transaksi, { status: 201 });
+    let poinDidapat = 0;
+    if (member) {
+      poinDidapat = Math.floor(totalHarga / 1000);
+      await prisma.rewardPoin.create({
+        data: {
+          memberId: member.id,
+          transaksiId: transaksi.id,
+          poin: poinDidapat,
+          keterangan: `Transaksi ${transaksi.noTransaksi}`,
+        },
+      });
+      await prisma.member.update({
+        where: { id: member.id },
+        data: { poin: { increment: poinDidapat } },
+      });
+
+      try {
+        const invoiceUrl = `http://localhost:3000/invoice/${transaksi.publicId}`;
+        const pesan = [
+          `*${BRAND_NAME}*`,
+          "",
+          `Halo ${member.nama || "Customer"},`,
+          "",
+          `Terima kasih telah melakukan transaksi di ${BRAND_NAME}`,
+          "Berikut INVOICE transaksi Anda :",
+          "",
+          `No Invoice : ${transaksi.noTransaksi}`,
+          `TOTAL TRANSAKSI : ${formatRupiah(transaksi.totalHarga)}`,
+          `Poin Didapat : ${formatPoin(poinDidapat)} OV POINT`,
+          "",
+          "Untuk melihat rincian transaksi klik link berikut",
+          invoiceUrl,
+          "",
+          `Update info kegiatan menarik follow : ${INSTAGRAM_URL}`,
+          "",
+          "Have a Great Day,",
+          BRAND_NAME,
+        ].join("\n");
+        await kirimWA(noWa, pesan);
+      } catch (waErr) {
+        console.warn("Gagal kirim WA:", waErr);
+      }
+    }
+
+    return NextResponse.json({
+      ...transaksi,
+      poinDidapat,
+    }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Gagal menyimpan transaksi" }, { status: 500 });
   }

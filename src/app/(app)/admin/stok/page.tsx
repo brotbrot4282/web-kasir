@@ -67,7 +67,7 @@ export default function AdminStokPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-sage-800">Stok</h1>
+          <h1 className="text-xl font-bold text-sage-800">STOCK MAINTENANCE</h1>
           <p className="text-sm text-sage-500 mt-0.5">Kelola stok bahan baku</p>
         </div>
         <motion.button
