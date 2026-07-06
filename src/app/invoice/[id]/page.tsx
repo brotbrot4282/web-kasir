@@ -58,6 +58,7 @@ export default function InvoicePage() {
     <div className="min-h-screen bg-sage-50 flex items-start justify-center p-4 pt-12">
       <div className="bg-white rounded-xl shadow-sm border border-sage-200 w-full max-w-sm overflow-hidden">
         <div className="bg-sage-800 p-5 text-center text-white">
+          <img src="/logo.jpg" alt="WARKOP SOEKARDJO" className="w-12 h-12 rounded-full object-cover mx-auto mb-3 ring-2 ring-white/20" />
           <h1 className="font-bold text-lg">WARKOP SOEKARDJO</h1>
           <p className="text-sage-300 text-xs mt-0.5">Invoice Pembayaran</p>
         </div>
