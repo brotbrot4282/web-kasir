@@ -32,7 +32,7 @@ async function main() {
   console.log("✓ Kategori: 3");
 
   // ── Menu ──
-  const iceHot = JSON.stringify([{ nama: "ICE", tambahHarga: 0 }, { nama: "HOT", tambahHarga: 0 }]);
+  const iceHot = [{ nama: "ICE", tambahHarga: 0 }, { nama: "HOT", tambahHarga: 0 }];
   const menus = [
     { nama: "Kopi Hitam", harga: 5000, kat: "Kopi", var: iceHot },
     { nama: "Kopi Susu", harga: 7000, kat: "Kopi", var: iceHot },
