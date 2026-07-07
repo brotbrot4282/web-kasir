@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Minimal satu item diperlukan" }, { status: 400 });
     }
 
-    if (!totalBayar || typeof totalBayar !== "number" || totalBayar <= 0) {
+    if (totalBayar === undefined || totalBayar === null || typeof totalBayar !== "number" || totalBayar < 0) {
       return NextResponse.json({ error: "Total bayar tidak valid" }, { status: 400 });
     }
 

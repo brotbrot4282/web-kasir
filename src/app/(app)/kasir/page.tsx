@@ -89,6 +89,7 @@ export default function KasirPage() {
   const totalKeranjang = keranjang.reduce((sum, item) => sum + (item.gratisPoin ? 0 : item.subtotal), 0);
   const poinDigunakan = keranjang.filter((i) => i.gratisPoin).length * 5;
   const totalPoinRupiah = keranjang.filter((i) => i.gratisPoin).reduce((sum, i) => sum + i.subtotal, 0);
+  const semuaGratis = keranjang.length > 0 && keranjang.every((i) => i.gratisPoin);
 
   const tambahKeKeranjang = useCallback((menu: Menu, variantName: string | null) => {
     const key = `${menu.id}-${variantName || ""}`;
@@ -617,19 +618,28 @@ export default function KasirPage() {
                 </div>
               )}
 
-              <div className="space-y-1.5">
-                <label className="block text-xs font-medium text-sage-500">Jumlah Bayar</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-sage-400">Rp</span>
-                  <input
-                    type="text"
-                    value={totalBayar}
-                    onChange={(e) => setTotalBayar(e.target.value.replace(/\D/g, ""))}
-                    placeholder="0"
-                    className="w-full border border-sage-200 rounded-lg pl-9 pr-3 py-2.5 text-right text-lg font-bold text-sage-800 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all bg-white"
-                  />
+              {!semuaGratis && (
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-medium text-sage-500">Jumlah Bayar</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-sage-400">Rp</span>
+                    <input
+                      type="text"
+                      value={totalBayar}
+                      onChange={(e) => setTotalBayar(e.target.value.replace(/\D/g, ""))}
+                      placeholder="0"
+                      className="w-full border border-sage-200 rounded-lg pl-9 pr-3 py-2.5 text-right text-lg font-bold text-sage-800 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all bg-white"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {semuaGratis && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-3 text-center">
+                  <p className="text-sm font-medium text-emerald-700">Semua item gratis dari OV Poin</p>
+                  <p className="text-xs text-emerald-500 mt-0.5">Total bayar: Rp 0</p>
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 <label className="block text-xs font-medium text-sage-500">Nama (opsional)</label>
@@ -663,7 +673,7 @@ export default function KasirPage() {
                 </div>
               </div>
 
-              {totalBayar && parseInt(totalBayar) >= totalKeranjang && (
+              {!semuaGratis && totalBayar && parseInt(totalBayar) >= totalKeranjang && (
                 <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
                   <span className="text-sm font-medium text-emerald-700">Kembalian</span>
                   <span className="text-base font-bold text-emerald-700">{formatRupiah(parseInt(totalBayar) - totalKeranjang)}</span>
@@ -694,7 +704,7 @@ export default function KasirPage() {
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     Memproses...
                   </span>
-                ) : "Bayar"}
+                ) : semuaGratis ? "Bayar (Gratis)" : "Bayar"}
               </button>
             </div>
           )}
