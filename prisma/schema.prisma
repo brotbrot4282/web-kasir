@@ -61,19 +61,21 @@ model RewardPoin {
 }
 
 model Transaksi {
-  id          String          @id @default(uuid()) @db.Uuid
-    publicId    String          @unique @default(uuid()) @map("public_id")
-  noTransaksi String          @unique @map("no_transaksi")
-  totalHarga  Int             @map("total_harga")
-  totalBayar  Int             @map("total_bayar")
-  kembalian   Int             @default(0)
-  noWa        String?         @map("no_wa")
-  memberId    String?         @map("member_id") @db.Uuid
-  member      Member?         @relation(fields: [memberId], references: [id])
-  itemTransaksi ItemTransaksi[]
-  rewardPoin  RewardPoin[]
-  createdAt   DateTime        @default(now()) @map("created_at")
-  updatedAt   DateTime        @updatedAt @map("updated_at")
+  id            String          @id @default(uuid()) @db.Uuid
+  publicId      String          @unique @default(uuid()) @map("public_id")
+  noTransaksi   String          @unique @map("no_transaksi")
+  totalHarga    Int             @map("total_harga")
+  totalBayar    Int             @map("total_bayar")
+  kembalian     Int             @default(0)
+  poinDigunakan Int             @default(0) @map("poin_digunakan")
+  totalPoin     Int             @default(0) @map("total_poin")
+  noWa          String?         @map("no_wa")
+  memberId      String?         @map("member_id") @db.Uuid
+  member        Member?         @relation(fields: [memberId], references: [id])
+  itemTransaksi   ItemTransaksi[]
+  rewardPoin      RewardPoin[]
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
 
   @@map("transaksi")
 }

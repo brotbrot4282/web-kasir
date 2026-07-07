@@ -210,7 +210,10 @@ export default function AdminCustomerPage() {
                       <div key={r.id} className="flex items-center justify-between bg-sage-50 rounded-lg px-3 py-2">
                         <div className="min-w-0 flex-1">
                           <p className="text-xs text-sage-700 truncate">
-                            {r.transaksi ? r.transaksi.noTransaksi : r.keterangan || "-"}
+                            {r.poin > 0
+                              ? (r.transaksi ? r.transaksi.noTransaksi : r.keterangan || "-")
+                              : (r.keterangan || (r.transaksi ? r.transaksi.noTransaksi : "-"))
+                            }
                           </p>
                           <p className="text-[10px] text-sage-400">
                             {new Date(r.createdAt).toLocaleDateString("id-ID", { dateStyle: "medium" })}

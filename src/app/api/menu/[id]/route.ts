@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
+import { getSession } from "@/lib/auth";
 
 type Params = Promise<{ id: string }>;
 
@@ -22,6 +23,9 @@ async function deleteImageFromStorage(url: string | null) {
 
 export async function PUT(request: NextRequest, { params }: { params: Params }) {
   try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { id } = await params;
     const body = await request.json();
     const { nama, harga, kategoriId, gambar, stok, isTersedia, variants } = body;
@@ -64,6 +68,9 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
 
 export async function DELETE(_request: NextRequest, { params }: { params: Params }) {
   try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { id } = await params;
 
     const existing = await prisma.menu.findUnique({ where: { id } });

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateNoTransaksi, formatRupiah } from "@/lib/utils";
 import { kirimWA } from "@/lib/fonnte";
+import { getSession } from "@/lib/auth";
 
 const BRAND_NAME = process.env.BRAND_NAME || "WARKOP SOEKARDJO";
 const INSTAGRAM_URL = process.env.INSTAGRAM_URL || "https://www.instagram.com/warkop.soekardjo/";
@@ -19,6 +20,9 @@ function formatPoin(n: number): string {
 }
 
 export async function GET(request: NextRequest) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { searchParams } = request.nextUrl;
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "50");
@@ -48,6 +52,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const body = await request.json();
     const { items, totalBayar, noWa, memberNama } = body;
 
@@ -60,6 +67,9 @@ export async function POST(request: NextRequest) {
     }
 
     let totalHarga = 0;
+    let poinDigunakan = 0;
+    let totalPoin = 0;
+    const poinItemNames: string[] = [];
     const itemData: Array<{
       menuId: string;
       namaMenu: string;
@@ -96,6 +106,12 @@ export async function POST(request: NextRequest) {
       const subtotal = harga * item.jumlah;
       totalHarga += subtotal;
 
+      if (item.gratisPoin) {
+        poinDigunakan += 5;
+        totalPoin += subtotal;
+        poinItemNames.push(namaMenu);
+      }
+
       itemData.push({
         menuId: menu.id,
         namaMenu,
@@ -104,13 +120,6 @@ export async function POST(request: NextRequest) {
         subtotal,
         variant: item.variant ?? null,
       });
-    }
-
-    if (totalBayar < totalHarga) {
-      return NextResponse.json(
-        { error: "Uang tidak mencukupi", totalHarga, kekurangan: totalHarga - totalBayar },
-        { status: 400 }
-      );
     }
 
     let member = null;
@@ -136,12 +145,30 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    if (member && poinDigunakan > 0 && member.poin < poinDigunakan) {
+      return NextResponse.json(
+        { error: `Poin tidak cukup (sisa ${member.poin}, butuh ${poinDigunakan})` },
+        { status: 400 }
+      );
+    }
+
+    const harusDibayar = totalHarga - totalPoin;
+    const kembalian = totalBayar - harusDibayar;
+    if (kembalian < 0) {
+      return NextResponse.json(
+        { error: `Uang tidak mencukupi, masih kurang Rp ${(harusDibayar - totalBayar).toLocaleString()}` },
+        { status: 400 }
+      );
+    }
+
     const transaksi = await prisma.transaksi.create({
       data: {
         noTransaksi: generateNoTransaksi(),
         totalHarga,
         totalBayar,
-        kembalian: totalBayar - totalHarga,
+        kembalian,
+        poinDigunakan,
+        totalPoin,
         noWa: noWa?.trim() || null,
         memberId: member?.id || null,
         itemTransaksi: {
@@ -164,7 +191,9 @@ export async function POST(request: NextRequest) {
 
     let poinDidapat = 0;
     if (member) {
-      poinDidapat = Math.floor(totalHarga / 15000);
+      const cashAmount = totalHarga - totalPoin;
+      poinDidapat = Math.floor(cashAmount / 15000);
+
       await prisma.rewardPoin.create({
         data: {
           memberId: member.id,
@@ -173,9 +202,21 @@ export async function POST(request: NextRequest) {
           keterangan: `Transaksi ${transaksi.noTransaksi}`,
         },
       });
+
+      if (poinDigunakan > 0) {
+        await prisma.rewardPoin.create({
+          data: {
+            memberId: member.id,
+            transaksiId: transaksi.id,
+            poin: -poinDigunakan,
+            keterangan: `Tukar: ${poinItemNames.join(", ")}`,
+          },
+        });
+      }
+
       await prisma.member.update({
         where: { id: member.id },
-        data: { poin: { increment: poinDidapat } },
+        data: { poin: { increment: poinDidapat - poinDigunakan } },
       });
 
       try {
@@ -188,6 +229,7 @@ export async function POST(request: NextRequest) {
           "",
           `* No Invoice : ${transaksi.noTransaksi}`,
           `* TOTAL TRANSAKSI : ${formatRupiah(transaksi.totalHarga)}`,
+          poinDigunakan > 0 ? `* Poin Dipakai : ${poinDigunakan} OV POINT (${poinItemNames.join(", ")})` : "",
           `* Poin Didapat : ${formatPoin(poinDidapat)} OV POINT`,
           "",
           "Untuk melihat rincian transaksi dan point reward yang Anda dapatkan (OV POINT) klik link berikut",
@@ -211,6 +253,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       ...transaksi,
       poinDidapat,
+      poinDigunakan,
+      totalPoin,
     }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Gagal menyimpan transaksi" }, { status: 500 });

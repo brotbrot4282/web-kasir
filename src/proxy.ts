@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { jwtVerify } from "jose";
+import { verifyToken } from "@/lib/auth";
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "warmindo-secret-key-change-in-production"
-);
-
-const publicRoutes = ["/login", "/api/auth"];
+const publicRoutes = ["/login", "/api/auth", "/api/invoice"];
 
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -17,7 +13,8 @@ export default async function proxy(request: NextRequest) {
   const isProtected =
     pathname === "/" ||
     pathname.startsWith("/kasir") ||
-    pathname.startsWith("/admin");
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/api");
 
   if (!isProtected) {
     return NextResponse.next();
@@ -26,15 +23,17 @@ export default async function proxy(request: NextRequest) {
   const token = request.cookies.get("session")?.value;
 
   if (!token) {
+    if (pathname.startsWith("/api")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET, { algorithms: ["HS256"] });
-    const user = payload as { username: string; nama: string; role: string; shift?: string };
+    const user = await verifyToken(token);
+    if (!user) throw new Error("Invalid token");
 
-    // Role-based routing
-    if (user.role === "KASIR" && pathname !== "/kasir") {
+    if (user.role === "KASIR" && !pathname.startsWith("/kasir") && !pathname.startsWith("/api")) {
       return NextResponse.redirect(new URL("/kasir", request.url));
     }
 
@@ -44,6 +43,9 @@ export default async function proxy(request: NextRequest) {
 
     return NextResponse.next();
   } catch {
+    if (pathname.startsWith("/api")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.redirect(new URL("/login", request.url));
   }
 }

@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
 import { supabase } from "@/lib/supabase";
+import { getSession } from "@/lib/auth";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_SIZE = 5 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
 

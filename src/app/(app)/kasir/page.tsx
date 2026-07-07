@@ -11,7 +11,7 @@ type Menu = {
   id: string; nama: string; harga: number; stok: number; gambar: string | null;
   isTersedia: boolean; kategoriId: string; kategori: Kategori; variants: Variant[] | null;
 };
-type KeranjangItem = { key: string; menuId: string; nama: string; harga: number; jumlah: number; subtotal: number; variant: string | null };
+type KeranjangItem = { key: string; menuId: string; nama: string; harga: number; jumlah: number; subtotal: number; variant: string | null; gratisPoin: boolean };
 
 export default function KasirPage() {
   const [kategoriList, setKategoriList] = useState<Kategori[]>([]);
@@ -26,12 +26,15 @@ export default function KasirPage() {
   const [transaksiSukses, setTransaksiSukses] = useState<{
     noTransaksi: string; totalHarga: number; totalBayar: number;
     kembalian: number; items: KeranjangItem[];
-    poinDidapat: number; publicId: string; noWa: string | null; memberNama?: string;
+    poinDidapat: number; poinDigunakan: number; totalPoin: number;
+    publicId: string; noWa: string | null; memberNama?: string;
   } | null>(null);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [noWa, setNoWa] = useState("");
   const [memberNama, setMemberNama] = useState("");
+  const [memberPoin, setMemberPoin] = useState(0);
+  const [memberTerdaftar, setMemberTerdaftar] = useState(false);
   const [selectedMenu, setSelectedMenu] = useState<Menu | null>(null);
   const [showClosing, setShowClosing] = useState(false);
   const [closingEsBatu, setClosingEsBatu] = useState("");
@@ -50,6 +53,32 @@ export default function KasirPage() {
     }).finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    if (!noWa.trim()) {
+      setMemberPoin(0);
+      setMemberTerdaftar(false);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/member?search=${encodeURIComponent(noWa)}`);
+        if (res.ok) {
+          const data = await res.json();
+          const found = data.find((m: { noWa: string }) => m.noWa === noWa);
+          if (found) {
+            setMemberPoin(found.poin || 0);
+            setMemberTerdaftar(true);
+            if (!memberNama && found.nama) setMemberNama(found.nama);
+            return;
+          }
+        }
+      } catch {}
+      setMemberPoin(0);
+      setMemberTerdaftar(false);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [noWa]);
+
   const menuFilter = menuList.filter((m) => {
     if (!m.isTersedia) return false;
     if (kategoriAktif && m.kategoriId !== kategoriAktif) return false;
@@ -57,7 +86,9 @@ export default function KasirPage() {
     return true;
   });
 
-  const totalKeranjang = keranjang.reduce((sum, item) => sum + item.subtotal, 0);
+  const totalKeranjang = keranjang.reduce((sum, item) => sum + (item.gratisPoin ? 0 : item.subtotal), 0);
+  const poinDigunakan = keranjang.filter((i) => i.gratisPoin).length * 5;
+  const totalPoinRupiah = keranjang.filter((i) => i.gratisPoin).reduce((sum, i) => sum + i.subtotal, 0);
 
   const tambahKeKeranjang = useCallback((menu: Menu, variantName: string | null) => {
     const key = `${menu.id}-${variantName || ""}`;
@@ -75,9 +106,21 @@ export default function KasirPage() {
             : item
         );
       }
-      return [...prev, { key, menuId: menu.id, nama, harga, jumlah: 1, subtotal: harga, variant: variantName }];
+      return [...prev, { key, menuId: menu.id, nama, harga, jumlah: 1, subtotal: harga, variant: variantName, gratisPoin: false }];
     });
   }, []);
+
+  const toggleGratisPoin = useCallback((key: string) => {
+    setKeranjang((prev) => {
+      const item = prev.find((i) => i.key === key);
+      if (!item) return prev;
+      const akanGratis = !item.gratisPoin;
+      if (akanGratis && poinDigunakan + 5 > memberPoin) return prev;
+      return prev.map((i) =>
+        i.key === key ? { ...i, gratisPoin: akanGratis } : i
+      );
+    });
+  }, [memberPoin, poinDigunakan]);
 
   const ubahJumlah = (key: string, delta: number) => {
     setKeranjang((prev) =>
@@ -100,11 +143,16 @@ export default function KasirPage() {
       const res = await fetch("/api/transaksi", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: keranjang.map((i) => ({ menuId: i.menuId, jumlah: i.jumlah, variant: i.variant })), totalBayar: bayar, noWa: noWa.trim() || undefined, memberNama: memberNama.trim() || undefined }),
+        body: JSON.stringify({
+          items: keranjang.map((i) => ({ menuId: i.menuId, jumlah: i.jumlah, variant: i.variant, gratisPoin: i.gratisPoin })),
+          totalBayar: bayar,
+          noWa: noWa.trim() || undefined,
+          memberNama: memberNama.trim() || undefined,
+        }),
       });
       if (!res.ok) { const err = await res.json(); throw new Error(err.error || "Gagal"); }
       const data = await res.json();
-      setTransaksiSukses({ noTransaksi: data.noTransaksi, totalHarga: data.totalHarga, totalBayar: data.totalBayar, kembalian: data.kembalian, items: [...keranjang], poinDidapat: data.poinDidapat || 0, publicId: data.publicId, noWa: data.noWa || null, memberNama: memberNama.trim() || undefined });
+      setTransaksiSukses({ noTransaksi: data.noTransaksi, totalHarga: data.totalHarga, totalBayar: data.totalBayar, kembalian: data.kembalian, items: [...keranjang], poinDidapat: data.poinDidapat || 0, poinDigunakan: data.poinDigunakan || 0, totalPoin: data.totalPoin || 0, publicId: data.publicId, noWa: data.noWa || null, memberNama: memberNama.trim() || undefined });
       setKeranjang([]); setTotalBayar(""); setNoWa(""); setMemberNama(""); setMessage(null);
       fetch("/api/menu").then((r) => r.json()).then(setMenuList);
     } catch (err) {
@@ -127,10 +175,12 @@ export default function KasirPage() {
     const itemsHtml = t.items.map((item) => {
       const nm = item.nama.length > 28 ? item.nama.slice(0, 26) + ".." : item.nama;
       const harga = item.subtotal / item.jumlah;
+      const gratisLabel = item.gratisPoin ? " [FREE]" : "";
+      const subtotalStr = item.gratisPoin ? "Gratis" : formatRupiah(item.subtotal);
       return `
         <div style="display:flex;justify-content:space-between;">
-          <span>${nm}</span>
-          <span>${formatRupiah(item.subtotal)}</span>
+          <span>${nm}${gratisLabel}</span>
+          <span>${subtotalStr}</span>
         </div>
         <div style="display:flex;justify-content:space-between;font-size:9px;color:#555;padding-left:4px;">
           <span>${formatRupiah(harga)} x ${item.jumlah}</span>
@@ -172,6 +222,10 @@ export default function KasirPage() {
   <div style="display:flex;justify-content:space-between;">
     <span>Kembali</span><span>${formatRupiah(t.kembalian)}</span>
   </div>
+  ${t.poinDigunakan > 0 ? `<div style="border-top:1px dashed #000;margin:6px 0;"></div>
+  <div style="display:flex;justify-content:space-between;">
+    <span>Poin Dipakai</span><span>${t.poinDigunakan} poin</span>
+  </div>` : ""}
   ${t.poinDidapat > 0 ? `<div style="border-top:1px dashed #000;margin:6px 0;"></div>
   <div style="display:flex;justify-content:space-between;">
     <span>OV Poin</span><span>+${t.poinDidapat} poin</span>
@@ -210,8 +264,13 @@ export default function KasirPage() {
           <div className="border-t border-dashed border-sage-200 mt-4 pt-4 text-left space-y-2 mb-4">
             {transaksiSukses.items.map((item) => (
               <div key={item.menuId} className="flex justify-between text-sm">
-                <span className="text-sage-600">{item.nama} <span className="text-sage-400">x{item.jumlah}</span></span>
-                <span className="font-medium text-sage-800">{formatRupiah(item.subtotal)}</span>
+                <span className="text-sage-600">
+                  {item.nama} <span className="text-sage-400">x{item.jumlah}</span>
+                  {item.gratisPoin && <span className="text-amber-500 font-bold ml-1">[FREE]</span>}
+                </span>
+                <span className={`font-medium ${item.gratisPoin ? "text-amber-500" : "text-sage-800"}`}>
+                  {item.gratisPoin ? "Gratis" : formatRupiah(item.subtotal)}
+                </span>
               </div>
             ))}
           </div>
@@ -228,6 +287,11 @@ export default function KasirPage() {
             </div>
           </div>
 
+          {transaksiSukses.poinDigunakan > 0 && (
+            <div className="flex items-center justify-center gap-1.5 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2 mt-4">
+              <span className="text-sm font-medium text-rose-600">Poin dipakai: {transaksiSukses.poinDigunakan}</span>
+            </div>
+          )}
           {transaksiSukses.poinDidapat > 0 && (
             <div className="flex items-center justify-center gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-4">
               <span className="text-sm font-medium text-amber-700">+{transaksiSukses.poinDidapat} Poin</span>
@@ -253,6 +317,10 @@ export default function KasirPage() {
             href={(() => {
               const no = transaksiSukses.noWa!.replace(/^0+/, "62");
               const poinFmt = new Intl.NumberFormat("id-ID").format(transaksiSukses.poinDidapat);
+              const poinPakaiFmt = new Intl.NumberFormat("id-ID").format(transaksiSukses.poinDigunakan);
+              const barisPoinPakai = transaksiSukses.poinDigunakan > 0
+                ? `* Poin Dipakai : ${poinPakaiFmt} OV POINT`
+                : "";
               const pesan = [
                 `Dear ${transaksiSukses.memberNama || "Customer"},`,
                 "",
@@ -261,6 +329,7 @@ export default function KasirPage() {
                 "",
                 `* No Invoice : ${transaksiSukses.noTransaksi}`,
                 `* TOTAL TRANSAKSI : ${formatRupiah(transaksiSukses.totalHarga)}`,
+                barisPoinPakai,
                 `* Poin Didapat : ${poinFmt} OV POINT`,
                 "",
                 "Untuk melihat rincian transaksi dan point reward yang Anda dapatkan (OV POINT) klik link berikut",
@@ -491,12 +560,29 @@ export default function KasirPage() {
                     <p className="text-sm font-medium text-sage-800 truncate">{item.nama}</p>
                     <p className="text-xs text-sage-400">{formatRupiah(item.harga)} / item</p>
                   </div>
+                  {memberTerdaftar && memberPoin >= 5 && (
+                    <button
+                      onClick={() => toggleGratisPoin(item.key)}
+                      className={`shrink-0 text-[10px] font-bold px-2 py-1 rounded-lg border transition-colors ${
+                        item.gratisPoin
+                          ? "bg-amber-100 text-amber-700 border-amber-300"
+                          : "bg-sage-50 text-sage-400 border-sage-200 hover:border-amber-300 hover:text-amber-600"
+                      }`}
+                      title={item.gratisPoin ? "Batalkan gratis poin" : "Gratiskan dengan 5 poin"}
+                    >
+                      {item.gratisPoin ? "FREE" : "Poin"}
+                    </button>
+                  )}
                   <div className="flex items-center gap-1.5">
                     <button onClick={() => ubahJumlah(item.key, -1)} className="w-7 h-7 rounded-lg bg-white border border-sage-200 flex items-center justify-center text-sage-500 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors text-sm font-bold">-</button>
                     <span className="w-6 text-center text-sm font-bold text-sage-800">{item.jumlah}</span>
-                    <button onClick={() => ubahJumlah(item.key, 1)} className="w-7 h-7 rounded-lg bg-white border border-sage-200 flex items-center justify-center text-sage-500 hover:bg-sage-100 hover:text-sage-700 hover:border-sage-300 transition-colors text-sm font-bold">+</button>
+                    <button onClick={() => ubahJumlah(item.key, 1)} disabled={item.gratisPoin} className="w-7 h-7 rounded-lg bg-white border border-sage-200 flex items-center justify-center text-sage-500 hover:bg-sage-100 hover:text-sage-700 hover:border-sage-300 transition-colors text-sm font-bold disabled:opacity-30">+</button>
                   </div>
-                  <p className="text-sm font-bold text-sage-800 w-16 text-right">{formatRupiah(item.subtotal)}</p>
+                  {item.gratisPoin ? (
+                    <span className="text-sm font-bold text-amber-600 w-16 text-right">Gratis</span>
+                  ) : (
+                    <p className="text-sm font-bold text-sage-800 w-16 text-right">{formatRupiah(item.subtotal)}</p>
+                  )}
                 </motion.div>
               ))}
               </AnimatePresence>
@@ -509,6 +595,27 @@ export default function KasirPage() {
                 <span className="text-sm font-semibold text-sage-600">Total Pesanan</span>
                 <span className="text-xl font-bold text-sage-800 tracking-tight">{formatRupiah(totalKeranjang)}</span>
               </div>
+
+              {memberTerdaftar && memberPoin >= 5 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-amber-600 font-medium">OV Poin tersedia</span>
+                    <span className="text-amber-700 font-bold">{memberPoin} poin</span>
+                  </div>
+                  {poinDigunakan > 0 && (
+                    <>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-amber-600">Poin dipakai</span>
+                        <span className="text-amber-700 font-semibold">-{poinDigunakan} poin</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-amber-600">Potongan</span>
+                        <span className="text-emerald-600 font-semibold">-{formatRupiah(totalPoinRupiah)}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 <label className="block text-xs font-medium text-sage-500">Jumlah Bayar</label>
