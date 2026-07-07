@@ -118,7 +118,11 @@ export default function KasirPage() {
       const akanGratis = !item.gratisPoin;
       if (akanGratis && poinDigunakan + 5 > memberPoin) return prev;
       return prev.map((i) =>
-        i.key === key ? { ...i, gratisPoin: akanGratis } : i
+        i.key === key
+          ? akanGratis
+            ? { ...i, gratisPoin: true, jumlah: 1, subtotal: i.harga }
+            : { ...i, gratisPoin: false }
+          : i
       );
     });
   }, [memberPoin, poinDigunakan]);
@@ -575,7 +579,7 @@ export default function KasirPage() {
                     </button>
                   )}
                   <div className="flex items-center gap-1.5">
-                    <button onClick={() => ubahJumlah(item.key, -1)} className="w-7 h-7 rounded-lg bg-white border border-sage-200 flex items-center justify-center text-sage-500 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors text-sm font-bold">-</button>
+                    <button onClick={() => ubahJumlah(item.key, -1)} disabled={item.gratisPoin} className="w-7 h-7 rounded-lg bg-white border border-sage-200 flex items-center justify-center text-sage-500 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors text-sm font-bold disabled:opacity-30">-</button>
                     <span className="w-6 text-center text-sm font-bold text-sage-800">{item.jumlah}</span>
                     <button onClick={() => ubahJumlah(item.key, 1)} disabled={item.gratisPoin} className="w-7 h-7 rounded-lg bg-white border border-sage-200 flex items-center justify-center text-sage-500 hover:bg-sage-100 hover:text-sage-700 hover:border-sage-300 transition-colors text-sm font-bold disabled:opacity-30">+</button>
                   </div>
