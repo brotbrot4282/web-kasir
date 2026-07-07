@@ -23,13 +23,13 @@ async function main() {
   console.log("✓ Users: 3");
 
   // ── Kategori ──
-  const katNames = ["Kopi", "Non Kopi", "Makanan", "Cemilan", "Lainnya"];
+  const katNames = ["Kopi", "Non Kopi", "Makanan"];
   const kats: Record<string, string> = {};
   for (const n of katNames) {
     const k = await prisma.kategori.upsert({ where: { nama: n }, update: {}, create: { nama: n } });
     kats[n] = k.id;
   }
-  console.log("✓ Kategori: 5");
+  console.log("✓ Kategori: 3");
 
   // ── Menu ──
   const iceHot = JSON.stringify([{ nama: "ICE", tambahHarga: 0 }, { nama: "HOT", tambahHarga: 0 }]);
@@ -45,8 +45,8 @@ async function main() {
     { nama: "Chocolate", harga: 10000, kat: "Non Kopi", var: iceHot },
     { nama: "Red Velvet", harga: 12000, kat: "Non Kopi", var: iceHot },
     { nama: "Teh Tarik", harga: 6000, kat: "Non Kopi", var: iceHot },
-    { nama: "Pisang Goreng", harga: 8000, kat: "Cemilan" },
-    { nama: "Kentang Goreng", harga: 10000, kat: "Cemilan" },
+    { nama: "Pisang Goreng", harga: 8000, kat: "Makanan" },
+    { nama: "Kentang Goreng", harga: 10000, kat: "Makanan" },
     { nama: "Roti Bakar", harga: 12000, kat: "Makanan" },
     { nama: "Croissant", harga: 15000, kat: "Makanan" },
   ];
