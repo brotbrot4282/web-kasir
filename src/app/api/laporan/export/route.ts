@@ -86,11 +86,15 @@ export async function GET(request: NextRequest) {
     { header: "Total Terjual", key: "terjual", width: 15 },
   ];
   s2.getRow(1).eachCell((c) => { c.font = style.header.font; c.fill = style.header.fill; c.alignment = style.header.alignment; c.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } }; });
-  menuTerlaris.forEach((m, i) => {
-    const row = s2.addRow({ rank: i + 1, menu: m.namaMenu, terjual: m._sum.jumlah ?? 0 });
-    row.eachCell((c) => { c.font = style.cell.font; c.alignment = style.cell.alignment; c.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } }; });
-    row.getCell(3).numFmt = '#,##0';
-  });
+  if (menuTerlaris.length === 0) {
+    s2.addRow({ menu: "Tidak ada data" });
+  } else {
+    menuTerlaris.forEach((m, i) => {
+      const row = s2.addRow({ rank: i + 1, menu: m.namaMenu, terjual: m._sum.jumlah ?? 0 });
+      row.eachCell((c) => { c.font = style.cell.font; c.alignment = style.cell.alignment; c.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } }; });
+      row.getCell(3).numFmt = '#,##0';
+    });
+  }
 
   // ── Sheet 3: Riwayat Transaksi ──
   const s3 = wb.addWorksheet("Riwayat Transaksi", { views: [{ state: "frozen", ySplit: 1 }] });
@@ -104,12 +108,16 @@ export async function GET(request: NextRequest) {
     { header: "Detail Item", key: "detail", width: 50 },
   ];
   s3.getRow(1).eachCell((c) => { c.font = style.header.font; c.fill = style.header.fill; c.alignment = style.header.alignment; c.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } }; });
-  transaksi.forEach((t) => {
-    const detailItems = t.itemTransaksi.map((i) => `${i.namaMenu} x${i.jumlah} (${formatRupiah(i.subtotal)})`).join(", ");
-    const row = s3.addRow({ no: t.noTransaksi, total: t.totalHarga, bayar: t.totalBayar, kembali: t.kembalian, item: t.itemTransaksi.reduce((s, i) => s + i.jumlah, 0), tanggal: formatDate(t.createdAt), detail: detailItems });
-    row.eachCell((c) => { c.font = style.cell.font; c.alignment = style.cell.alignment; c.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } }; });
-    for (const col of [2, 3, 4, 5]) row.getCell(col).numFmt = '#,##0';
-  });
+  if (transaksi.length === 0) {
+    s3.addRow({ no: "Tidak ada data" });
+  } else {
+    transaksi.forEach((t) => {
+      const detailItems = t.itemTransaksi.map((i) => `${i.namaMenu} x${i.jumlah} (${formatRupiah(i.subtotal)})`).join(", ");
+      const row = s3.addRow({ no: t.noTransaksi, total: t.totalHarga, bayar: t.totalBayar, kembali: t.kembalian, item: t.itemTransaksi.reduce((s, i) => s + i.jumlah, 0), tanggal: formatDate(t.createdAt), detail: detailItems });
+      row.eachCell((c) => { c.font = style.cell.font; c.alignment = style.cell.alignment; c.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } }; });
+      for (const col of [2, 3, 4, 5]) row.getCell(col).numFmt = '#,##0';
+    });
+  }
 
   // ── Sheet 4: Closing ──
   const s4 = wb.addWorksheet("Closing Shift", { views: [{ state: "frozen", ySplit: 1 }] });
@@ -121,11 +129,15 @@ export async function GET(request: NextRequest) {
     { header: "Cup Terjual", key: "cupTerjual", width: 14 },
   ];
   s4.getRow(1).eachCell((c) => { c.font = style.header.font; c.fill = style.header.fill; c.alignment = style.header.alignment; c.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } }; });
-  closingData.forEach((c) => {
-    const row = s4.addRow({ tanggal: formatDate(c.tanggal), shift: c.shift === "SHIFT_1" ? "Shift 1" : "Shift 2", kasir: c.user.nama, esBatu: c.esBatu, cupTerjual: c.cupTerjual });
-    row.eachCell((c2) => { c2.font = style.cell.font; c2.alignment = style.cell.alignment; c2.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } }; });
-    for (const col of [4, 5]) row.getCell(col).numFmt = '#,##0';
-  });
+  if (closingData.length === 0) {
+    s4.addRow({ tanggal: "Tidak ada data" });
+  } else {
+    closingData.forEach((c) => {
+      const row = s4.addRow({ tanggal: formatDate(c.tanggal), shift: c.shift === "SHIFT_1" ? "Shift 1" : "Shift 2", kasir: c.user.nama, esBatu: c.esBatu, cupTerjual: c.cupTerjual });
+      row.eachCell((c2) => { c2.font = style.cell.font; c2.alignment = style.cell.alignment; c2.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } }; });
+      for (const col of [4, 5]) row.getCell(col).numFmt = '#,##0';
+    });
+  }
 
   const buffer = await wb.xlsx.writeBuffer();
 

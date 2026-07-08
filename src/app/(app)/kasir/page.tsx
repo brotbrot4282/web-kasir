@@ -396,16 +396,12 @@ export default function KasirPage() {
             {dailySummary && (
               <div className="flex items-center gap-2.5 bg-white border border-sage-200 rounded-lg px-3 py-1.5 shadow-sm">
                 <div className="flex items-center gap-1.5">
-                  <svg className="w-4 h-4 text-sky-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
-                  </svg>
+                  <span className="text-xs font-bold text-sky-500">Drink</span>
                   <span className="text-xs font-bold text-sage-700">{dailySummary.cup}</span>
                 </div>
                 <span className="text-sage-200 text-xs">|</span>
                 <div className="flex items-center gap-1.5">
-                  <svg className="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.871c1.355 0 2.697.056 4.024.166C17.155 8.51 18 9.473 18 10.608v2.513M15 8.25v-1.5m-6 1.5v-1.5m12 9.75v1.5a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18.75v-1.5m16.5 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 17.25v1.5m16.5 0a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18.75" />
-                  </svg>
+                  <span className="text-xs font-bold text-amber-500">Food</span>
                   <span className="text-xs font-bold text-sage-700">{dailySummary.makanan}</span>
                 </div>
               </div>
