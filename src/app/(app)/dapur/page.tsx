@@ -13,7 +13,7 @@ type ItemDapur = {
   statusDapur: "MENUNGGU" | "DIMASAK" | "SIAP";
   createdAt: string;
   menu: { nama: string; kategori: { nama: string } };
-  transaksi: { noTransaksi: string; createdAt: string; noWa: string | null; totalHarga: number };
+  transaksi: { noTransaksi: string; createdAt: string; noWa: string | null; totalHarga: number; member: { nama: string | null } | null };
 };
 
 export default function DapurPage() {
@@ -184,6 +184,11 @@ export default function DapurPage() {
                           {item.transaksi.noTransaksi}
                         </span>
                         <span className="text-[10px] text-amber-400 font-mono">{formatJam(item.transaksi.createdAt)}</span>
+                        {item.transaksi.member?.nama && (
+                          <span className="text-[10px] text-amber-600 font-medium truncate max-w-[120px]">
+                            👤 {item.transaksi.member.nama}
+                          </span>
+                        )}
                       </div>
                       <p className="font-bold text-base text-amber-900">
                         {item.variant ? `${item.menu.nama} - ${item.variant}` : item.menu.nama}
@@ -248,6 +253,11 @@ export default function DapurPage() {
                           {item.transaksi.noTransaksi}
                         </span>
                         <span className="text-[10px] text-blue-400 font-mono">{formatJam(item.transaksi.createdAt)}</span>
+                        {item.transaksi.member?.nama && (
+                          <span className="text-[10px] text-blue-600 font-medium truncate max-w-[120px]">
+                            👤 {item.transaksi.member.nama}
+                          </span>
+                        )}
                       </div>
                       <p className="font-bold text-base text-blue-900">
                         {item.variant ? `${item.menu.nama} - ${item.variant}` : item.menu.nama}

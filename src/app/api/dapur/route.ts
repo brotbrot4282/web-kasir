@@ -28,6 +28,7 @@ export async function GET() {
           createdAt: true,
           noWa: true,
           totalHarga: true,
+          member: { select: { nama: true } },
         },
       },
       menu: {
