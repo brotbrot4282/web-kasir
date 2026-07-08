@@ -6,10 +6,10 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   LayoutDashboard, Receipt, UtensilsCrossed, Package,
-  BarChart3, LogOut, Menu, X, User, Users,
+  BarChart3, LogOut, Menu, X, User, Users, ChefHat,
 } from "lucide-react";
 
-type Role = "OWNER" | "KASIR";
+type Role = "OWNER" | "KASIR" | "DAPUR";
 
 const ownerNavItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -21,6 +21,10 @@ const ownerNavItems = [
 
 const kasirNavItems = [
   { href: "/kasir", label: "Kasir", icon: Receipt },
+];
+
+const dapurNavItems = [
+  { href: "/dapur", label: "Dapur", icon: ChefHat },
 ];
 
 export default function Sidebar({
@@ -37,7 +41,7 @@ export default function Sidebar({
   const pathname = usePathname();
   const router = useRouter();
 
-  const navItems = role === "OWNER" ? ownerNavItems : kasirNavItems;
+  const navItems = role === "OWNER" ? ownerNavItems : role === "DAPUR" ? dapurNavItems : kasirNavItems;
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -53,7 +57,7 @@ export default function Sidebar({
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Brand */}
-      <Link href={role === "OWNER" ? "/" : "/kasir"} className="flex items-center gap-3 px-6 py-6">
+      <Link href={role === "OWNER" ? "/" : role === "DAPUR" ? "/dapur" : "/kasir"} className="flex items-center gap-3 px-6 py-6">
         <img src="/logo.jpg" alt="WARKOP SOEKARDJO" className="w-10 h-10 rounded-full object-cover ring-2 ring-white/20" />
         <div>
           <p className="text-sm font-semibold text-white leading-tight">WARKOP</p>
@@ -72,7 +76,7 @@ export default function Sidebar({
           <div className="min-w-0">
             <p className="text-sm font-medium text-white truncate">{user}</p>
             <p className="text-[10px] text-sage-300 uppercase tracking-wider">
-              {role === "OWNER" ? "Pemilik" : shiftLabel || "Kasir"}
+              {role === "OWNER" ? "Pemilik" : role === "DAPUR" ? "Dapur" : shiftLabel || "Kasir"}
             </p>
           </div>
         </div>

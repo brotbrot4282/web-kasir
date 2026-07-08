@@ -17,10 +17,11 @@ async function main() {
     { username: "admin@warmindo", nama: "Admin Warmindo", role: "OWNER" as const },
     { username: "kasir1@warmindo", nama: "Kasir Shift 1", role: "KASIR" as const, shift: "SHIFT_1" as const },
     { username: "kasir2@warmindo", nama: "Kasir Shift 2", role: "KASIR" as const, shift: "SHIFT_2" as const },
+    { username: "dapur@warmindo", nama: "Koki Dapur", role: "DAPUR" as const },
   ]) {
     await prisma.user.upsert({ where: { username: u.username }, update: {}, create: { ...u, password: pw } });
   }
-  console.log("✓ Users: 3");
+  console.log("✓ Users: 4");
 
   // ── Kategori ──
   const katNames = ["Kopi", "Non Kopi", "Makanan"];

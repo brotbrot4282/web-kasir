@@ -13,6 +13,7 @@ export default async function proxy(request: NextRequest) {
   const isProtected =
     pathname === "/" ||
     pathname.startsWith("/kasir") ||
+    pathname.startsWith("/dapur") ||
     pathname.startsWith("/admin") ||
     pathname.startsWith("/api");
 
@@ -37,7 +38,11 @@ export default async function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL("/kasir", request.url));
     }
 
-    if (user.role === "OWNER" && pathname === "/kasir") {
+    if (user.role === "DAPUR" && !pathname.startsWith("/dapur") && !pathname.startsWith("/api")) {
+      return NextResponse.redirect(new URL("/dapur", request.url));
+    }
+
+    if (user.role === "OWNER" && (pathname === "/kasir" || pathname.startsWith("/dapur"))) {
       return NextResponse.redirect(new URL("/", request.url));
     }
 

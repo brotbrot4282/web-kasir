@@ -77,6 +77,7 @@ export async function POST(request: NextRequest) {
       jumlah: number;
       subtotal: number;
       variant: string | null;
+      statusDapur: "MENUNGGU";
     }> = [];
 
     for (const item of items) {
@@ -119,6 +120,7 @@ export async function POST(request: NextRequest) {
         jumlah: item.jumlah,
         subtotal,
         variant: item.variant ?? null,
+        statusDapur: "MENUNGGU",
       });
     }
 

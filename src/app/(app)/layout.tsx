@@ -12,7 +12,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-dvh bg-sage-50">
       <Sidebar
-        role={session.role as "OWNER" | "KASIR"}
+        role={session.role as "OWNER" | "KASIR" | "DAPUR"}
         shift={session.shift || null}
         user={session.nama}
       />

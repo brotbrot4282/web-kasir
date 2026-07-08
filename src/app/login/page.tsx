@@ -35,7 +35,8 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/");
+      const target = data.role === "DAPUR" ? "/dapur" : data.role === "KASIR" ? "/kasir" : "/";
+      router.push(target);
     } catch {
       setError("Terjadi kesalahan. Coba lagi.");
     } finally {

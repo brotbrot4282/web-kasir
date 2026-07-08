@@ -91,6 +91,7 @@ model ItemTransaksi {
   jumlah      Int
   subtotal    Int
   variant     String?
+  statusDapur StatusDapur @default(MENUNGGU) @map("status_dapur")
   createdAt   DateTime  @default(now()) @map("created_at")
 
   @@map("item_transaksi")
@@ -99,6 +100,13 @@ model ItemTransaksi {
 enum Role {
   OWNER
   KASIR
+  DAPUR
+}
+
+enum StatusDapur {
+  MENUNGGU
+  DIMASAK
+  SIAP
 }
 
 enum Shift {
