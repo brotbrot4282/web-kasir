@@ -17,6 +17,9 @@ export async function GET() {
       transaksi: {
         createdAt: { gte: todayStart },
       },
+      menu: {
+        kategori: { nama: "Makanan" },
+      },
     },
     include: {
       transaksi: {
