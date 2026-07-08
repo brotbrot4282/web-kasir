@@ -65,6 +65,20 @@ export default function LaporanPage() {
           <span className="text-sage-400 text-sm">–</span>
           <input type="date" value={sampai} onChange={(e) => setSampai(e.target.value)} className="border border-sage-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400" />
           <button type="submit" className="bg-red-800 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-red-900 transition-colors">Cari</button>
+          <button
+            onClick={() => {
+              const params = new URLSearchParams();
+              if (dari) params.set("dari", dari);
+              if (sampai) params.set("sampai", sampai);
+              window.open(`/api/laporan/export?${params.toString()}`, "_blank");
+            }}
+            className="flex items-center gap-1.5 bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+            Export Excel
+          </button>
         </form>
       </div>
 

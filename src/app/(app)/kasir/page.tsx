@@ -41,6 +41,14 @@ export default function KasirPage() {
   const [closingCup, setClosingCup] = useState("");
   const [closingLoading, setClosingLoading] = useState(false);
   const [closingMsg, setClosingMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [dailySummary, setDailySummary] = useState<{ cup: number; makanan: number } | null>(null);
+
+  const fetchDailySummary = useCallback(() => {
+    fetch("/api/kasir/daily-summary")
+      .then((r) => r.json())
+      .then(setDailySummary)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     Promise.all([
@@ -51,7 +59,8 @@ export default function KasirPage() {
       setMenuList(menu);
       if (kategori.length > 0) setKategoriAktif(kategori[0].id);
     }).finally(() => setLoading(false));
-  }, []);
+    fetchDailySummary();
+  }, [fetchDailySummary]);
 
   useEffect(() => {
     if (!noWa.trim()) {
@@ -160,6 +169,7 @@ export default function KasirPage() {
       setTransaksiSukses({ noTransaksi: data.noTransaksi, totalHarga: data.totalHarga, totalBayar: data.totalBayar, kembalian: data.kembalian, items: [...keranjang], poinDidapat: data.poinDidapat || 0, poinDigunakan: data.poinDigunakan || 0, totalPoin: data.totalPoin || 0, publicId: data.publicId, noWa: data.noWa || null, memberNama: memberNama.trim() || undefined });
       setKeranjang([]); setTotalBayar(""); setNoWa(""); setMemberNama(""); setMessage(null);
       fetch("/api/menu").then((r) => r.json()).then(setMenuList);
+      fetchDailySummary();
     } catch (err) {
       setMessage({ type: "error", text: err instanceof Error ? err.message : "Gagal bayar" });
     } finally {
@@ -382,7 +392,24 @@ export default function KasirPage() {
             <h1 className="text-lg font-semibold text-sage-800">Kasir</h1>
             <p className="text-xs text-sage-400 mt-0.5">{new Date().toLocaleDateString("id-ID", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            {dailySummary && (
+              <div className="flex items-center gap-2.5 bg-white border border-sage-200 rounded-lg px-3 py-1.5 shadow-sm">
+                <div className="flex items-center gap-1.5">
+                  <svg className="w-4 h-4 text-sky-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
+                  </svg>
+                  <span className="text-xs font-bold text-sage-700">{dailySummary.cup}</span>
+                </div>
+                <span className="text-sage-200 text-xs">|</span>
+                <div className="flex items-center gap-1.5">
+                  <svg className="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.871c1.355 0 2.697.056 4.024.166C17.155 8.51 18 9.473 18 10.608v2.513M15 8.25v-1.5m-6 1.5v-1.5m12 9.75v1.5a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18.75v-1.5m16.5 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 17.25v1.5m16.5 0a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18.75" />
+                  </svg>
+                  <span className="text-xs font-bold text-sage-700">{dailySummary.makanan}</span>
+                </div>
+              </div>
+            )}
             <button
               onClick={() => setShowClosing(true)}
               className="flex items-center gap-1.5 bg-sage-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-sage-700 transition-colors shadow-sm"
