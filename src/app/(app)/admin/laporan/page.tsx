@@ -11,7 +11,7 @@ type Transaksi = {
   itemTransaksi: Array<{ id: string; namaMenu: string; harga: number; jumlah: number; subtotal: number }>;
 };
 type LaporanData = { ringkasan: Ringkasan; menuTerlaris: MenuTerlaris[]; transaksi: Transaksi[]; total: number; totalPages: number; page: number };
-type ClosingItem = { id: string; tanggal: string; shift: string; esBatu: number; cupTerjual: number; totalMakanan: number; totalMinuman: number; totalOmset: number; totalTransaksi: number; user: { nama: string } };
+type ClosingItem = { id: string; tanggal: string; createdAt: string; shift: string; esBatu: number; cupTerjual: number; totalMakanan: number; totalMinuman: number; totalOmset: number; totalTransaksi: number; user: { nama: string } };
 
 export default function LaporanPage() {
   const [data, setData] = useState<LaporanData | null>(null);
@@ -124,7 +124,7 @@ export default function LaporanPage() {
                   <tbody className="divide-y divide-sage-100">
                     {closingData.map((c) => (
                       <tr key={c.id} className="hover:bg-red-50 transition-colors">
-                        <td className="px-4 py-3 text-xs text-sage-500">{formatDate(new Date(c.tanggal))}</td>
+                        <td className="px-4 py-3 text-xs text-sage-500">{formatDate(new Date(c.createdAt))}</td>
                         <td className="px-4 py-3">
                           <span className="text-xs font-medium bg-red-50 text-red-600 px-2 py-0.5 rounded">
                             {c.shift === "SHIFT_1" ? "Shift 1" : "Shift 2"}
