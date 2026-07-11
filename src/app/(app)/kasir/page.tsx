@@ -42,6 +42,14 @@ export default function KasirPage() {
   const [closingLoading, setClosingLoading] = useState(false);
   const [closingMsg, setClosingMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [dailySummary, setDailySummary] = useState<{ cup: number; makanan: number } | null>(null);
+  const [closingSummary, setClosingSummary] = useState<{
+    makanan: { qty: number; total: number };
+    minuman: { qty: number; total: number };
+    totalOmset: number;
+    totalTransaksi: number;
+    breakdown: { nama: string; qty: number; subtotal: number }[];
+  } | null>(null);
+  const [closingSummaryLoading, setClosingSummaryLoading] = useState(false);
 
   const fetchDailySummary = useCallback(() => {
     fetch("/api/kasir/daily-summary")
@@ -61,6 +69,17 @@ export default function KasirPage() {
     }).finally(() => setLoading(false));
     fetchDailySummary();
   }, [fetchDailySummary]);
+
+  useEffect(() => {
+    if (showClosing) {
+      setClosingSummaryLoading(true);
+      fetch("/api/closing/summary")
+        .then((r) => r.json())
+        .then(setClosingSummary)
+        .catch(() => setClosingSummary(null))
+        .finally(() => setClosingSummaryLoading(false));
+    }
+  }, [showClosing]);
 
   useEffect(() => {
     if (!noWa.trim()) {
@@ -803,12 +822,12 @@ export default function KasirPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-xl w-full max-w-sm shadow-xl"
+              className="bg-white rounded-xl w-full max-w-md shadow-xl max-h-[85vh] overflow-y-auto"
             >
               <div className="flex items-center justify-between px-5 pt-5 pb-3">
                 <div>
                   <h2 className="font-semibold text-sage-800">Tutup Shift</h2>
-                  <p className="text-xs text-sage-400 mt-0.5">Catat pemakaian hari ini</p>
+                  <p className="text-xs text-sage-400 mt-0.5">Ringkasan penjualan shift hari ini</p>
                 </div>
                 <button onClick={() => setShowClosing(false)} className="w-7 h-7 rounded-lg bg-sage-100 flex items-center justify-center hover:bg-sage-200 transition-colors">
                   <X className="w-4 h-4 text-sage-500" />
@@ -816,27 +835,84 @@ export default function KasirPage() {
               </div>
 
               <div className="px-5 pb-5 space-y-4">
-                <div>
-                  <label className="block text-xs font-medium text-sage-600 mb-1">Es Batu (plastik)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={closingEsBatu}
-                    onChange={(e) => setClosingEsBatu(e.target.value)}
-                    placeholder="0"
-                    className="w-full border border-sage-200 rounded-lg px-3 py-2 text-sm text-sage-800 placeholder:text-sage-400 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-sage-600 mb-1">Cup Terjual</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={closingCup}
-                    onChange={(e) => setClosingCup(e.target.value)}
-                    placeholder="0"
-                    className="w-full border border-sage-200 rounded-lg px-3 py-2 text-sm text-sage-800 placeholder:text-sage-400 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all"
-                  />
+                {/* Ringkasan Otomatis */}
+                {closingSummaryLoading ? (
+                  <div className="flex items-center justify-center py-6">
+                    <div className="w-5 h-5 border-2 border-sage-300 border-t-sage-600 rounded-full animate-spin" />
+                  </div>
+                ) : closingSummary ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-orange-50 border border-orange-100 rounded-lg p-3">
+                        <p className="text-[10px] font-medium text-orange-500 uppercase tracking-wide">Makanan</p>
+                        <p className="text-lg font-bold text-sage-800 mt-0.5">{closingSummary.makanan.qty} <span className="text-xs font-normal text-sage-400">item</span></p>
+                        <p className="text-xs text-sage-500">{formatRupiah(closingSummary.makanan.total)}</p>
+                      </div>
+                      <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
+                        <p className="text-[10px] font-medium text-blue-500 uppercase tracking-wide">Minuman</p>
+                        <p className="text-lg font-bold text-sage-800 mt-0.5">{closingSummary.minuman.qty} <span className="text-xs font-normal text-sage-400">item</span></p>
+                        <p className="text-xs text-sage-500">{formatRupiah(closingSummary.minuman.total)}</p>
+                      </div>
+                    </div>
+
+                    <div className="bg-sage-50 border border-sage-200 rounded-lg p-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-sage-600">Total Omset</span>
+                        <span className="text-sm font-bold text-sage-800">{formatRupiah(closingSummary.totalOmset)}</span>
+                      </div>
+                      <div className="flex justify-between items-center mt-1">
+                        <span className="text-sm text-sage-600">Total Transaksi</span>
+                        <span className="text-sm font-bold text-sage-800">{closingSummary.totalTransaksi}</span>
+                      </div>
+                    </div>
+
+                    {closingSummary.breakdown.length > 0 && (
+                      <div className="border border-sage-200 rounded-lg overflow-hidden">
+                        <div className="px-3 py-2 bg-sage-50 border-b border-sage-200">
+                          <p className="text-xs font-medium text-sage-600">Detail Item</p>
+                        </div>
+                        <div className="max-h-32 overflow-y-auto divide-y divide-sage-100">
+                          {closingSummary.breakdown.map((item) => (
+                            <div key={item.nama} className="flex justify-between items-center px-3 py-1.5">
+                              <span className="text-xs text-sage-700 truncate mr-2">{item.nama}</span>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="text-xs text-sage-400">x{item.qty}</span>
+                                <span className="text-xs font-medium text-sage-700">{formatRupiah(item.subtotal)}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-4 text-xs text-sage-400">Gagal memuat ringkasan</div>
+                )}
+
+                {/* Input Manual */}
+                <div className="border-t border-sage-100 pt-4 space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-sage-600 mb-1">Es Batu (plastik)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={closingEsBatu}
+                      onChange={(e) => setClosingEsBatu(e.target.value)}
+                      placeholder="0"
+                      className="w-full border border-sage-200 rounded-lg px-3 py-2 text-sm text-sage-800 placeholder:text-sage-400 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-sage-600 mb-1">Cup Terjual</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={closingCup}
+                      onChange={(e) => setClosingCup(e.target.value)}
+                      placeholder="0"
+                      className="w-full border border-sage-200 rounded-lg px-3 py-2 text-sm text-sage-800 placeholder:text-sage-400 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all"
+                    />
+                  </div>
                 </div>
 
                 {closingMsg && (
@@ -863,6 +939,10 @@ export default function KasirPage() {
                           body: JSON.stringify({
                             esBatu: parseInt(closingEsBatu) || 0,
                             cupTerjual: parseInt(closingCup) || 0,
+                            totalMakanan: closingSummary?.makanan.qty || 0,
+                            totalMinuman: closingSummary?.minuman.qty || 0,
+                            totalOmset: closingSummary?.totalOmset || 0,
+                            totalTransaksi: closingSummary?.totalTransaksi || 0,
                           }),
                         });
                         if (!res.ok) {

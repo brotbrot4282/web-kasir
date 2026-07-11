@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { esBatu, cupTerjual } = body;
+    const { esBatu, cupTerjual, totalMakanan, totalMinuman, totalOmset, totalTransaksi } = body;
 
     if (esBatu == null || cupTerjual == null) {
       return NextResponse.json({ error: "Es Batu dan Cup Terjual harus diisi" }, { status: 400 });
@@ -54,6 +54,10 @@ export async function POST(request: NextRequest) {
         userId: user.id,
         esBatu,
         cupTerjual,
+        totalMakanan: totalMakanan || 0,
+        totalMinuman: totalMinuman || 0,
+        totalOmset: totalOmset || 0,
+        totalTransaksi: totalTransaksi || 0,
       },
     });
 

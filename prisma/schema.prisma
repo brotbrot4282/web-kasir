@@ -140,15 +140,19 @@ model Stok {
 }
 
 model DailyReport {
-  id         String   @id @default(uuid()) @db.Uuid
-  tanggal    DateTime
-  shift      Shift
-  userId     String   @map("user_id") @db.Uuid
-  user       User     @relation(fields: [userId], references: [id])
-  esBatu     Int      @default(0) @map("es_batu")
-  cupTerjual Int      @default(0) @map("cup_terjual")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  id             String   @id @default(uuid()) @db.Uuid
+  tanggal        DateTime
+  shift          Shift
+  userId         String   @map("user_id") @db.Uuid
+  user           User     @relation(fields: [userId], references: [id])
+  esBatu         Int      @default(0) @map("es_batu")
+  cupTerjual     Int      @default(0) @map("cup_terjual")
+  totalMakanan   Int      @default(0) @map("total_makanan")
+  totalMinuman   Int      @default(0) @map("total_minuman")
+  totalOmset     Int      @default(0) @map("total_omset")
+  totalTransaksi Int      @default(0) @map("total_transaksi")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   @@unique([tanggal, shift])
   @@map("daily_report")

@@ -125,6 +125,10 @@ export async function GET(request: NextRequest) {
     { header: "Tanggal", key: "tanggal", width: 14 },
     { header: "Shift", key: "shift", width: 12 },
     { header: "Kasir", key: "kasir", width: 20 },
+    { header: "Makanan", key: "makanan", width: 12 },
+    { header: "Minuman", key: "minuman", width: 12 },
+    { header: "Omset", key: "omset", width: 16 },
+    { header: "Transaksi", key: "transaksi", width: 12 },
     { header: "Es Batu (plastik)", key: "esBatu", width: 18 },
     { header: "Cup Terjual", key: "cupTerjual", width: 14 },
   ];
@@ -133,9 +137,19 @@ export async function GET(request: NextRequest) {
     s4.addRow({ tanggal: "Tidak ada data" });
   } else {
     closingData.forEach((c) => {
-      const row = s4.addRow({ tanggal: formatDate(c.tanggal), shift: c.shift === "SHIFT_1" ? "Shift 1" : "Shift 2", kasir: c.user.nama, esBatu: c.esBatu, cupTerjual: c.cupTerjual });
+      const row = s4.addRow({
+        tanggal: formatDate(c.tanggal),
+        shift: c.shift === "SHIFT_1" ? "Shift 1" : "Shift 2",
+        kasir: c.user.nama,
+        makanan: c.totalMakanan,
+        minuman: c.totalMinuman,
+        omset: c.totalOmset,
+        transaksi: c.totalTransaksi,
+        esBatu: c.esBatu,
+        cupTerjual: c.cupTerjual,
+      });
       row.eachCell((c2) => { c2.font = style.cell.font; c2.alignment = style.cell.alignment; c2.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } }; });
-      for (const col of [4, 5]) row.getCell(col).numFmt = '#,##0';
+      for (const col of [4, 5, 6, 7, 8, 9]) row.getCell(col).numFmt = '#,##0';
     });
   }
 
