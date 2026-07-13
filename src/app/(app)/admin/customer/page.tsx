@@ -72,7 +72,7 @@ export default function AdminCustomerPage() {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-lg font-semibold text-sage-800">Customer</h1>
-          <p className="text-xs text-sage-400 mt-0.5">Data member & OV Poin</p>
+          <p className="text-xs text-sage-400 mt-0.5">Data member & Poin</p>
         </div>
       </div>
 
@@ -96,7 +96,7 @@ export default function AdminCustomerPage() {
               <tr className="bg-sage-50 text-sage-500 text-xs uppercase tracking-wider">
                 <th className="text-left px-4 py-3 font-medium">Nama</th>
                 <th className="text-left px-4 py-3 font-medium">No. WA</th>
-                <th className="text-right px-4 py-3 font-medium">OV Poin</th>
+                <th className="text-right px-4 py-3 font-medium">Poin</th>
                 <th className="text-center px-4 py-3 font-medium">Aksi</th>
               </tr>
             </thead>
@@ -157,7 +157,7 @@ export default function AdminCustomerPage() {
                 </div>
                 <p className="text-xs text-sage-500 font-mono mt-1">{selectedMember.noWa}</p>
                 <div className="mt-3 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                  <span className="text-sm text-amber-700">Total OV Poin</span>
+                  <span className="text-sm text-amber-700">Total Poin</span>
                   <span className="text-lg font-bold text-amber-700">{selectedMember.poin}</span>
                 </div>
               </div>

@@ -81,7 +81,7 @@ export default function InvoicePage() {
                 <span className="font-medium text-sage-800">{data.member.nama || data.member.noWa}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-sage-500">OV Poin</span>
+                <span className="text-sage-500">Poin</span>
                 <span className="font-medium text-sage-700">{data.member.poin} poin</span>
               </div>
             </>
@@ -119,7 +119,7 @@ export default function InvoicePage() {
             </div>
             {data.totalPoin > 0 && (
               <div className="border-t border-sage-100 pt-1.5 mt-1.5 flex justify-between text-sm font-medium text-amber-600">
-                <span>Total OV Poin</span><span>{data.totalPoin} poin</span>
+                <span>Total Poin</span><span>{data.totalPoin} poin</span>
               </div>
             )}
           </div>

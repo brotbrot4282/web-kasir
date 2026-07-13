@@ -262,7 +262,7 @@ export default function KasirPage() {
   </div>` : ""}
   ${t.poinDidapat > 0 ? `<div style="border-top:1px dashed #000;margin:6px 0;"></div>
   <div style="display:flex;justify-content:space-between;">
-    <span>OV Poin</span><span>+${t.poinDidapat} poin</span>
+    <span>Poin</span><span>+${t.poinDidapat} poin</span>
   </div>` : ""}
   <div style="border-top:1px dashed #000;margin:6px 0;"></div>
   <div style="text-align:center;font-weight:bold;margin-top:6px;">Terima kasih</div>
@@ -353,7 +353,7 @@ export default function KasirPage() {
               const poinFmt = new Intl.NumberFormat("id-ID").format(transaksiSukses.poinDidapat);
               const poinPakaiFmt = new Intl.NumberFormat("id-ID").format(transaksiSukses.poinDigunakan);
               const barisPoinPakai = transaksiSukses.poinDigunakan > 0
-                ? `* Poin Dipakai : ${poinPakaiFmt} OV POINT`
+                ? `* Poin Dipakai : ${poinPakaiFmt} POINT`
                 : "";
               const pesan = [
                 `Dear ${transaksiSukses.memberNama || "Customer"},`,
@@ -364,9 +364,9 @@ export default function KasirPage() {
                 `* No Invoice : ${transaksiSukses.noTransaksi}`,
                 `* TOTAL TRANSAKSI : ${formatRupiah(transaksiSukses.totalHarga)}`,
                 barisPoinPakai,
-                `* Poin Didapat : ${poinFmt} OV POINT`,
+                `* Poin Didapat : ${poinFmt} POINT`,
                 "",
-                "Untuk melihat rincian transaksi dan point reward yang Anda dapatkan (OV POINT) klik link berikut",
+                "Untuk melihat rincian transaksi dan point reward yang Anda dapatkan (POINT) klik link berikut",
                 `${window.location.origin}/invoice/${transaksiSukses.publicId}`,
                 "",
                 "*WARKOP SOEKARDJO (17.00 - 23.00)*",
@@ -646,7 +646,7 @@ export default function KasirPage() {
               {memberTerdaftar && memberPoin >= 5 && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 space-y-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-amber-600 font-medium">OV Poin tersedia</span>
+                    <span className="text-amber-600 font-medium">Poin tersedia</span>
                     <span className="text-amber-700 font-bold">{memberPoin} poin</span>
                   </div>
                   {poinDigunakan > 0 && (
@@ -682,7 +682,7 @@ export default function KasirPage() {
 
               {semuaGratis && (
                 <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-3 text-center">
-                  <p className="text-sm font-medium text-emerald-700">Semua item gratis dari OV Poin</p>
+                  <p className="text-sm font-medium text-emerald-700">Semua item gratis dari Poin</p>
                   <p className="text-xs text-emerald-500 mt-0.5">Total bayar: Rp 0</p>
                 </div>
               )}
