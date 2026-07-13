@@ -26,10 +26,19 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "50");
+  const dari = searchParams.get("dari");
+  const sampai = searchParams.get("sampai");
   const skip = (page - 1) * limit;
+
+  const dateFilter: Record<string, Date> = {};
+  if (dari) dateFilter.gte = new Date(dari + "T00:00:00+07:00");
+  if (sampai) dateFilter.lte = new Date(sampai + "T23:59:59.999+07:00");
+
+  const where = dari || sampai ? { createdAt: dateFilter } : {};
 
   const [transaksi, total] = await Promise.all([
     prisma.transaksi.findMany({
+      where,
       orderBy: { createdAt: "desc" },
       skip,
       take: limit,
@@ -37,9 +46,12 @@ export async function GET(request: NextRequest) {
         itemTransaksi: {
           include: { menu: true },
         },
+        member: {
+          select: { nama: true, noWa: true },
+        },
       },
     }),
-    prisma.transaksi.count(),
+    prisma.transaksi.count({ where }),
   ]);
 
   return NextResponse.json({

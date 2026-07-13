@@ -56,6 +56,16 @@ export default function KasirPage() {
   const [openingLoading, setOpeningLoading] = useState(false);
   const [openingMsg, setOpeningMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [shiftOpened, setShiftOpened] = useState(false);
+  const [showRiwayat, setShowRiwayat] = useState(false);
+  const [riwayatData, setRiwayatData] = useState<Array<{
+    id: string; noTransaksi: string; totalHarga: number; totalBayar: number;
+    kembalian: number; createdAt: string; poinDigunakan: number; totalPoin: number;
+    noWa: string | null; publicId: string;
+    itemTransaksi: Array<{ id: string; namaMenu: string; harga: number; jumlah: number; subtotal: number; variant: string | null }>;
+    member: { nama: string | null; noWa: string } | null;
+  }>>([]);
+  const [riwayatLoading, setRiwayatLoading] = useState(false);
+  const [riwayatCetakId, setRiwayatCetakId] = useState<string | null>(null);
 
   const fetchDailySummary = useCallback(() => {
     fetch("/api/kasir/daily-summary")
@@ -215,9 +225,16 @@ export default function KasirPage() {
     }
   };
 
-  const cetakStruk = useCallback((jenis: "customer" | "catatan") => {
-    if (!transaksiSukses || !iframeRef.current) return;
-    const t = transaksiSukses;
+  type StrukData = {
+    noTransaksi: string; totalHarga: number; totalBayar: number;
+    kembalian: number; poinDidapat: number; poinDigunakan: number;
+    noWa: string | null; memberNama?: string;
+    items: KeranjangItem[];
+  };
+
+  const printReceipt = useCallback((jenis: "customer" | "catatan", data: StrukData) => {
+    if (!iframeRef.current) return;
+    const t = data;
     const tanggal = new Date().toLocaleDateString("id-ID", {
       weekday: "long", year: "numeric", month: "long", day: "numeric"
     });
@@ -301,7 +318,55 @@ export default function KasirPage() {
         setTimeout(() => { iframe.style.display = "none"; }, 500);
       }, 300);
     }
-  }, [transaksiSukses]);
+  }, []);
+
+  const cetakStruk = useCallback((jenis: "customer" | "catatan") => {
+    if (!transaksiSukses) return;
+    printReceipt(jenis, transaksiSukses);
+  }, [transaksiSukses, printReceipt]);
+
+  const fetchRiwayat = useCallback(() => {
+    setRiwayatLoading(true);
+    const today = new Date().toLocaleDateString("fr-CA", { timeZone: "Asia/Jakarta" });
+    fetch(`/api/transaksi?dari=${today}&sampai=${today}&limit=50`)
+      .then((r) => r.json())
+      .then((data) => setRiwayatData(data.data || []))
+      .catch(() => setRiwayatData([]))
+      .finally(() => setRiwayatLoading(false));
+  }, []);
+
+  const cetakStrukUlang = useCallback(async (t: typeof riwayatData[0], jenis: "customer" | "catatan") => {
+    setRiwayatCetakId(t.id);
+    try {
+      const res = await fetch(`/api/transaksi/${t.id}`);
+      const full = await res.json();
+      const poinDidapat = Math.floor(Math.max(0, (full.totalHarga - (full.totalPoin || 0))) / 15000);
+      const strukData: StrukData = {
+        noTransaksi: full.noTransaksi,
+        totalHarga: full.totalHarga,
+        totalBayar: full.totalBayar,
+        kembalian: full.kembalian,
+        poinDidapat,
+        poinDigunakan: full.poinDigunakan || 0,
+        noWa: full.noWa || full.member?.noWa || null,
+        memberNama: full.member?.nama || undefined,
+        items: full.itemTransaksi.map((item: { namaMenu: string; harga: number; jumlah: number; subtotal: number; variant: string | null; menuId: string }) => ({
+          key: `${item.menuId}-${item.variant || ""}`,
+          menuId: item.menuId,
+          nama: item.variant ? `${item.namaMenu} - ${item.variant}` : item.namaMenu,
+          harga: item.harga,
+          jumlah: item.jumlah,
+          subtotal: item.subtotal,
+          variant: item.variant,
+          gratisPoin: item.subtotal === 0,
+        })),
+      };
+      printReceipt(jenis, strukData);
+    } catch {
+    } finally {
+      setRiwayatCetakId(null);
+    }
+  }, [printReceipt]);
 
   if (transaksiSukses) {
     return (
@@ -445,15 +510,26 @@ export default function KasirPage() {
               </div>
             )}
             {shiftOpened && (
-              <button
-                onClick={() => setShowClosing(true)}
-                className="flex items-center gap-1.5 bg-sage-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-sage-700 transition-colors shadow-sm"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Tutup Shift
-              </button>
+              <>
+                <button
+                  onClick={() => { setShowRiwayat(true); fetchRiwayat(); }}
+                  className="flex items-center gap-1.5 bg-white text-sage-600 border border-sage-200 text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-sage-50 transition-colors shadow-sm"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Riwayat
+                </button>
+                <button
+                  onClick={() => setShowClosing(true)}
+                  className="flex items-center gap-1.5 bg-sage-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-sage-700 transition-colors shadow-sm"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Tutup Shift
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -778,6 +854,84 @@ export default function KasirPage() {
         </div>
       </div>
     </div>
+
+      {/* Riwayat Modal */}
+      <AnimatePresence>
+        {showRiwayat && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => setShowRiwayat(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-xl w-full max-w-lg shadow-xl max-h-[85vh] flex flex-col"
+            >
+              <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
+                <div>
+                  <h2 className="font-semibold text-sage-800">Riwayat Transaksi</h2>
+                  <p className="text-xs text-sage-400 mt-0.5">Transaksi hari ini</p>
+                </div>
+                <button onClick={() => setShowRiwayat(false)} className="w-7 h-7 rounded-lg bg-sage-100 flex items-center justify-center hover:bg-sage-200 transition-colors">
+                  <X className="w-4 h-4 text-sage-500" />
+                </button>
+              </div>
+
+              <div className="px-5 pb-5 overflow-y-auto flex-1">
+                {riwayatLoading ? (
+                  <div className="flex items-center justify-center py-10">
+                    <div className="w-5 h-5 border-2 border-sage-300 border-t-sage-600 rounded-full animate-spin" />
+                  </div>
+                ) : riwayatData.length === 0 ? (
+                  <div className="text-center py-10 text-sm text-sage-400">Belum ada transaksi hari ini</div>
+                ) : (
+                  <div className="space-y-2">
+                    {riwayatData.map((t) => (
+                      <div key={t.id} className="border border-sage-200 rounded-lg p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-xs font-mono text-sage-400">{t.noTransaksi}</p>
+                            <p className="text-sm font-bold text-sage-800 mt-0.5">{formatRupiah(t.totalHarga)}</p>
+                            <p className="text-xs text-sage-500 mt-0.5">
+                              {new Date(t.createdAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+                              {t.member?.nama ? ` - ${t.member.nama}` : ""}
+                            </p>
+                          </div>
+                          <div className="flex gap-1.5 shrink-0">
+                            <button
+                              onClick={() => cetakStrukUlang(t, "customer")}
+                              disabled={riwayatCetakId === t.id}
+                              className="text-xs font-medium text-sage-600 bg-sage-100 hover:bg-sage-200 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                            >
+                              {riwayatCetakId === t.id ? (
+                                <span className="flex items-center gap-1">
+                                  <span className="w-3 h-3 border-2 border-sage-300 border-t-sage-600 rounded-full animate-spin" />
+                                </span>
+                              ) : "Cetak"}
+                            </button>
+                            <button
+                              onClick={() => cetakStrukUlang(t, "catatan")}
+                              disabled={riwayatCetakId === t.id}
+                              className="text-xs font-medium text-white bg-sage-600 hover:bg-sage-700 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                            >
+                              Catatan
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Opening Shift Modal */}
       <AnimatePresence>
