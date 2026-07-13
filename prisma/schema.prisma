@@ -146,8 +146,7 @@ model DailyReport {
   userId         String   @map("user_id") @db.Uuid
   user           User     @relation(fields: [userId], references: [id])
   uangAwal       Int      @default(0) @map("uang_awal")
-  esBatu         Int      @default(0) @map("es_batu")
-  cupTerjual     Int      @default(0) @map("cup_terjual")
+  catatan        String?  @map("catatan")
   totalMakanan   Int      @default(0) @map("total_makanan")
   totalMinuman   Int      @default(0) @map("total_minuman")
   totalOmset     Int      @default(0) @map("total_omset")

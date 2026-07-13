@@ -130,8 +130,7 @@ export async function GET(request: NextRequest) {
     { header: "Minuman", key: "minuman", width: 12 },
     { header: "Omset", key: "omset", width: 16 },
     { header: "Transaksi", key: "transaksi", width: 12 },
-    { header: "Es Batu (plastik)", key: "esBatu", width: 18 },
-    { header: "Cup Terjual", key: "cupTerjual", width: 14 },
+    { header: "Catatan", key: "catatan", width: 30 },
   ];
   s4.getRow(1).eachCell((c) => { c.font = style.header.font; c.fill = style.header.fill; c.alignment = style.header.alignment; c.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } }; });
   if (closingData.length === 0) {
@@ -147,11 +146,10 @@ export async function GET(request: NextRequest) {
         minuman: c.totalMinuman,
         omset: c.totalOmset,
         transaksi: c.totalTransaksi,
-        esBatu: c.esBatu,
-        cupTerjual: c.cupTerjual,
+        catatan: c.catatan || "-",
       });
       row.eachCell((c2) => { c2.font = style.cell.font; c2.alignment = style.cell.alignment; c2.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } }; });
-      for (const col of [4, 5, 6, 7, 8, 9, 10]) row.getCell(col).numFmt = '#,##0';
+      for (const col of [4, 5, 6, 7, 8]) row.getCell(col).numFmt = '#,##0';
     });
   }
 

@@ -39,6 +39,7 @@ export default function KasirPage() {
   const [showClosing, setShowClosing] = useState(false);
   const [closingEsBatu, setClosingEsBatu] = useState("");
   const [closingCup, setClosingCup] = useState("");
+  const [closingCatatan, setClosingCatatan] = useState("");
   const [closingLoading, setClosingLoading] = useState(false);
   const [closingMsg, setClosingMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [dailySummary, setDailySummary] = useState<{ cup: number; makanan: number } | null>(null);
@@ -997,25 +998,13 @@ export default function KasirPage() {
                 {/* Input Manual */}
                 <div className="border-t border-sage-100 pt-4 space-y-3">
                   <div>
-                    <label className="block text-xs font-medium text-sage-600 mb-1">Es Batu (plastik)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={closingEsBatu}
-                      onChange={(e) => setClosingEsBatu(e.target.value)}
-                      placeholder="0"
-                      className="w-full border border-sage-200 rounded-lg px-3 py-2 text-sm text-sage-800 placeholder:text-sage-400 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-sage-600 mb-1">Cup Terjual</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={closingCup}
-                      onChange={(e) => setClosingCup(e.target.value)}
-                      placeholder="0"
-                      className="w-full border border-sage-200 rounded-lg px-3 py-2 text-sm text-sage-800 placeholder:text-sage-400 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all"
+                    <label className="block text-xs font-medium text-sage-600 mb-1">Catatan Kebutuhan Shift</label>
+                    <textarea
+                      value={closingCatatan}
+                      onChange={(e) => setClosingCatatan(e.target.value)}
+                      placeholder="Tulis kebutuhan shift ini... (contoh: beli sprite, beli gas, dll)"
+                      rows={4}
+                      className="w-full border border-sage-200 rounded-lg px-3 py-2 text-sm text-sage-800 placeholder:text-sage-400 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all resize-none"
                     />
                   </div>
                 </div>
@@ -1042,8 +1031,7 @@ export default function KasirPage() {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({
-                            esBatu: parseInt(closingEsBatu) || 0,
-                            cupTerjual: parseInt(closingCup) || 0,
+                            catatan: closingCatatan || null,
                             totalMakanan: closingSummary?.makanan.qty || 0,
                             totalMinuman: closingSummary?.minuman.qty || 0,
                             totalOmset: closingSummary?.totalOmset || 0,
@@ -1055,8 +1043,7 @@ export default function KasirPage() {
                           throw new Error(err.error || "Gagal");
                         }
                         setClosingMsg({ type: "success", text: "Laporan closing berhasil disimpan!" });
-                        setClosingEsBatu("");
-                        setClosingCup("");
+                        setClosingCatatan("");
                         setTimeout(() => { setShowClosing(false); setClosingMsg(null); }, 1500);
                       } catch (err) {
                         setClosingMsg({ type: "error", text: err instanceof Error ? err.message : "Gagal menyimpan" });

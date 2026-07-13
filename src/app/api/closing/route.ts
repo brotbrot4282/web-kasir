@@ -15,18 +15,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { esBatu, cupTerjual, totalMakanan, totalMinuman, totalOmset, totalTransaksi } = body;
+    const { catatan, totalMakanan, totalMinuman, totalOmset, totalTransaksi } = body;
 
-    if (esBatu == null || cupTerjual == null) {
-      return NextResponse.json({ error: "Es Batu dan Cup Terjual harus diisi" }, { status: 400 });
-    }
-
-    if (typeof esBatu !== "number" || typeof cupTerjual !== "number") {
-      return NextResponse.json({ error: "Nilai harus berupa angka" }, { status: 400 });
-    }
-
-    if (esBatu < 0 || cupTerjual < 0) {
-      return NextResponse.json({ error: "Nilai tidak boleh negatif" }, { status: 400 });
+    if (catatan != null && typeof catatan !== "string") {
+      return NextResponse.json({ error: "Catatan harus berupa teks" }, { status: 400 });
     }
 
     if (!session.shift) {
@@ -50,8 +42,7 @@ export async function POST(request: NextRequest) {
     const report = await prisma.dailyReport.update({
       where: { id: existing.id },
       data: {
-        esBatu,
-        cupTerjual,
+        catatan: catatan || null,
         totalMakanan: totalMakanan || 0,
         totalMinuman: totalMinuman || 0,
         totalOmset: totalOmset || 0,
