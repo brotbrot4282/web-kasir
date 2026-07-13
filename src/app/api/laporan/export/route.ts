@@ -125,6 +125,7 @@ export async function GET(request: NextRequest) {
     { header: "Tanggal", key: "tanggal", width: 14 },
     { header: "Shift", key: "shift", width: 12 },
     { header: "Kasir", key: "kasir", width: 20 },
+    { header: "Uang Awal", key: "uangAwal", width: 16 },
     { header: "Makanan", key: "makanan", width: 12 },
     { header: "Minuman", key: "minuman", width: 12 },
     { header: "Omset", key: "omset", width: 16 },
@@ -141,6 +142,7 @@ export async function GET(request: NextRequest) {
         tanggal: formatDate(c.tanggal),
         shift: c.shift === "SHIFT_1" ? "Shift 1" : "Shift 2",
         kasir: c.user.nama,
+        uangAwal: c.uangAwal,
         makanan: c.totalMakanan,
         minuman: c.totalMinuman,
         omset: c.totalOmset,
@@ -149,7 +151,7 @@ export async function GET(request: NextRequest) {
         cupTerjual: c.cupTerjual,
       });
       row.eachCell((c2) => { c2.font = style.cell.font; c2.alignment = style.cell.alignment; c2.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } }; });
-      for (const col of [4, 5, 6, 7, 8, 9]) row.getCell(col).numFmt = '#,##0';
+      for (const col of [4, 5, 6, 7, 8, 9, 10]) row.getCell(col).numFmt = '#,##0';
     });
   }
 

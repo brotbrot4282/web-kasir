@@ -50,6 +50,11 @@ export default function KasirPage() {
     breakdown: { nama: string; qty: number; subtotal: number }[];
   } | null>(null);
   const [closingSummaryLoading, setClosingSummaryLoading] = useState(false);
+  const [showOpening, setShowOpening] = useState(false);
+  const [uangAwalInput, setUangAwalInput] = useState("");
+  const [openingLoading, setOpeningLoading] = useState(false);
+  const [openingMsg, setOpeningMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [shiftOpened, setShiftOpened] = useState(false);
 
   const fetchDailySummary = useCallback(() => {
     fetch("/api/kasir/daily-summary")
@@ -106,6 +111,19 @@ export default function KasirPage() {
     }, 500);
     return () => clearTimeout(timer);
   }, [noWa]);
+
+  useEffect(() => {
+    fetch("/api/opening")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.opened) {
+          setShowOpening(true);
+        } else {
+          setShiftOpened(true);
+        }
+      })
+      .catch(() => setShowOpening(true));
+  }, []);
 
   const menuFilter = menuList.filter((m) => {
     if (!m.isTersedia) return false;
@@ -425,15 +443,17 @@ export default function KasirPage() {
                 </div>
               </div>
             )}
-            <button
-              onClick={() => setShowClosing(true)}
-              className="flex items-center gap-1.5 bg-sage-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-sage-700 transition-colors shadow-sm"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Tutup Shift
-            </button>
+            {shiftOpened && (
+              <button
+                onClick={() => setShowClosing(true)}
+                className="flex items-center gap-1.5 bg-sage-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-sage-700 transition-colors shadow-sm"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Tutup Shift
+              </button>
+            )}
           </div>
         </div>
 
@@ -757,6 +777,91 @@ export default function KasirPage() {
         </div>
       </div>
     </div>
+
+      {/* Opening Shift Modal */}
+      <AnimatePresence>
+        {showOpening && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white rounded-xl w-full max-w-sm shadow-xl"
+            >
+              <div className="px-5 pt-5 pb-3">
+                <h2 className="font-semibold text-sage-800 text-lg">Buka Shift</h2>
+                <p className="text-xs text-sage-400 mt-0.5">Masukkan jumlah uang awal di mesin kasir</p>
+              </div>
+
+              <div className="px-5 pb-5 space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-sage-600 mb-1">Uang Awal (Rp)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-sage-400">Rp</span>
+                    <input
+                      type="text"
+                      value={uangAwalInput}
+                      onChange={(e) => setUangAwalInput(e.target.value.replace(/\D/g, ""))}
+                      placeholder="0"
+                      autoFocus
+                      className="w-full border border-sage-200 rounded-lg pl-9 pr-3 py-2.5 text-right text-lg font-bold text-sage-800 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all bg-white"
+                    />
+                  </div>
+                </div>
+
+                {openingMsg && (
+                  <div className={`text-sm p-2.5 rounded-lg ${openingMsg.type === "error" ? "bg-red-50 text-red-500" : "bg-emerald-50 text-emerald-600"}`}>
+                    {openingMsg.text}
+                  </div>
+                )}
+
+                <button
+                  onClick={async () => {
+                    setOpeningMsg(null);
+                    const nominal = parseInt(uangAwalInput) || 0;
+                    if (nominal <= 0) {
+                      setOpeningMsg({ type: "error", text: "Uang awal harus lebih dari 0" });
+                      return;
+                    }
+                    setOpeningLoading(true);
+                    try {
+                      const res = await fetch("/api/opening", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ uangAwal: nominal }),
+                      });
+                      if (!res.ok) {
+                        const err = await res.json();
+                        throw new Error(err.error || "Gagal");
+                      }
+                      setShiftOpened(true);
+                      setShowOpening(false);
+                    } catch (err) {
+                      setOpeningMsg({ type: "error", text: err instanceof Error ? err.message : "Gagal menyimpan" });
+                    } finally {
+                      setOpeningLoading(false);
+                    }
+                  }}
+                  disabled={openingLoading}
+                  className="w-full bg-sage-600 text-white py-2.5 rounded-lg font-bold text-sm hover:bg-sage-700 disabled:bg-sage-300 disabled:cursor-not-allowed transition-colors"
+                >
+                  {openingLoading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Menyimpan...
+                    </span>
+                  ) : "Buka Shift"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Variant Modal */}
       <AnimatePresence>

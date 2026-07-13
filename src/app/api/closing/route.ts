@@ -43,15 +43,13 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    if (existing) {
-      return NextResponse.json({ error: "Laporan closing shift ini sudah ada" }, { status: 409 });
+    if (!existing) {
+      return NextResponse.json({ error: "Open shift belum dilakukan untuk shift ini" }, { status: 400 });
     }
 
-    const report = await prisma.dailyReport.create({
+    const report = await prisma.dailyReport.update({
+      where: { id: existing.id },
       data: {
-        tanggal: today,
-        shift: session.shift as "SHIFT_1" | "SHIFT_2",
-        userId: user.id,
         esBatu,
         cupTerjual,
         totalMakanan: totalMakanan || 0,

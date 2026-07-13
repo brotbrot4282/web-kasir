@@ -145,6 +145,7 @@ model DailyReport {
   shift          Shift
   userId         String   @map("user_id") @db.Uuid
   user           User     @relation(fields: [userId], references: [id])
+  uangAwal       Int      @default(0) @map("uang_awal")
   esBatu         Int      @default(0) @map("es_batu")
   cupTerjual     Int      @default(0) @map("cup_terjual")
   totalMakanan   Int      @default(0) @map("total_makanan")

@@ -11,7 +11,7 @@ type Transaksi = {
   itemTransaksi: Array<{ id: string; namaMenu: string; harga: number; jumlah: number; subtotal: number }>;
 };
 type LaporanData = { ringkasan: Ringkasan; menuTerlaris: MenuTerlaris[]; transaksi: Transaksi[]; total: number; totalPages: number; page: number };
-type ClosingItem = { id: string; tanggal: string; createdAt: string; shift: string; esBatu: number; cupTerjual: number; totalMakanan: number; totalMinuman: number; totalOmset: number; totalTransaksi: number; user: { nama: string } };
+type ClosingItem = { id: string; tanggal: string; createdAt: string; shift: string; uangAwal: number; esBatu: number; cupTerjual: number; totalMakanan: number; totalMinuman: number; totalOmset: number; totalTransaksi: number; user: { nama: string } };
 
 export default function LaporanPage() {
   const [data, setData] = useState<LaporanData | null>(null);
@@ -113,6 +113,7 @@ export default function LaporanPage() {
                       <th className="text-left px-4 py-3 text-xs font-medium text-sage-500 uppercase">Tanggal</th>
                       <th className="text-left px-4 py-3 text-xs font-medium text-sage-500 uppercase">Shift</th>
                       <th className="text-left px-4 py-3 text-xs font-medium text-sage-500 uppercase">Kasir</th>
+                      <th className="text-right px-4 py-3 text-xs font-medium text-sage-500 uppercase">Uang Awal</th>
                       <th className="text-right px-4 py-3 text-xs font-medium text-sage-500 uppercase">Makanan</th>
                       <th className="text-right px-4 py-3 text-xs font-medium text-sage-500 uppercase">Minuman</th>
                       <th className="text-right px-4 py-3 text-xs font-medium text-sage-500 uppercase">Omset</th>
@@ -131,6 +132,7 @@ export default function LaporanPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-sage-700">{c.user.nama}</td>
+                        <td className="px-4 py-3 text-right font-semibold text-sage-800">{formatRupiah(c.uangAwal)}</td>
                         <td className="px-4 py-3 text-right font-semibold text-sage-800">{c.totalMakanan} <span className="text-xs text-sage-400 font-normal">item</span></td>
                         <td className="px-4 py-3 text-right font-semibold text-sage-800">{c.totalMinuman} <span className="text-xs text-sage-400 font-normal">item</span></td>
                         <td className="px-4 py-3 text-right font-semibold text-sage-800">{formatRupiah(c.totalOmset)}</td>
