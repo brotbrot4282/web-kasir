@@ -65,6 +65,7 @@ model Transaksi {
   publicId      String          @unique @default(uuid()) @map("public_id")
   noTransaksi   String          @unique @map("no_transaksi")
   totalHarga    Int             @map("total_harga")
+  diskon        Int             @default(0)
   totalBayar    Int             @map("total_bayar")
   kembalian     Int             @default(0)
   poinDigunakan Int             @default(0) @map("poin_digunakan")

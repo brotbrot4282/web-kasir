@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
-    const { items, totalBayar, noWa, memberNama } = body;
+    const { items, totalBayar, noWa, memberNama, diskon = 0 } = body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: "Minimal satu item diperlukan" }, { status: 400 });
@@ -76,6 +76,10 @@ export async function POST(request: NextRequest) {
 
     if (totalBayar === undefined || totalBayar === null || typeof totalBayar !== "number" || totalBayar < 0) {
       return NextResponse.json({ error: "Total bayar tidak valid" }, { status: 400 });
+    }
+
+    if (typeof diskon !== "number" || diskon < 0) {
+      return NextResponse.json({ error: "Diskon tidak valid" }, { status: 400 });
     }
 
     let totalHarga = 0;
@@ -171,7 +175,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const harusDibayar = totalHarga - totalPoin;
+    const subtotalSebelumDiskon = totalHarga - totalPoin;
+    if (diskon > subtotalSebelumDiskon) {
+      return NextResponse.json(
+        { error: `Diskon tidak boleh melebihi total Rp ${subtotalSebelumDiskon.toLocaleString()}` },
+        { status: 400 }
+      );
+    }
+
+    const harusDibayar = subtotalSebelumDiskon - diskon;
     const kembalian = totalBayar - harusDibayar;
     if (kembalian < 0) {
       return NextResponse.json(
@@ -184,6 +196,7 @@ export async function POST(request: NextRequest) {
       data: {
         noTransaksi: generateNoTransaksi(),
         totalHarga,
+        diskon,
         totalBayar,
         kembalian,
         poinDigunakan,
@@ -210,7 +223,7 @@ export async function POST(request: NextRequest) {
 
     let poinDidapat = 0;
     if (member) {
-      const cashAmount = totalHarga - totalPoin;
+      const cashAmount = totalHarga - totalPoin - diskon;
       poinDidapat = Math.floor(cashAmount / rupiahPerPoin);
 
       await prisma.rewardPoin.create({
@@ -248,6 +261,7 @@ export async function POST(request: NextRequest) {
           "",
           `* No Invoice : ${transaksi.noTransaksi}`,
           `* TOTAL TRANSAKSI : ${formatRupiah(transaksi.totalHarga)}`,
+          diskon > 0 ? `* Diskon : -${formatRupiah(diskon)}` : "",
           poinDigunakan > 0 ? `* Poin Dipakai : ${poinDigunakan} POINT (${poinItemNames.join(", ")})` : "",
           `* Poin Didapat : ${formatPoin(poinDidapat)} POINT`,
           "",

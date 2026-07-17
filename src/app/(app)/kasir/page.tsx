@@ -25,10 +25,13 @@ export default function KasirPage() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [pengaturanPoin, setPengaturanPoin] = useState<PengaturanPoin>({ rupiahPerPoin: 15000, poinPerGratisItem: 5 });
+  const [diskon, setDiskon] = useState("");
+  const [diskonTipe, setDiskonTipe] = useState<"nominal" | "persen">("nominal");
   const [transaksiSukses, setTransaksiSukses] = useState<{
     noTransaksi: string; totalHarga: number; totalBayar: number;
     kembalian: number; items: KeranjangItem[];
     poinDidapat: number; poinDigunakan: number; totalPoin: number;
+    diskon: number;
     publicId: string; noWa: string | null; memberNama?: string;
   } | null>(null);
 
@@ -62,6 +65,7 @@ export default function KasirPage() {
   const [riwayatData, setRiwayatData] = useState<Array<{
     id: string; noTransaksi: string; totalHarga: number; totalBayar: number;
     kembalian: number; createdAt: string; poinDigunakan: number; totalPoin: number;
+    diskon: number;
     noWa: string | null; publicId: string;
     itemTransaksi: Array<{ id: string; namaMenu: string; harga: number; jumlah: number; subtotal: number; variant: string | null }>;
     member: { nama: string | null; noWa: string } | null;
@@ -151,6 +155,12 @@ export default function KasirPage() {
   const totalPoinRupiah = keranjang.filter((i) => i.gratisPoin).reduce((sum, i) => sum + i.subtotal, 0);
   const semuaGratis = keranjang.length > 0 && keranjang.every((i) => i.gratisPoin);
 
+  const diskonInput = parseInt(diskon.replace(/\D/g, "")) || 0;
+  const totalDiskon = diskonTipe === "persen"
+    ? Math.min(Math.floor(totalKeranjang * diskonInput / 100), totalKeranjang)
+    : Math.min(diskonInput, totalKeranjang);
+  const totalBayarFinal = Math.max(0, totalKeranjang - totalDiskon);
+
   const tambahKeKeranjang = useCallback((menu: Menu, variantName: string | null) => {
     const key = `${menu.id}-${variantName || ""}`;
     const variants = menu.variants;
@@ -201,7 +211,7 @@ export default function KasirPage() {
     if (submitting) return;
     const bayar = parseInt(totalBayar.replace(/\D/g, "")) || 0;
     if (keranjang.length === 0) { setMessage({ type: "error", text: "Keranjang masih kosong" }); return; }
-    if (bayar < totalKeranjang) { setMessage({ type: "error", text: `Kurang Rp ${(totalKeranjang - bayar).toLocaleString()}` }); return; }
+    if (bayar < totalBayarFinal) { setMessage({ type: "error", text: `Kurang Rp ${(totalBayarFinal - bayar).toLocaleString()}` }); return; }
 
     setSubmitting(true);
     try {
@@ -211,14 +221,15 @@ export default function KasirPage() {
         body: JSON.stringify({
           items: keranjang.map((i) => ({ menuId: i.menuId, jumlah: i.jumlah, variant: i.variant, gratisPoin: i.gratisPoin })),
           totalBayar: bayar,
+          diskon: totalDiskon,
           noWa: noWa.trim() || undefined,
           memberNama: memberNama.trim() || undefined,
         }),
       });
       if (!res.ok) { const err = await res.json(); throw new Error(err.error || "Gagal"); }
       const data = await res.json();
-      setTransaksiSukses({ noTransaksi: data.noTransaksi, totalHarga: data.totalHarga, totalBayar: data.totalBayar, kembalian: data.kembalian, items: [...keranjang], poinDidapat: data.poinDidapat || 0, poinDigunakan: data.poinDigunakan || 0, totalPoin: data.totalPoin || 0, publicId: data.publicId, noWa: data.noWa || null, memberNama: memberNama.trim() || undefined });
-      setKeranjang([]); setTotalBayar(""); setNoWa(""); setMemberNama(""); setMessage(null);
+      setTransaksiSukses({ noTransaksi: data.noTransaksi, totalHarga: data.totalHarga, totalBayar: data.totalBayar, kembalian: data.kembalian, items: [...keranjang], poinDidapat: data.poinDidapat || 0, poinDigunakan: data.poinDigunakan || 0, totalPoin: data.totalPoin || 0, diskon: data.diskon || 0, publicId: data.publicId, noWa: data.noWa || null, memberNama: memberNama.trim() || undefined });
+      setKeranjang([]); setTotalBayar(""); setDiskon(""); setNoWa(""); setMemberNama(""); setMessage(null);
       fetch("/api/menu").then((r) => r.json()).then(setMenuList);
       fetchDailySummary();
     } catch (err) {
@@ -231,6 +242,7 @@ export default function KasirPage() {
   type StrukData = {
     noTransaksi: string; totalHarga: number; totalBayar: number;
     kembalian: number; poinDidapat: number; poinDigunakan: number;
+    diskon: number;
     noWa: string | null; memberNama?: string;
     items: KeranjangItem[];
   };
@@ -289,6 +301,9 @@ export default function KasirPage() {
   <div style="display:flex;justify-content:space-between;font-weight:bold;">
     <span>TOTAL</span><span>${formatRupiah(t.totalHarga)}</span>
   </div>
+  ${t.diskon > 0 ? `<div style="display:flex;justify-content:space-between;color:#c00;">
+    <span>Diskon</span><span>-${formatRupiah(t.diskon)}</span>
+  </div>` : ""}
   <div style="display:flex;justify-content:space-between;">
     <span>Bayar</span><span>${formatRupiah(t.totalBayar)}</span>
   </div>
@@ -343,7 +358,7 @@ export default function KasirPage() {
     try {
       const res = await fetch(`/api/transaksi/${t.id}`);
       const full = await res.json();
-      const poinDidapat = Math.floor(Math.max(0, (full.totalHarga - (full.totalPoin || 0))) / pengaturanPoin.rupiahPerPoin);
+      const poinDidapat = Math.floor(Math.max(0, (full.totalHarga - (full.totalPoin || 0) - (full.diskon || 0))) / pengaturanPoin.rupiahPerPoin);
       const strukData: StrukData = {
         noTransaksi: full.noTransaksi,
         totalHarga: full.totalHarga,
@@ -351,6 +366,7 @@ export default function KasirPage() {
         kembalian: full.kembalian,
         poinDidapat,
         poinDigunakan: full.poinDigunakan || 0,
+        diskon: full.diskon || 0,
         noWa: full.noWa || full.member?.noWa || null,
         memberNama: full.member?.nama || undefined,
         items: full.itemTransaksi.map((item: { namaMenu: string; harga: number; jumlah: number; subtotal: number; variant: string | null; menuId: string }) => ({
@@ -400,6 +416,11 @@ export default function KasirPage() {
             <div className="flex justify-between font-bold text-sage-800">
               <span>Total</span><span>{formatRupiah(transaksiSukses.totalHarga)}</span>
             </div>
+            {transaksiSukses.diskon > 0 && (
+              <div className="flex justify-between text-red-500 font-medium">
+                <span>Diskon</span><span>-{formatRupiah(transaksiSukses.diskon)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-sage-500">
               <span>Bayar</span><span>{formatRupiah(transaksiSukses.totalBayar)}</span>
             </div>
@@ -740,10 +761,15 @@ export default function KasirPage() {
             <div className="border-t border-sage-200 pt-3 space-y-3">
               <div className="flex items-center justify-between bg-sage-50 rounded-lg px-3 py-2 -mx-1">
                 <span className="text-sm font-semibold text-sage-600">Total Pesanan</span>
-                <span className="text-xl font-bold text-sage-800 tracking-tight">{formatRupiah(totalKeranjang)}</span>
+                <div className="text-right">
+                  {totalDiskon > 0 && (
+                    <span className="text-xs text-sage-400 line-through">{formatRupiah(totalKeranjang)}</span>
+                  )}
+                  <span className="text-xl font-bold text-sage-800 tracking-tight">{formatRupiah(totalBayarFinal)}</span>
+                </div>
               </div>
 
-              {memberTerdaftar && memberPoin >= 5 && (
+              {memberTerdaftar && memberPoin >= pengaturanPoin.poinPerGratisItem && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 space-y-1">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-amber-600 font-medium">Poin tersedia</span>
@@ -760,6 +786,38 @@ export default function KasirPage() {
                         <span className="text-emerald-600 font-semibold">-{formatRupiah(totalPoinRupiah)}</span>
                       </div>
                     </>
+                  )}
+                </div>
+              )}
+
+              {!semuaGratis && (
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-medium text-sage-500">Diskon</label>
+                  <div className="flex gap-1.5">
+                    <div className="flex bg-sage-100 rounded-lg p-0.5">
+                      <button
+                        onClick={() => setDiskonTipe("nominal")}
+                        className={`px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                          diskonTipe === "nominal" ? "bg-white text-sage-800 shadow-sm" : "text-sage-400 hover:text-sage-600"
+                        }`}
+                      >Rp</button>
+                      <button
+                        onClick={() => setDiskonTipe("persen")}
+                        className={`px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                          diskonTipe === "persen" ? "bg-white text-sage-800 shadow-sm" : "text-sage-400 hover:text-sage-600"
+                        }`}
+                      >%</button>
+                    </div>
+                    <input
+                      type="text"
+                      value={diskon}
+                      onChange={(e) => setDiskon(e.target.value.replace(/\D/g, ""))}
+                      placeholder="0"
+                      className="flex-1 border border-sage-200 rounded-lg px-3 py-1.5 text-sm font-medium text-sage-800 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all bg-white"
+                    />
+                  </div>
+                  {totalDiskon > 0 && (
+                    <p className="text-xs text-red-500 font-medium">Diskon: -{formatRupiah(totalDiskon)}</p>
                   )}
                 </div>
               )}
@@ -819,10 +877,10 @@ export default function KasirPage() {
                 </div>
               </div>
 
-              {!semuaGratis && totalBayar && parseInt(totalBayar) >= totalKeranjang && (
+              {!semuaGratis && totalBayar && parseInt(totalBayar) >= totalBayarFinal && (
                 <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
                   <span className="text-sm font-medium text-emerald-700">Kembalian</span>
-                  <span className="text-base font-bold text-emerald-700">{formatRupiah(parseInt(totalBayar) - totalKeranjang)}</span>
+                  <span className="text-base font-bold text-emerald-700">{formatRupiah(parseInt(totalBayar) - totalBayarFinal)}</span>
                 </div>
               )}
 
