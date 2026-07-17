@@ -86,7 +86,15 @@ async function main() {
   for (const m of memberData) {
     await prisma.member.upsert({ where: { noWa: m.noWa }, update: m, create: m });
   }
-  console.log("✓ Member: 3\n");
+  console.log("✓ Member: 3");
+
+  // ── Pengaturan Poin ──
+  await prisma.pengaturanPoin.upsert({
+    where: { id: 1 },
+    update: {},
+    create: { id: 1, rupiahPerPoin: 15000, poinPerGratisItem: 5 },
+  });
+  console.log("✓ Pengaturan Poin: 1\n");
 
   // ── Sample Transaksi ──
   const getMenuId = async (nama: string) => (await prisma.menu.findFirst({ where: { nama } }))!.id;

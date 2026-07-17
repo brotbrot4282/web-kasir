@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   LayoutDashboard, Receipt, UtensilsCrossed, Package,
-  BarChart3, LogOut, Menu, X, User, Users, ChefHat,
+  BarChart3, LogOut, Menu, X, User, Users, ChefHat, Settings,
 } from "lucide-react";
 
 type Role = "OWNER" | "KASIR" | "DAPUR";
@@ -16,6 +16,7 @@ const ownerNavItems = [
   { href: "/admin/menu", label: "Menu", icon: UtensilsCrossed },
   { href: "/admin/stok", label: "Stok", icon: Package },
   { href: "/admin/customer", label: "Customer", icon: Users },
+  { href: "/admin/pengaturan-poin", label: "Pengaturan Poin", icon: Settings },
   { href: "/admin/laporan", label: "Laporan", icon: BarChart3 },
 ];
 

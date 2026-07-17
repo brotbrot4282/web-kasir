@@ -158,3 +158,12 @@ model DailyReport {
   @@unique([tanggal, shift])
   @@map("daily_report")
 }
+
+model PengaturanPoin {
+  id                Int      @id @default(1)
+  rupiahPerPoin     Int      @default(15000) @map("rupiah_per_poin")
+  poinPerGratisItem Int      @default(5) @map("poin_per_gratis_item")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@map("pengaturan_poin")
+}

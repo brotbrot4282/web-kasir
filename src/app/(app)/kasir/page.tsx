@@ -12,6 +12,7 @@ type Menu = {
   isTersedia: boolean; kategoriId: string; kategori: Kategori; variants: Variant[] | null;
 };
 type KeranjangItem = { key: string; menuId: string; nama: string; harga: number; jumlah: number; subtotal: number; variant: string | null; gratisPoin: boolean };
+type PengaturanPoin = { rupiahPerPoin: number; poinPerGratisItem: number };
 
 export default function KasirPage() {
   const [kategoriList, setKategoriList] = useState<Kategori[]>([]);
@@ -23,6 +24,7 @@ export default function KasirPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [pengaturanPoin, setPengaturanPoin] = useState<PengaturanPoin>({ rupiahPerPoin: 15000, poinPerGratisItem: 5 });
   const [transaksiSukses, setTransaksiSukses] = useState<{
     noTransaksi: string; totalHarga: number; totalBayar: number;
     kembalian: number; items: KeranjangItem[];
@@ -83,6 +85,7 @@ export default function KasirPage() {
       setMenuList(menu);
       if (kategori.length > 0) setKategoriAktif(kategori[0].id);
     }).finally(() => setLoading(false));
+    fetch("/api/pengaturan-poin").then((r) => r.json()).then(setPengaturanPoin).catch(() => {});
     fetchDailySummary();
   }, [fetchDailySummary]);
 
@@ -144,7 +147,7 @@ export default function KasirPage() {
   });
 
   const totalKeranjang = keranjang.reduce((sum, item) => sum + (item.gratisPoin ? 0 : item.subtotal), 0);
-  const poinDigunakan = keranjang.filter((i) => i.gratisPoin).length * 5;
+  const poinDigunakan = keranjang.filter((i) => i.gratisPoin).length * pengaturanPoin.poinPerGratisItem;
   const totalPoinRupiah = keranjang.filter((i) => i.gratisPoin).reduce((sum, i) => sum + i.subtotal, 0);
   const semuaGratis = keranjang.length > 0 && keranjang.every((i) => i.gratisPoin);
 
@@ -173,7 +176,7 @@ export default function KasirPage() {
       const item = prev.find((i) => i.key === key);
       if (!item) return prev;
       const akanGratis = !item.gratisPoin;
-      if (akanGratis && poinDigunakan + 5 > memberPoin) return prev;
+      if (akanGratis && poinDigunakan + pengaturanPoin.poinPerGratisItem > memberPoin) return prev;
       return prev.map((i) =>
         i.key === key
           ? akanGratis
@@ -182,7 +185,7 @@ export default function KasirPage() {
           : i
       );
     });
-  }, [memberPoin, poinDigunakan]);
+  }, [memberPoin, poinDigunakan, pengaturanPoin.poinPerGratisItem]);
 
   const ubahJumlah = (key: string, delta: number) => {
     setKeranjang((prev) =>
@@ -340,7 +343,7 @@ export default function KasirPage() {
     try {
       const res = await fetch(`/api/transaksi/${t.id}`);
       const full = await res.json();
-      const poinDidapat = Math.floor(Math.max(0, (full.totalHarga - (full.totalPoin || 0))) / 15000);
+      const poinDidapat = Math.floor(Math.max(0, (full.totalHarga - (full.totalPoin || 0))) / pengaturanPoin.rupiahPerPoin);
       const strukData: StrukData = {
         noTransaksi: full.noTransaksi,
         totalHarga: full.totalHarga,
@@ -366,7 +369,7 @@ export default function KasirPage() {
     } finally {
       setRiwayatCetakId(null);
     }
-  }, [printReceipt]);
+  }, [printReceipt, pengaturanPoin.rupiahPerPoin]);
 
   if (transaksiSukses) {
     return (
@@ -704,7 +707,7 @@ export default function KasirPage() {
                     <p className="text-sm font-medium text-sage-800 truncate">{item.nama}</p>
                     <p className="text-xs text-sage-400">{formatRupiah(item.harga)} / item</p>
                   </div>
-                  {memberTerdaftar && memberPoin >= 5 && (
+                  {memberTerdaftar && memberPoin >= pengaturanPoin.poinPerGratisItem && (
                     <button
                       onClick={() => toggleGratisPoin(item.key)}
                       className={`shrink-0 text-[10px] font-bold px-2 py-1 rounded-lg border transition-colors ${
@@ -712,7 +715,7 @@ export default function KasirPage() {
                           ? "bg-amber-100 text-amber-700 border-amber-300"
                           : "bg-sage-50 text-sage-400 border-sage-200 hover:border-amber-300 hover:text-amber-600"
                       }`}
-                      title={item.gratisPoin ? "Batalkan gratis poin" : "Gratiskan dengan 5 poin"}
+                      title={item.gratisPoin ? "Batalkan gratis poin" : `Gratiskan dengan ${pengaturanPoin.poinPerGratisItem} poin`}
                     >
                       {item.gratisPoin ? "FREE" : "Poin"}
                     </button>

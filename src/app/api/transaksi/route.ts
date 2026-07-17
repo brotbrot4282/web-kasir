@@ -82,6 +82,11 @@ export async function POST(request: NextRequest) {
     let poinDigunakan = 0;
     let totalPoin = 0;
     const poinItemNames: string[] = [];
+
+    const pengaturan = await prisma.pengaturanPoin.findUnique({ where: { id: 1 } });
+    const rupiahPerPoin = pengaturan?.rupiahPerPoin ?? 15000;
+    const poinPerGratis = pengaturan?.poinPerGratisItem ?? 5;
+
     const itemData: Array<{
       menuId: string;
       namaMenu: string;
@@ -120,7 +125,7 @@ export async function POST(request: NextRequest) {
       totalHarga += subtotal;
 
       if (item.gratisPoin) {
-        poinDigunakan += 5;
+        poinDigunakan += poinPerGratis;
         totalPoin += subtotal;
         poinItemNames.push(namaMenu);
       }
@@ -206,7 +211,7 @@ export async function POST(request: NextRequest) {
     let poinDidapat = 0;
     if (member) {
       const cashAmount = totalHarga - totalPoin;
-      poinDidapat = Math.floor(cashAmount / 15000);
+      poinDidapat = Math.floor(cashAmount / rupiahPerPoin);
 
       await prisma.rewardPoin.create({
         data: {
