@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { motion } from "motion/react";
 import { Toast } from "@/components/Toast";
 
-type PengaturanPoin = { id: number; rupiahPerPoin: number; poinPerGratisItem: number };
+type PengaturanPoin = { id: number; rupiahPerPoin: number; poinPerGratisItem: number; updatedAt: string };
 
 export default function AdminPengaturanPoinPage() {
   const [pengaturan, setPengaturan] = useState<PengaturanPoin | null>(null);
