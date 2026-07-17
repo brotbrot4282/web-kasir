@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { catatan, totalMakanan, totalMinuman, totalOmset, totalTransaksi } = body;
+    const { catatan } = body;
 
     if (catatan != null && typeof catatan !== "string") {
       return NextResponse.json({ error: "Catatan harus berupa teks" }, { status: 400 });
@@ -39,14 +39,51 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Open shift belum dilakukan untuk shift ini" }, { status: 400 });
     }
 
+    const start = existing.openedAt;
+    const end = new Date();
+
+    const items = await prisma.itemTransaksi.findMany({
+      where: {
+        transaksi: {
+          createdAt: { gte: start, lte: end },
+        },
+      },
+      include: {
+        menu: {
+          select: {
+            kategori: { select: { nama: true } },
+          },
+        },
+      },
+    });
+
+    let totalMakanan = 0;
+    let totalMinuman = 0;
+    let totalOmset = 0;
+
+    for (const item of items) {
+      totalOmset += item.subtotal;
+      if (item.menu.kategori.nama === "Makanan") {
+        totalMakanan += item.jumlah;
+      } else {
+        totalMinuman += item.jumlah;
+      }
+    }
+
+    const totalTransaksi = await prisma.transaksi.count({
+      where: {
+        createdAt: { gte: start, lte: end },
+      },
+    });
+
     const report = await prisma.dailyReport.update({
       where: { id: existing.id },
       data: {
         catatan: catatan || null,
-        totalMakanan: totalMakanan || 0,
-        totalMinuman: totalMinuman || 0,
-        totalOmset: totalOmset || 0,
-        totalTransaksi: totalTransaksi || 0,
+        totalMakanan,
+        totalMinuman,
+        totalOmset,
+        totalTransaksi,
       },
     });
 

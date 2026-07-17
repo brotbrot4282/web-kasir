@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "daily_report" ADD COLUMN     "opened_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;

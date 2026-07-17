@@ -2,25 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-function getShiftRange(shift: string) {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-  if (shift === "SHIFT_1") {
-    const start = new Date(today);
-    start.setHours(7, 0, 0, 0);
-    const end = new Date(today);
-    end.setHours(14, 0, 0, 0);
-    return { start, end };
-  }
-
-  const start = new Date(today);
-  start.setHours(14, 0, 0, 0);
-  const end = new Date(today);
-  end.setHours(23, 59, 59, 999);
-  return { start, end };
-}
-
 export async function GET() {
   try {
     const session = await getSession();
@@ -32,7 +13,23 @@ export async function GET() {
       return NextResponse.json({ error: "Shift tidak ditemukan" }, { status: 400 });
     }
 
-    const { start, end } = getShiftRange(session.shift);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const report = await prisma.dailyReport.findFirst({
+      where: {
+        tanggal: { gte: today },
+        shift: session.shift as "SHIFT_1" | "SHIFT_2",
+      },
+      select: { openedAt: true },
+    });
+
+    if (!report) {
+      return NextResponse.json({ error: "Shift belum dibuka" }, { status: 400 });
+    }
+
+    const start = report.openedAt;
+    const end = new Date();
 
     const items = await prisma.itemTransaksi.findMany({
       where: {
