@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { formatRupiah, formatDate } from "@/lib/utils";
 
-type Ringkasan = { totalOmset: number; totalTransaksi: number; totalItem: number };
+type Ringkasan = { totalOmset: number; totalDiskon: number; totalTransaksi: number; totalItem: number };
 type MenuTerlaris = { menuId: string; namaMenu: string; totalTerjual: number };
 type Transaksi = {
-  id: string; noTransaksi: string; totalHarga: number; totalBayar: number;
+  id: string; noTransaksi: string; totalHarga: number; diskon: number; totalBayar: number;
   kembalian: number; createdAt: string;
   itemTransaksi: Array<{ id: string; namaMenu: string; harga: number; jumlah: number; subtotal: number }>;
 };
@@ -86,10 +86,14 @@ export default function LaporanPage() {
         <div className="flex items-center justify-center py-20"><div className="animate-pulse text-sage-400">Memuat data...</div></div>
       ) : data ? (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="bg-white border border-sage-200 rounded-xl p-5">
               <p className="text-sm text-sage-500">Total Omset</p>
               <p className="text-xl font-bold text-sage-800 mt-1">{formatRupiah(data.ringkasan.totalOmset)}</p>
+            </div>
+            <div className="bg-white border border-sage-200 rounded-xl p-5">
+              <p className="text-sm text-sage-500">Total Diskon</p>
+              <p className="text-xl font-bold text-red-500 mt-1">{formatRupiah(data.ringkasan.totalDiskon)}</p>
             </div>
             <div className="bg-white border border-sage-200 rounded-xl p-5">
               <p className="text-sm text-sage-500">Total Transaksi</p>
@@ -266,6 +270,9 @@ export default function LaporanPage() {
                   </tbody>
                   <tfoot className="border-t-2 border-sage-200">
                     <tr><td colSpan={3} className="py-2.5 text-right font-semibold text-sage-800">Total</td><td className="py-2.5 text-right font-bold text-sage-800">{formatRupiah(detail.totalHarga)}</td></tr>
+                    {detail.diskon > 0 && (
+                      <tr className="text-red-500 font-medium"><td colSpan={3} className="py-1 text-right">Diskon</td><td className="py-1 text-right">-{formatRupiah(detail.diskon)}</td></tr>
+                    )}
                     <tr className="text-sage-500"><td colSpan={3} className="py-1 text-right">Bayar</td><td className="py-1 text-right">{formatRupiah(detail.totalBayar)}</td></tr>
                     <tr className="text-red-600 font-medium"><td colSpan={3} className="py-1 text-right">Kembali</td><td className="py-1 text-right">{formatRupiah(detail.kembalian)}</td></tr>
                   </tfoot>

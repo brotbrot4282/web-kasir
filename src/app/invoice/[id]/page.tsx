@@ -8,7 +8,7 @@ import Link from "next/link";
 type Item = { id: string; namaMenu: string; harga: number; jumlah: number; subtotal: number; variant: string | null };
 type Member = { noWa: string; nama: string | null; poin: number } | null;
 type Transaksi = {
-  noTransaksi: string; totalHarga: number; totalBayar: number;
+  noTransaksi: string; totalHarga: number; diskon: number; totalBayar: number;
   kembalian: number; poinDigunakan: number; totalPoin: number;
   createdAt: string; itemTransaksi: Item[];
   noWa: string | null; member: Member;
@@ -109,6 +109,11 @@ export default function InvoicePage() {
             {data.poinDigunakan > 0 && (
               <div className="flex justify-between text-sm text-rose-500">
                 <span>Poin Dipakai</span><span>{data.poinDigunakan} poin</span>
+              </div>
+            )}
+            {data.diskon > 0 && (
+              <div className="flex justify-between text-sm text-rose-500">
+                <span>Diskon</span><span>-{formatRupiah(data.diskon)}</span>
               </div>
             )}
             <div className="flex justify-between text-sm text-sage-500">

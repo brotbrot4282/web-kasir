@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 
   const [total, aggTransaksi, transaksi, menuTerlaris, closingData] = await Promise.all([
     prisma.transaksi.count({ where }),
-    prisma.transaksi.aggregate({ where, _sum: { totalHarga: true } }),
+    prisma.transaksi.aggregate({ where, _sum: { totalHarga: true, diskon: true } }),
     prisma.transaksi.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
   ]);
 
   const totalOmset = aggTransaksi._sum.totalHarga || 0;
+  const totalDiskon = aggTransaksi._sum.diskon || 0;
 
   const itemAgg = await prisma.itemTransaksi.aggregate({
     where: dari || sampai ? { transaksi: { createdAt: dateFilter } } : {},
@@ -70,6 +71,7 @@ export async function GET(request: NextRequest) {
   s1.getRow(1).eachCell((c) => { c.font = style.header.font; c.fill = style.header.fill; c.alignment = style.header.alignment; c.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } }; });
   const ringkasanData = [
     { metrik: "Total Omset", nilai: formatRupiah(totalOmset) },
+    { metrik: "Total Diskon", nilai: formatRupiah(totalDiskon) },
     { metrik: "Total Transaksi", nilai: total.toLocaleString() },
     { metrik: "Total Item Terjual", nilai: totalItem.toLocaleString() },
   ];
@@ -101,6 +103,7 @@ export async function GET(request: NextRequest) {
   s3.columns = [
     { header: "No. Transaksi", key: "no", width: 22 },
     { header: "Total Harga", key: "total", width: 16 },
+    { header: "Diskon", key: "diskon", width: 16 },
     { header: "Bayar", key: "bayar", width: 16 },
     { header: "Kembalian", key: "kembali", width: 16 },
     { header: "Item", key: "item", width: 10 },
@@ -113,7 +116,7 @@ export async function GET(request: NextRequest) {
   } else {
     transaksi.forEach((t) => {
       const detailItems = t.itemTransaksi.map((i) => `${i.namaMenu} x${i.jumlah} (${formatRupiah(i.subtotal)})`).join(", ");
-      const row = s3.addRow({ no: t.noTransaksi, total: t.totalHarga, bayar: t.totalBayar, kembali: t.kembalian, item: t.itemTransaksi.reduce((s, i) => s + i.jumlah, 0), tanggal: formatDate(t.createdAt), detail: detailItems });
+      const row = s3.addRow({ no: t.noTransaksi, total: t.totalHarga, diskon: t.diskon ?? 0, bayar: t.totalBayar, kembali: t.kembalian, item: t.itemTransaksi.reduce((s, i) => s + i.jumlah, 0), tanggal: formatDate(t.createdAt), detail: detailItems });
       row.eachCell((c) => { c.font = style.cell.font; c.alignment = style.cell.alignment; c.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } }; });
       for (const col of [2, 3, 4, 5]) row.getCell(col).numFmt = '#,##0';
     });

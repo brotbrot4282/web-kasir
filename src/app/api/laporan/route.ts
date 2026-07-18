@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     prisma.transaksi.count({ where }),
     prisma.transaksi.aggregate({
       where,
-      _sum: { totalHarga: true },
+      _sum: { totalHarga: true, diskon: true },
     }),
     prisma.transaksi.findMany({
       where,
@@ -47,6 +47,7 @@ export async function GET(request: NextRequest) {
   ]);
 
   const totalOmset = aggTransaksi._sum.totalHarga || 0;
+  const totalDiskon = aggTransaksi._sum.diskon || 0;
 
   const itemAgg = await prisma.itemTransaksi.aggregate({
     where: dari || sampai ? { transaksi: { createdAt: dateFilter } } : {},
@@ -58,6 +59,7 @@ export async function GET(request: NextRequest) {
     transaksi,
     ringkasan: {
       totalOmset,
+      totalDiskon,
       totalTransaksi: total,
       totalItem,
     },
