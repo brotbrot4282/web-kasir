@@ -11,6 +11,10 @@ import {
   ArrowUpRight, ArrowRight,
   Receipt, UtensilsCrossed
 } from "lucide-react";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Cell, LabelList
+} from "recharts";
 
 type Ringkasan = { totalOmset: number; totalTransaksi: number; totalItem: number };
 type MenuTerlaris = { menuId: string; namaMenu: string; totalTerjual: number };
@@ -325,8 +329,31 @@ export default function Dashboard() {
   );
 }
 
+const BAR_COLORS = [
+  "url(#barGradient1)",
+  "url(#barGradient2)",
+  "url(#barGradient3)",
+  "url(#barGradient4)",
+  "url(#barGradient5)",
+];
+
+function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: { namaMenu: string; totalTerjual: number } }> }) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload;
+  return (
+    <div className="bg-white border border-sage-200 rounded-lg px-3 py-2 shadow-lg">
+      <p className="text-sm font-semibold text-sage-800">{d.namaMenu}</p>
+      <p className="text-xs text-sage-500">Terjual: <span className="font-bold text-sage-700">{d.totalTerjual}</span></p>
+    </div>
+  );
+}
+
 function MenuTerlarisSection({ items }: { items: MenuTerlaris[] }) {
-  const maxSold = Math.max(...items.slice(0, 5).map(i => i.totalTerjual));
+  const chartData = items.slice(0, 5).map((item) => ({
+    namaMenu: item.namaMenu.length > 12 ? item.namaMenu.slice(0, 10) + ".." : item.namaMenu,
+    namaMenuFull: item.namaMenu,
+    totalTerjual: item.totalTerjual,
+  }));
 
   return (
     <motion.div
@@ -342,40 +369,57 @@ function MenuTerlarisSection({ items }: { items: MenuTerlaris[] }) {
         </div>
         <h2 className="text-sm font-semibold text-sage-800">Menu Terlaris</h2>
       </div>
-      <div className="space-y-1">
-        {items.slice(0, 5).map((item, i) => {
-          const percentage = (item.totalTerjual / maxSold) * 100;
-          return (
-            <div key={item.menuId} className="py-2.5 border-b border-sage-100 last:border-0">
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="flex items-center gap-3">
-                  <span className={`w-6 h-6 rounded-full text-xs font-semibold flex items-center justify-center ${
-                    i === 0 ? "bg-amber-100 text-amber-700" :
-                    i === 1 ? "bg-sage-100 text-sage-600" :
-                    i === 2 ? "bg-amber-50 text-amber-600" :
-                    "bg-sage-50 text-sage-400"
-                  }`}>
-                    {i + 1}
-                  </span>
-                  <span className="text-sm text-sage-700">{item.namaMenu}</span>
-                </div>
-                <span className="text-sm font-semibold text-sage-800">{item.totalTerjual}</span>
-              </div>
-              <div className="w-full h-1.5 bg-sage-100 rounded-full overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${percentage}%` }}
-                  transition={{ duration: 0.8, delay: 0.3 + i * 0.1 }}
-                  className={`h-full rounded-full ${
-                    i === 0 ? "bg-gradient-to-r from-amber-500 to-amber-600" :
-                    i === 1 ? "bg-gradient-to-r from-sage-400 to-sage-500" :
-                    "bg-gradient-to-r from-amber-300 to-amber-400"
-                  }`}
-                />
-              </div>
-            </div>
-          );
-        })}
+      <div className="w-full" style={{ height: 260 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData} margin={{ top: 20, right: 10, left: -10, bottom: 5 }}>
+            <defs>
+              <linearGradient id="barGradient1" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#d97706" />
+                <stop offset="100%" stopColor="#b45309" />
+              </linearGradient>
+              <linearGradient id="barGradient2" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#ca8a04" />
+                <stop offset="100%" stopColor="#a16207" />
+              </linearGradient>
+              <linearGradient id="barGradient3" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#eab308" />
+                <stop offset="100%" stopColor="#ca8a04" />
+              </linearGradient>
+              <linearGradient id="barGradient4" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#a3a38a" />
+                <stop offset="100%" stopColor="#8a8a73" />
+              </linearGradient>
+              <linearGradient id="barGradient5" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#c4c4b0" />
+                <stop offset="100%" stopColor="#a3a38a" />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e5e5" />
+            <XAxis
+              dataKey="namaMenu"
+              tick={{ fontSize: 11, fill: "#7c8a83" }}
+              axisLine={{ stroke: "#e5e5e5" }}
+              tickLine={false}
+            />
+            <YAxis
+              allowDecimals={false}
+              tick={{ fontSize: 11, fill: "#7c8a83" }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(0,0,0,0.03)" }} />
+            <Bar dataKey="totalTerjual" radius={[6, 6, 0, 0]} maxBarSize={48}>
+              {chartData.map((_, i) => (
+                <Cell key={i} fill={BAR_COLORS[i]} />
+              ))}
+              <LabelList
+                dataKey="totalTerjual"
+                position="top"
+                style={{ fontSize: 12, fontWeight: 600, fill: "#5c6b63" }}
+              />
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </motion.div>
   );
