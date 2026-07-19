@@ -28,9 +28,10 @@ export default function KasirPage() {
   const [pengaturanPoin, setPengaturanPoin] = useState<PengaturanPoin>({ rupiahPerPoin: 15000, poinPerGratisItem: 5 });
   const [diskon, setDiskon] = useState("");
   const [diskonTipe, setDiskonTipe] = useState<"nominal" | "persen">("nominal");
+  const [metodeBayar, setMetodeBayar] = useState<"CASH" | "QRIS">("CASH");
   const [transaksiSukses, setTransaksiSukses] = useState<{
     noTransaksi: string; totalHarga: number; totalBayar: number;
-    kembalian: number; items: KeranjangItem[];
+    kembalian: number; metodeBayar: string; items: KeranjangItem[];
     poinDidapat: number; poinDigunakan: number; totalPoin: number;
     diskon: number;
     publicId: string; noWa: string | null; memberNama?: string;
@@ -66,7 +67,7 @@ export default function KasirPage() {
   const [showRiwayat, setShowRiwayat] = useState(false);
   const [riwayatData, setRiwayatData] = useState<Array<{
     id: string; noTransaksi: string; totalHarga: number; totalBayar: number;
-    kembalian: number; createdAt: string; poinDigunakan: number; totalPoin: number;
+    kembalian: number; metodeBayar: string; createdAt: string; poinDigunakan: number; totalPoin: number;
     diskon: number;
     noWa: string | null; publicId: string;
     itemTransaksi: Array<{ id: string; namaMenu: string; harga: number; jumlah: number; subtotal: number; variant: string | null }>;
@@ -220,9 +221,9 @@ export default function KasirPage() {
 
   const bayar = async () => {
     if (submitting) return;
-    const bayar = parseInt(totalBayar.replace(/\D/g, "")) || 0;
+    const bayarAmount = metodeBayar === "QRIS" ? totalBayarFinal : (parseInt(totalBayar.replace(/\D/g, "")) || 0);
     if (keranjang.length === 0) { setMessage({ type: "error", text: "Keranjang masih kosong" }); return; }
-    if (bayar < totalBayarFinal) { setMessage({ type: "error", text: `Kurang Rp ${(totalBayarFinal - bayar).toLocaleString()}` }); return; }
+    if (metodeBayar === "CASH" && bayarAmount < totalBayarFinal) { setMessage({ type: "error", text: `Kurang Rp ${(totalBayarFinal - bayarAmount).toLocaleString()}` }); return; }
 
     setSubmitting(true);
     try {
@@ -231,16 +232,17 @@ export default function KasirPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           items: keranjang.map((i) => ({ menuId: i.menuId, jumlah: i.jumlah, variant: i.variant, gratisPoin: i.gratisPoin })),
-          totalBayar: bayar,
+          totalBayar: bayarAmount,
           diskon: totalDiskon,
+          metodeBayar,
           noWa: noWa.trim() || undefined,
           memberNama: memberNama.trim() || undefined,
         }),
       });
       if (!res.ok) { const err = await res.json(); throw new Error(err.error || "Gagal"); }
       const data = await res.json();
-      setTransaksiSukses({ noTransaksi: data.noTransaksi, totalHarga: data.totalHarga, totalBayar: data.totalBayar, kembalian: data.kembalian, items: [...keranjang], poinDidapat: data.poinDidapat || 0, poinDigunakan: data.poinDigunakan || 0, totalPoin: data.totalPoin || 0, diskon: data.diskon || 0, publicId: data.publicId, noWa: data.noWa || null, memberNama: memberNama.trim() || undefined });
-      setKeranjang([]); setTotalBayar(""); setDiskon(""); setNoWa(""); setMemberNama(""); setMessage(null);
+      setTransaksiSukses({ noTransaksi: data.noTransaksi, totalHarga: data.totalHarga, totalBayar: data.totalBayar, kembalian: data.kembalian, metodeBayar, items: [...keranjang], poinDidapat: data.poinDidapat || 0, poinDigunakan: data.poinDigunakan || 0, totalPoin: data.totalPoin || 0, diskon: data.diskon || 0, publicId: data.publicId, noWa: data.noWa || null, memberNama: memberNama.trim() || undefined });
+      setKeranjang([]); setTotalBayar(""); setDiskon(""); setNoWa(""); setMemberNama(""); setMetodeBayar("CASH"); setMessage(null);
       fetch("/api/menu").then((r) => r.json()).then(setMenuList);
       fetchDailySummary();
     } catch (err) {
@@ -252,7 +254,7 @@ export default function KasirPage() {
 
   type StrukData = {
     noTransaksi: string; totalHarga: number; totalBayar: number;
-    kembalian: number; poinDidapat: number; poinDigunakan: number;
+    kembalian: number; metodeBayar: string; poinDidapat: number; poinDigunakan: number;
     diskon: number;
     noWa: string | null; memberNama?: string;
     items: KeranjangItem[];
@@ -319,8 +321,11 @@ export default function KasirPage() {
     <span>Bayar</span><span>${formatRupiah(t.totalBayar)}</span>
   </div>
   <div style="display:flex;justify-content:space-between;">
-    <span>Kembali</span><span>${formatRupiah(t.kembalian)}</span>
+    <span>Metode</span><span>${t.metodeBayar === "QRIS" ? "QRIS" : "Tunai"}</span>
   </div>
+  ${t.metodeBayar !== "QRIS" ? `<div style="display:flex;justify-content:space-between;">
+    <span>Kembali</span><span>${formatRupiah(t.kembalian)}</span>
+  </div>` : ""}
   ${t.poinDigunakan > 0 ? `<div style="border-top:1px dashed #000;margin:6px 0;"></div>
   <div style="display:flex;justify-content:space-between;">
     <span>Poin Dipakai</span><span>${t.poinDigunakan} poin</span>
@@ -375,6 +380,7 @@ export default function KasirPage() {
         totalHarga: full.totalHarga,
         totalBayar: full.totalBayar,
         kembalian: full.kembalian,
+        metodeBayar: full.metodeBayar || "CASH",
         poinDidapat,
         poinDigunakan: full.poinDigunakan || 0,
         diskon: full.diskon || 0,
@@ -435,9 +441,14 @@ export default function KasirPage() {
             <div className="flex justify-between text-sage-500">
               <span>Bayar</span><span>{formatRupiah(transaksiSukses.totalBayar)}</span>
             </div>
-            <div className="flex justify-between text-sage-600 font-medium">
-              <span>Kembali</span><span>{formatRupiah(transaksiSukses.kembalian)}</span>
+            <div className="flex justify-between text-sage-500">
+              <span>Metode</span><span>{transaksiSukses.metodeBayar === "QRIS" ? "QRIS" : "Tunai"}</span>
             </div>
+            {transaksiSukses.metodeBayar !== "QRIS" && (
+              <div className="flex justify-between text-sage-600 font-medium">
+                <span>Kembali</span><span>{formatRupiah(transaksiSukses.kembalian)}</span>
+              </div>
+            )}
           </div>
 
           {transaksiSukses.poinDigunakan > 0 && (
@@ -835,6 +846,36 @@ export default function KasirPage() {
 
               {!semuaGratis && (
                 <div className="space-y-1.5">
+                  <label className="block text-xs font-medium text-sage-500">Metode Bayar</label>
+                  <div className="flex bg-sage-100 rounded-lg p-1 gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setMetodeBayar("CASH")}
+                      className={`flex-1 py-2 text-xs font-semibold rounded-md transition-all ${
+                        metodeBayar === "CASH"
+                          ? "bg-white text-sage-800 shadow-sm"
+                          : "text-sage-400 hover:text-sage-600"
+                      }`}
+                    >
+                      Cash
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMetodeBayar("QRIS")}
+                      className={`flex-1 py-2 text-xs font-semibold rounded-md transition-all ${
+                        metodeBayar === "QRIS"
+                          ? "bg-white text-sage-800 shadow-sm"
+                          : "text-sage-400 hover:text-sage-600"
+                      }`}
+                    >
+                      QRIS
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {!semuaGratis && metodeBayar === "CASH" && (
+                <div className="space-y-1.5">
                   <label className="block text-xs font-medium text-sage-500">Jumlah Bayar</label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-sage-400">Rp</span>
@@ -846,6 +887,13 @@ export default function KasirPage() {
                       className="w-full border border-sage-200 rounded-lg pl-9 pr-3 py-2.5 text-right text-lg font-bold text-sage-800 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all bg-white"
                     />
                   </div>
+                </div>
+              )}
+
+              {!semuaGratis && metodeBayar === "QRIS" && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2.5 text-center">
+                  <p className="text-xs text-blue-400">Total yang harus dibayar</p>
+                  <p className="text-lg font-bold text-blue-700">{formatRupiah(totalBayarFinal)}</p>
                 </div>
               )}
 
@@ -888,7 +936,7 @@ export default function KasirPage() {
                 </div>
               </div>
 
-              {!semuaGratis && totalBayar && parseInt(totalBayar) >= totalBayarFinal && (
+              {!semuaGratis && metodeBayar === "CASH" && totalBayar && parseInt(totalBayar) >= totalBayarFinal && (
                 <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
                   <span className="text-sm font-medium text-emerald-700">Kembalian</span>
                   <span className="text-base font-bold text-emerald-700">{formatRupiah(parseInt(totalBayar) - totalBayarFinal)}</span>
@@ -919,7 +967,7 @@ export default function KasirPage() {
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     Memproses...
                   </span>
-                ) : semuaGratis ? "Bayar (Gratis)" : "Bayar"}
+                ) : semuaGratis ? "Bayar (Gratis)" : metodeBayar === "QRIS" ? "Bayar via QRIS" : "Bayar"}
               </button>
             </div>
           )}
@@ -973,6 +1021,9 @@ export default function KasirPage() {
                               {new Date(t.createdAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
                               {t.member?.nama ? ` - ${t.member.nama}` : ""}
                             </p>
+                            <span className={`inline-block mt-1 text-[10px] font-medium px-1.5 py-0.5 rounded ${t.metodeBayar === "QRIS" ? "bg-blue-50 text-blue-600" : "bg-emerald-50 text-emerald-600"}`}>
+                              {t.metodeBayar === "QRIS" ? "QRIS" : "Cash"}
+                            </span>
                           </div>
                           <div className="flex gap-1.5 shrink-0">
                             <button

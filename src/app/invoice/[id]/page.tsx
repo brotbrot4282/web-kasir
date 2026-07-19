@@ -9,7 +9,7 @@ type Item = { id: string; namaMenu: string; harga: number; jumlah: number; subto
 type Member = { noWa: string; nama: string | null; poin: number } | null;
 type Transaksi = {
   noTransaksi: string; totalHarga: number; diskon: number; totalBayar: number;
-  kembalian: number; poinDigunakan: number; totalPoin: number;
+  kembalian: number; metodeBayar: string; poinDigunakan: number; totalPoin: number;
   createdAt: string; itemTransaksi: Item[];
   noWa: string | null; member: Member;
 };
@@ -119,9 +119,14 @@ export default function InvoicePage() {
             <div className="flex justify-between text-sm text-sage-500">
               <span>Bayar</span><span>{formatRupiah(data.totalBayar)}</span>
             </div>
-            <div className="flex justify-between text-sm font-medium text-sage-600">
-              <span>Kembali</span><span>{formatRupiah(data.kembalian)}</span>
+            <div className="flex justify-between text-sm text-sage-500">
+              <span>Metode</span><span>{data.metodeBayar === "QRIS" ? "QRIS" : "Tunai"}</span>
             </div>
+            {data.metodeBayar !== "QRIS" && (
+              <div className="flex justify-between text-sm font-medium text-sage-600">
+                <span>Kembali</span><span>{formatRupiah(data.kembalian)}</span>
+              </div>
+            )}
             {data.totalPoin > 0 && (
               <div className="border-t border-sage-100 pt-1.5 mt-1.5 flex justify-between text-sm font-medium text-amber-600">
                 <span>Total Poin</span><span>{data.totalPoin} poin</span>

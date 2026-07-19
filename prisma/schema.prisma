@@ -68,6 +68,7 @@ model Transaksi {
   diskon        Int             @default(0)
   totalBayar    Int             @map("total_bayar")
   kembalian     Int             @default(0)
+  metodeBayar   String          @default("CASH") @map("metode_bayar")
   poinDigunakan Int             @default(0) @map("poin_digunakan")
   totalPoin     Int             @default(0) @map("total_poin")
   noWa          String?         @map("no_wa")

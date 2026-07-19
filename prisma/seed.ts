@@ -135,14 +135,14 @@ async function main() {
 
     // 1: Budi Kopi Susu 7k
     const t1 = await prisma.transaksi.create({
-      data: { noTransaksi: "INV-SEED-0001", totalHarga: 7000, totalBayar: 7000, kembalian: 0, noWa: "08123456789", memberId: budi.id, itemTransaksi: { create: [{ menuId: kopiSusu, namaMenu: "Kopi Susu - ICE | Normal | Normal", harga: 7000, jumlah: 1, subtotal: 7000, variant: "ICE | Normal | Normal" }] } },
+      data: { noTransaksi: "INV-SEED-0001", totalHarga: 7000, totalBayar: 7000, kembalian: 0, metodeBayar: "CASH", noWa: "08123456789", memberId: budi.id, itemTransaksi: { create: [{ menuId: kopiSusu, namaMenu: "Kopi Susu - ICE | Normal | Normal", harga: 7000, jumlah: 1, subtotal: 7000, variant: "ICE | Normal | Normal" }] } },
     });
     await prisma.rewardPoin.create({ data: { memberId: budi.id, transaksiId: t1.id, poin: 0, keterangan: `Transaksi ${t1.noTransaksi}` } });
     await prisma.menu.update({ where: { id: kopiSusu }, data: { stok: { decrement: 1 } } });
 
     // 2: Budi Pisang Goreng 8k + Teh Tarik ICE 6k = 14k, bayar 15k, dapat 1 poin
     const t2 = await prisma.transaksi.create({
-      data: { noTransaksi: "INV-SEED-0002", totalHarga: 14000, totalBayar: 15000, kembalian: 1000, noWa: "08123456789", memberId: budi.id, itemTransaksi: { create: [{ menuId: pisang, namaMenu: "Pisang Goreng", harga: 8000, jumlah: 1, subtotal: 8000 }, { menuId: tehTarik, namaMenu: "Teh Tarik - ICE | Normal | Normal", harga: 6000, jumlah: 1, subtotal: 6000, variant: "ICE | Normal | Normal" }] } },
+      data: { noTransaksi: "INV-SEED-0002", totalHarga: 14000, totalBayar: 15000, kembalian: 1000, metodeBayar: "CASH", noWa: "08123456789", memberId: budi.id, itemTransaksi: { create: [{ menuId: pisang, namaMenu: "Pisang Goreng", harga: 8000, jumlah: 1, subtotal: 8000 }, { menuId: tehTarik, namaMenu: "Teh Tarik - ICE | Normal | Normal", harga: 6000, jumlah: 1, subtotal: 6000, variant: "ICE | Normal | Normal" }] } },
     });
     await prisma.rewardPoin.create({ data: { memberId: budi.id, transaksiId: t2.id, poin: 1, keterangan: `Transaksi ${t2.noTransaksi}` } });
     await prisma.member.update({ where: { id: budi.id }, data: { poin: { increment: 1 } } });
@@ -150,14 +150,14 @@ async function main() {
 
     // 3: Ani Roti Bakar 12k, bayar 12k
     const t3 = await prisma.transaksi.create({
-      data: { noTransaksi: "INV-SEED-0003", totalHarga: 12000, totalBayar: 12000, kembalian: 0, noWa: "08234567890", memberId: ani.id, itemTransaksi: { create: [{ menuId: rotiBakar, namaMenu: "Roti Bakar", harga: 12000, jumlah: 1, subtotal: 12000 }] } },
+      data: { noTransaksi: "INV-SEED-0003", totalHarga: 12000, totalBayar: 12000, kembalian: 0, metodeBayar: "QRIS", noWa: "08234567890", memberId: ani.id, itemTransaksi: { create: [{ menuId: rotiBakar, namaMenu: "Roti Bakar", harga: 12000, jumlah: 1, subtotal: 12000 }] } },
     });
     await prisma.rewardPoin.create({ data: { memberId: ani.id, transaksiId: t3.id, poin: 0, keterangan: `Transaksi ${t3.noTransaksi}` } });
     await prisma.menu.update({ where: { id: rotiBakar }, data: { stok: { decrement: 1 } } });
 
     // 4: Budi redeem 5 poin -> Kopi Hitam ICE gratis, bayar 0
     const t4 = await prisma.transaksi.create({
-      data: { noTransaksi: "INV-SEED-0004", totalHarga: 5000, totalBayar: 0, kembalian: 0, poinDigunakan: 5, totalPoin: 5000, noWa: "08123456789", memberId: budi.id, itemTransaksi: { create: [{ menuId: kopiHitam, namaMenu: "Kopi Hitam - ICE | Normal | Normal", harga: 5000, jumlah: 1, subtotal: 5000, variant: "ICE | Normal | Normal" }] } },
+      data: { noTransaksi: "INV-SEED-0004", totalHarga: 5000, totalBayar: 0, kembalian: 0, metodeBayar: "CASH", poinDigunakan: 5, totalPoin: 5000, noWa: "08123456789", memberId: budi.id, itemTransaksi: { create: [{ menuId: kopiHitam, namaMenu: "Kopi Hitam - ICE | Normal | Normal", harga: 5000, jumlah: 1, subtotal: 5000, variant: "ICE | Normal | Normal" }] } },
     });
     await prisma.rewardPoin.create({ data: { memberId: budi.id, transaksiId: t4.id, poin: 0, keterangan: `Transaksi ${t4.noTransaksi}` } });
     await prisma.rewardPoin.create({ data: { memberId: budi.id, transaksiId: t4.id, poin: -5, keterangan: "Tukar: Kopi Hitam - ICE | Normal | Normal" } });

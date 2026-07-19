@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
-    const { items, totalBayar, noWa, memberNama, diskon = 0 } = body;
+    const { items, totalBayar, noWa, memberNama, diskon = 0, metodeBayar = "CASH" } = body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: "Minimal satu item diperlukan" }, { status: 400 });
@@ -190,8 +190,8 @@ export async function POST(request: NextRequest) {
     }
 
     const harusDibayar = subtotalSebelumDiskon - diskon;
-    const kembalian = totalBayar - harusDibayar;
-    if (kembalian < 0) {
+    const kembalian = metodeBayar === "QRIS" ? 0 : totalBayar - harusDibayar;
+    if (metodeBayar === "CASH" && kembalian < 0) {
       return NextResponse.json(
         { error: `Uang tidak mencukupi, masih kurang Rp ${(harusDibayar - totalBayar).toLocaleString()}` },
         { status: 400 }
@@ -203,8 +203,9 @@ export async function POST(request: NextRequest) {
         noTransaksi: generateNoTransaksi(),
         totalHarga,
         diskon,
-        totalBayar,
+        totalBayar: metodeBayar === "QRIS" ? harusDibayar : totalBayar,
         kembalian,
+        metodeBayar,
         poinDigunakan,
         totalPoin,
         noWa: noWa?.trim() || null,
