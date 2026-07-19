@@ -11,7 +11,7 @@ type Transaksi = {
   itemTransaksi: Array<{ id: string; namaMenu: string; harga: number; jumlah: number; subtotal: number }>;
 };
 type LaporanData = { ringkasan: Ringkasan; menuTerlaris: MenuTerlaris[]; transaksi: Transaksi[]; total: number; totalPages: number; page: number };
-type ClosingItem = { id: string; tanggal: string; createdAt: string; shift: string; uangAwal: number; catatan: string | null; totalMakanan: number; totalMinuman: number; totalOmset: number; totalTransaksi: number; user: { nama: string } };
+type ClosingItem = { id: string; tanggal: string; createdAt: string; shift: string; uangAwal: number; catatan: string | null; belanjaUrgent: Array<{ nama: string; nominal: number }> | null; totalMakanan: number; totalMinuman: number; totalOmset: number; totalTransaksi: number; user: { nama: string } };
 
 export default function LaporanPage() {
   const [data, setData] = useState<LaporanData | null>(null);
@@ -123,6 +123,7 @@ export default function LaporanPage() {
                       <th className="text-right px-4 py-3 text-xs font-medium text-sage-500 uppercase">Omset</th>
                       <th className="text-right px-4 py-3 text-xs font-medium text-sage-500 uppercase">Transaksi</th>
                       <th className="text-left px-4 py-3 text-xs font-medium text-sage-500 uppercase">Catatan</th>
+                      <th className="text-left px-4 py-3 text-xs font-medium text-sage-500 uppercase">Barang Urgent</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-sage-100">
@@ -141,6 +142,22 @@ export default function LaporanPage() {
                         <td className="px-4 py-3 text-right font-semibold text-sage-800">{formatRupiah(c.totalOmset)}</td>
                         <td className="px-4 py-3 text-right font-semibold text-sage-800">{c.totalTransaksi}</td>
                         <td className="px-4 py-3 text-sm text-sage-600">{c.catatan || "-"}</td>
+                        <td className="px-4 py-3 text-sm text-sage-600">
+                          {c.belanjaUrgent && c.belanjaUrgent.length > 0 ? (
+                            <div className="space-y-0.5">
+                              {c.belanjaUrgent.map((item, i) => (
+                                <div key={i} className="flex justify-between gap-2">
+                                  <span className="truncate">{item.nama || "-"}</span>
+                                  <span className="font-medium text-sage-700 shrink-0">{formatRupiah(item.nominal)}</span>
+                                </div>
+                              ))}
+                              <div className="flex justify-between gap-2 pt-1 border-t border-sage-100 font-semibold text-sage-800">
+                                <span>Total</span>
+                                <span className="shrink-0">{formatRupiah(c.belanjaUrgent.reduce((sum, item) => sum + (item.nominal || 0), 0))}</span>
+                              </div>
+                            </div>
+                          ) : "-"}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

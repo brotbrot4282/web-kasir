@@ -15,10 +15,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { catatan } = body;
+    const { catatan, belanjaUrgent } = body;
 
     if (catatan != null && typeof catatan !== "string") {
       return NextResponse.json({ error: "Catatan harus berupa teks" }, { status: 400 });
+    }
+
+    if (belanjaUrgent != null && !Array.isArray(belanjaUrgent)) {
+      return NextResponse.json({ error: "Barang urgent harus berupa array" }, { status: 400 });
     }
 
     if (!session.shift) {
@@ -80,6 +84,7 @@ export async function POST(request: NextRequest) {
       where: { id: existing.id },
       data: {
         catatan: catatan || null,
+        belanjaUrgent: belanjaUrgent || null,
         totalMakanan,
         totalMinuman,
         totalOmset,

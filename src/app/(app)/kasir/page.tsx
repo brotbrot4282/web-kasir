@@ -45,8 +45,7 @@ export default function KasirPage() {
   const [selectedMenu, setSelectedMenu] = useState<Menu | null>(null);
   const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
   const [showClosing, setShowClosing] = useState(false);
-  const [closingEsBatu, setClosingEsBatu] = useState("");
-  const [closingCup, setClosingCup] = useState("");
+  const [belanjaUrgentItems, setBelanjaUrgentItems] = useState<Array<{ nama: string; nominal: number }>>([]);
   const [closingCatatan, setClosingCatatan] = useState("");
   const [closingLoading, setClosingLoading] = useState(false);
   const [closingMsg, setClosingMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -1266,7 +1265,7 @@ export default function KasirPage() {
                   <h2 className="font-semibold text-sage-800">Tutup Shift</h2>
                   <p className="text-xs text-sage-400 mt-0.5">Ringkasan penjualan shift hari ini</p>
                 </div>
-                <button onClick={() => setShowClosing(false)} className="w-7 h-7 rounded-lg bg-sage-100 flex items-center justify-center hover:bg-sage-200 transition-colors">
+                <button onClick={() => { setShowClosing(false); setBelanjaUrgentItems([]); }} className="w-7 h-7 rounded-lg bg-sage-100 flex items-center justify-center hover:bg-sage-200 transition-colors">
                   <X className="w-4 h-4 text-sage-500" />
                 </button>
               </div>
@@ -1329,6 +1328,64 @@ export default function KasirPage() {
                 {/* Input Manual */}
                 <div className="border-t border-sage-100 pt-4 space-y-3">
                   <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-medium text-sage-600">Barang Urgent</label>
+                      <button
+                        type="button"
+                        onClick={() => setBelanjaUrgentItems([...belanjaUrgentItems, { nama: "", nominal: 0 }])}
+                        className="text-xs font-medium text-sage-500 hover:text-sage-700 transition-colors"
+                      >
+                        + Tambah
+                      </button>
+                    </div>
+                    {belanjaUrgentItems.length > 0 && (
+                      <div className="space-y-2 mb-3">
+                        {belanjaUrgentItems.map((item, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={item.nama}
+                              onChange={(e) => {
+                                const items = [...belanjaUrgentItems];
+                                items[idx] = { ...items[idx], nama: e.target.value };
+                                setBelanjaUrgentItems(items);
+                              }}
+                              placeholder="Nama barang"
+                              className="flex-1 border border-sage-200 rounded-lg px-3 py-2 text-sm text-sage-800 placeholder:text-sage-400 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 bg-white"
+                            />
+                            <div className="relative w-32">
+                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-sage-400">Rp</span>
+                              <input
+                                type="text"
+                                value={item.nominal ? item.nominal.toLocaleString("id-ID") : ""}
+                                onChange={(e) => {
+                                  const items = [...belanjaUrgentItems];
+                                  items[idx] = { ...items[idx], nominal: parseInt(e.target.value.replace(/\D/g, "")) || 0 };
+                                  setBelanjaUrgentItems(items);
+                                }}
+                                placeholder="0"
+                                className="w-full border border-sage-200 rounded-lg pl-8 pr-2 py-2 text-sm text-right text-sage-800 placeholder:text-sage-400 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 bg-white"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setBelanjaUrgentItems(belanjaUrgentItems.filter((_, i) => i !== idx))}
+                              className="w-7 h-7 rounded-lg bg-rose-50 flex items-center justify-center hover:bg-rose-100 transition-colors shrink-0"
+                            >
+                              <X className="w-3.5 h-3.5 text-rose-400" />
+                            </button>
+                          </div>
+                        ))}
+                        <div className="flex justify-end">
+                          <span className="text-xs font-medium text-sage-500">
+                            Total Urgent: <span className="text-sage-700">{formatRupiah(belanjaUrgentItems.reduce((sum, item) => sum + (item.nominal || 0), 0))}</span>
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
                     <label className="block text-xs font-medium text-sage-600 mb-1">Catatan Kebutuhan Shift</label>
                     <textarea
                       value={closingCatatan}
@@ -1348,7 +1405,7 @@ export default function KasirPage() {
 
                 <div className="flex gap-3 pt-1">
                   <button
-                    onClick={() => { setShowClosing(false); setClosingMsg(null); }}
+                    onClick={() => { setShowClosing(false); setClosingMsg(null); setBelanjaUrgentItems([]); }}
                     className="flex-1 border border-sage-200 text-sage-600 py-2 rounded-lg font-medium text-sm hover:bg-sage-50 transition-colors"
                   >
                     Batal
@@ -1363,6 +1420,7 @@ export default function KasirPage() {
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({
                             catatan: closingCatatan || null,
+                            belanjaUrgent: belanjaUrgentItems.length > 0 ? belanjaUrgentItems : null,
                             totalMakanan: closingSummary?.makanan.qty || 0,
                             totalMinuman: closingSummary?.minuman.qty || 0,
                             totalOmset: closingSummary?.totalOmset || 0,
@@ -1375,6 +1433,7 @@ export default function KasirPage() {
                         }
                         setClosingMsg({ type: "success", text: "Laporan closing berhasil disimpan!" });
                         setClosingCatatan("");
+                        setBelanjaUrgentItems([]);
                         setTimeout(() => { setShowClosing(false); setClosingMsg(null); }, 1500);
                       } catch (err) {
                         setClosingMsg({ type: "error", text: err instanceof Error ? err.message : "Gagal menyimpan" });

@@ -150,6 +150,7 @@ model DailyReport {
   uangAwal       Int      @default(0) @map("uang_awal")
   openedAt       DateTime @default(now()) @map("opened_at")
   catatan        String?  @map("catatan")
+  belanjaUrgent  Json?    @map("belanja_urgent")
   totalMakanan   Int      @default(0) @map("total_makanan")
   totalMinuman   Int      @default(0) @map("total_minuman")
   totalOmset     Int      @default(0) @map("total_omset")
