@@ -134,6 +134,7 @@ export async function GET(request: NextRequest) {
     { header: "Omset", key: "omset", width: 16 },
     { header: "Transaksi", key: "transaksi", width: 12 },
     { header: "Catatan", key: "catatan", width: 30 },
+    { header: "Barang Urgent", key: "belanjaUrgent", width: 35 },
   ];
   s4.getRow(1).eachCell((c) => { c.font = style.header.font; c.fill = style.header.fill; c.alignment = style.header.alignment; c.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } }; });
   if (closingData.length === 0) {
@@ -150,6 +151,11 @@ export async function GET(request: NextRequest) {
         omset: c.totalOmset,
         transaksi: c.totalTransaksi,
         catatan: c.catatan || "-",
+        belanjaUrgent: c.belanjaUrgent && Array.isArray(c.belanjaUrgent) && c.belanjaUrgent.length > 0
+          ? (c.belanjaUrgent as Array<{ nama: string; nominal: number }>)
+              .map((b) => `${b.nama}: Rp${b.nominal.toLocaleString("id-ID")}`)
+              .join(", ")
+          : "-",
       });
       row.eachCell((c2) => { c2.font = style.cell.font; c2.alignment = style.cell.alignment; c2.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } }; });
       for (const col of [4, 5, 6, 7, 8]) row.getCell(col).numFmt = '#,##0';
