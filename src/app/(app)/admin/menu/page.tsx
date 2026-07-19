@@ -4,16 +4,17 @@ import { useEffect, useState, useCallback } from "react";
 import { formatRupiah } from "@/lib/utils";
 import { Toast } from "@/components/Toast";
 
-type Variant = { nama: string; tambahHarga: number };
+type VariantOption = { nama: string; tambahHarga: number };
+type VariantGroup = { nama: string; required: boolean; options: VariantOption[] };
 type Kategori = { id: string; nama: string; _count?: { menu: number } };
-type Menu = { id: string; nama: string; harga: number; stok: number; isTersedia: boolean; gambar: string | null; kategoriId: string; kategori: Kategori; variants: Variant[] | null };
+type Menu = { id: string; nama: string; harga: number; stok: number; isTersedia: boolean; gambar: string | null; kategoriId: string; kategori: Kategori; variants: VariantGroup[] | null };
 
 export default function AdminMenuPage() {
   const [menuList, setMenuList] = useState<Menu[]>([]);
   const [kategoriList, setKategoriList] = useState<Kategori[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<{ nama: string; harga: string; kategoriId: string; stok: string; isTersedia: boolean; gambar: string; variants: Variant[] }>({ nama: "", harga: "", kategoriId: "", stok: "0", isTersedia: true, gambar: "", variants: [] });
+  const [form, setForm] = useState<{ nama: string; harga: string; kategoriId: string; stok: string; isTersedia: boolean; gambar: string; variants: VariantGroup[] }>({ nama: "", harga: "", kategoriId: "", stok: "0", isTersedia: true, gambar: "", variants: [] });
   const [kategoriForm, setKategoriForm] = useState({ nama: "" });
   const [gambarFile, setGambarFile] = useState<File | null>(null);
   const [gambarPreview, setGambarPreview] = useState<string | null>(null);
@@ -151,26 +152,110 @@ export default function AdminMenuPage() {
               {form.variants.length === 0 ? (
                 <p className="text-xs text-sage-400 mb-2">Tidak ada varian</p>
               ) : (
-                <div className="space-y-2 mb-2">
-                  {form.variants.map((v, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <input type="text" value={v.nama} onChange={(e) => {
-                        const newV = [...form.variants]; newV[i] = { ...newV[i], nama: e.target.value }; setForm({ ...form, variants: newV });
-                      }} className="flex-1 border border-sage-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400" placeholder="Nama varian" />
-                      <div className="relative">
-                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sage-400 text-xs">+Rp</span>
-                        <input type="text" value={v.tambahHarga || ""} onChange={(e) => {
-                          const newV = [...form.variants]; newV[i] = { ...newV[i], tambahHarga: parseInt(e.target.value.replace(/\D/g, "")) || 0 }; setForm({ ...form, variants: newV });
-                        }} className="w-28 border border-sage-200 rounded-lg pl-9 pr-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400" placeholder="0" />
+                <div className="space-y-3 mb-2">
+                  {form.variants.map((group, gi) => (
+                    <div key={gi} className="border border-sage-200 rounded-lg p-3 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={group.nama}
+                          onChange={(e) => {
+                            const newGroups = [...form.variants];
+                            newGroups[gi] = { ...newGroups[gi], nama: e.target.value };
+                            setForm({ ...form, variants: newGroups });
+                          }}
+                          className="flex-1 border border-sage-200 rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400"
+                          placeholder="Nama grup varian"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setForm({ ...form, variants: form.variants.filter((_, j) => j !== gi) })}
+                          className="text-sage-400 hover:text-red-500 transition-colors shrink-0"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
                       </div>
-                      <button type="button" onClick={() => setForm({ ...form, variants: form.variants.filter((_, j) => j !== i) })} className="text-sage-400 hover:text-red-500 transition-colors shrink-0">
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                      </button>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <div
+                          onClick={() => {
+                            const newGroups = [...form.variants];
+                            newGroups[gi] = { ...newGroups[gi], required: !newGroups[gi].required };
+                            setForm({ ...form, variants: newGroups });
+                          }}
+                          className={`w-8 h-4 rounded-full transition-colors relative cursor-pointer ${group.required ? "bg-red-600" : "bg-sage-300"}`}
+                        >
+                          <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-all ${group.required ? "left-[18px]" : "left-0.5"}`} />
+                        </div>
+                        <span className="text-xs text-sage-600">Wajib dipilih</span>
+                      </label>
+                      <div className="space-y-1.5 pl-2">
+                        {group.options.map((opt, oi) => (
+                          <div key={oi} className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={opt.nama}
+                              onChange={(e) => {
+                                const newGroups = [...form.variants];
+                                const newOpts = [...newGroups[gi].options];
+                                newOpts[oi] = { ...newOpts[oi], nama: e.target.value };
+                                newGroups[gi] = { ...newGroups[gi], options: newOpts };
+                                setForm({ ...form, variants: newGroups });
+                              }}
+                              className="flex-1 border border-sage-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400"
+                              placeholder="Nama opsi"
+                            />
+                            <div className="relative">
+                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sage-400 text-xs">+Rp</span>
+                              <input
+                                type="text"
+                                value={opt.tambahHarga || ""}
+                                onChange={(e) => {
+                                  const newGroups = [...form.variants];
+                                  const newOpts = [...newGroups[gi].options];
+                                  newOpts[oi] = { ...newOpts[oi], tambahHarga: parseInt(e.target.value.replace(/\D/g, "")) || 0 };
+                                  newGroups[gi] = { ...newGroups[gi], options: newOpts };
+                                  setForm({ ...form, variants: newGroups });
+                                }}
+                                className="w-24 border border-sage-200 rounded-lg pl-9 pr-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400"
+                                placeholder="0"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newGroups = [...form.variants];
+                                newGroups[gi] = { ...newGroups[gi], options: newGroups[gi].options.filter((_, j) => j !== oi) };
+                                setForm({ ...form, variants: newGroups });
+                              }}
+                              className="text-sage-400 hover:text-red-500 transition-colors shrink-0"
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newGroups = [...form.variants];
+                            newGroups[gi] = { ...newGroups[gi], options: [...newGroups[gi].options, { nama: "", tambahHarga: 0 }] };
+                            setForm({ ...form, variants: newGroups });
+                          }}
+                          className="text-xs text-red-600 hover:text-red-700 font-medium transition-colors"
+                        >
+                          + Tambah Opsi
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
-              <button type="button" onClick={() => setForm({ ...form, variants: [...form.variants, { nama: "", tambahHarga: 0 }] })} className="text-xs text-red-600 hover:text-red-700 font-medium transition-colors">+ Tambah Varian</button>
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, variants: [...form.variants, { nama: "", required: false, options: [{ nama: "", tambahHarga: 0 }] }] })}
+                className="text-xs text-red-600 hover:text-red-700 font-medium transition-colors"
+              >
+                + Tambah Grup Varian
+              </button>
             </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-sage-600 mb-1">Gambar</label>

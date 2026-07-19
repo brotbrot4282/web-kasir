@@ -33,19 +33,44 @@ async function main() {
   console.log("✓ Kategori: 3");
 
   // ── Menu ──
-  const iceHot = [{ nama: "ICE", tambahHarga: 0 }, { nama: "HOT", tambahHarga: 0 }];
+  const drinkVariants = [
+    {
+      nama: "Temperatur",
+      required: true,
+      options: [
+        { nama: "ICE", tambahHarga: 0 },
+        { nama: "HOT", tambahHarga: 0 },
+      ],
+    },
+    {
+      nama: "Gula",
+      required: false,
+      options: [
+        { nama: "Normal", tambahHarga: 0 },
+        { nama: "Less Sugar", tambahHarga: 0 },
+      ],
+    },
+    {
+      nama: "Es",
+      required: false,
+      options: [
+        { nama: "Normal", tambahHarga: 0 },
+        { nama: "Less Ice", tambahHarga: 0 },
+      ],
+    },
+  ];
   const menus = [
-    { nama: "Kopi Hitam", harga: 5000, kat: "Kopi", var: iceHot },
-    { nama: "Kopi Susu", harga: 7000, kat: "Kopi", var: iceHot },
+    { nama: "Kopi Hitam", harga: 5000, kat: "Kopi", var: drinkVariants },
+    { nama: "Kopi Susu", harga: 7000, kat: "Kopi", var: drinkVariants },
     { nama: "Espresso", harga: 8000, kat: "Kopi" },
-    { nama: "Cappuccino", harga: 10000, kat: "Kopi", var: iceHot },
-    { nama: "Cafe Latte", harga: 12000, kat: "Kopi", var: iceHot },
-    { nama: "Americano", harga: 9000, kat: "Kopi", var: iceHot },
-    { nama: "Mocha", harga: 13000, kat: "Kopi", var: iceHot },
-    { nama: "Matcha Latte", harga: 12000, kat: "Non Kopi", var: iceHot },
-    { nama: "Chocolate", harga: 10000, kat: "Non Kopi", var: iceHot },
-    { nama: "Red Velvet", harga: 12000, kat: "Non Kopi", var: iceHot },
-    { nama: "Teh Tarik", harga: 6000, kat: "Non Kopi", var: iceHot },
+    { nama: "Cappuccino", harga: 10000, kat: "Kopi", var: drinkVariants },
+    { nama: "Cafe Latte", harga: 12000, kat: "Kopi", var: drinkVariants },
+    { nama: "Americano", harga: 9000, kat: "Kopi", var: drinkVariants },
+    { nama: "Mocha", harga: 13000, kat: "Kopi", var: drinkVariants },
+    { nama: "Matcha Latte", harga: 12000, kat: "Non Kopi", var: drinkVariants },
+    { nama: "Chocolate", harga: 10000, kat: "Non Kopi", var: drinkVariants },
+    { nama: "Red Velvet", harga: 12000, kat: "Non Kopi", var: drinkVariants },
+    { nama: "Teh Tarik", harga: 6000, kat: "Non Kopi", var: drinkVariants },
     { nama: "Pisang Goreng", harga: 8000, kat: "Makanan" },
     { nama: "Kentang Goreng", harga: 10000, kat: "Makanan" },
     { nama: "Roti Bakar", harga: 12000, kat: "Makanan" },

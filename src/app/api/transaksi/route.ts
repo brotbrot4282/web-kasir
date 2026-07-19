@@ -7,12 +7,18 @@ import { getSession } from "@/lib/auth";
 const BRAND_NAME = process.env.BRAND_NAME || "WARKOP SOEKARDJO";
 const INSTAGRAM_URL = process.env.INSTAGRAM_URL || "https://www.instagram.com/warkop.soekardjo/";
 
-type Variant = { nama: string; tambahHarga: number };
+type VariantOption = { nama: string; tambahHarga: number };
+type VariantGroup = { nama: string; required: boolean; options: VariantOption[] };
 
-function hitungHarga(menu: { harga: number; variants: Variant[] | null }, variantName?: string | null): number {
-  if (!variantName || !menu.variants) return menu.harga;
-  const v = menu.variants.find((v) => v.nama === variantName);
-  return menu.harga + (v?.tambahHarga ?? 0);
+function hitungHarga(menu: { harga: number; variants: VariantGroup[] | null }, variantString?: string | null): number {
+  if (!variantString || !menu.variants) return menu.harga;
+  const selectedNames = variantString.split(" | ");
+  let tambahan = 0;
+  for (const group of menu.variants) {
+    const opt = group.options.find((o) => selectedNames.includes(o.nama));
+    if (opt) tambahan += opt.tambahHarga;
+  }
+  return menu.harga + tambahan;
 }
 
 function formatPoin(n: number): string {
@@ -122,7 +128,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const variants = menu.variants as Variant[] | null;
+      const variants = menu.variants as VariantGroup[] | null;
       const harga = hitungHarga({ harga: menu.harga, variants }, item.variant);
       const namaMenu = item.variant ? `${menu.nama} - ${item.variant}` : menu.nama;
       const subtotal = harga * item.jumlah;

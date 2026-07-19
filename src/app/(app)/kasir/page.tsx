@@ -5,11 +5,12 @@ import { formatRupiah } from "@/lib/utils";
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 
-type Variant = { nama: string; tambahHarga: number };
+type VariantOption = { nama: string; tambahHarga: number };
+type VariantGroup = { nama: string; required: boolean; options: VariantOption[] };
 type Kategori = { id: string; nama: string };
 type Menu = {
   id: string; nama: string; harga: number; stok: number; gambar: string | null;
-  isTersedia: boolean; kategoriId: string; kategori: Kategori; variants: Variant[] | null;
+  isTersedia: boolean; kategoriId: string; kategori: Kategori; variants: VariantGroup[] | null;
 };
 type KeranjangItem = { key: string; menuId: string; nama: string; harga: number; jumlah: number; subtotal: number; variant: string | null; gratisPoin: boolean };
 type PengaturanPoin = { rupiahPerPoin: number; poinPerGratisItem: number };
@@ -41,6 +42,7 @@ export default function KasirPage() {
   const [memberPoin, setMemberPoin] = useState(0);
   const [memberTerdaftar, setMemberTerdaftar] = useState(false);
   const [selectedMenu, setSelectedMenu] = useState<Menu | null>(null);
+  const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
   const [showClosing, setShowClosing] = useState(false);
   const [closingEsBatu, setClosingEsBatu] = useState("");
   const [closingCup, setClosingCup] = useState("");
@@ -161,12 +163,21 @@ export default function KasirPage() {
     : Math.min(diskonInput, totalKeranjang);
   const totalBayarFinal = Math.max(0, totalKeranjang - totalDiskon);
 
-  const tambahKeKeranjang = useCallback((menu: Menu, variantName: string | null) => {
-    const key = `${menu.id}-${variantName || ""}`;
-    const variants = menu.variants;
-    const v = variantName && variants ? variants.find((x) => x.nama === variantName) : null;
-    const harga = menu.harga + (v?.tambahHarga ?? 0);
-    const nama = variantName ? `${menu.nama} - ${variantName}` : menu.nama;
+  const hitungHarga = useCallback((menu: Menu, variantString: string | null): number => {
+    if (!variantString || !menu.variants) return menu.harga;
+    const selectedNames = variantString.split(" | ");
+    let tambahan = 0;
+    for (const group of menu.variants) {
+      const opt = group.options.find((o) => selectedNames.includes(o.nama));
+      if (opt) tambahan += opt.tambahHarga;
+    }
+    return menu.harga + tambahan;
+  }, []);
+
+  const tambahKeKeranjang = useCallback((menu: Menu, variantString: string | null) => {
+    const key = `${menu.id}-${variantString || ""}`;
+    const harga = hitungHarga(menu, variantString);
+    const nama = variantString ? `${menu.nama} - ${variantString}` : menu.nama;
     setKeranjang((prev) => {
       const existing = prev.find((item) => item.key === key);
       if (existing) {
@@ -177,9 +188,9 @@ export default function KasirPage() {
             : item
         );
       }
-      return [...prev, { key, menuId: menu.id, nama, harga, jumlah: 1, subtotal: harga, variant: variantName, gratisPoin: false }];
+      return [...prev, { key, menuId: menu.id, nama, harga, jumlah: 1, subtotal: harga, variant: variantString, gratisPoin: false }];
     });
-  }, []);
+  }, [hitungHarga]);
 
   const toggleGratisPoin = useCallback((key: string) => {
     setKeranjang((prev) => {
@@ -1087,41 +1098,95 @@ export default function KasirPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-            onClick={() => setSelectedMenu(null)}
+            onClick={() => { setSelectedMenu(null); setSelectedVariants({}); }}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-xl w-full max-w-xs shadow-xl"
+              className="bg-white rounded-xl w-full max-w-sm shadow-xl max-h-[80vh] flex flex-col"
             >
-              <div className="flex items-center justify-between px-5 pt-5 pb-3">
+              <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
                 <div>
                   <h2 className="font-semibold text-sage-800">Pilih Varian</h2>
-                  <p className="text-xs text-sage-400 mt-0.5">{selectedMenu.nama}</p>
+                  <p className="text-xs text-sage-400 mt-0.5">{selectedMenu.nama} — {formatRupiah(selectedMenu.harga)}</p>
                 </div>
-                <button onClick={() => setSelectedMenu(null)} className="w-7 h-7 rounded-lg bg-sage-100 flex items-center justify-center hover:bg-sage-200 transition-colors">
+                <button onClick={() => { setSelectedMenu(null); setSelectedVariants({}); }} className="w-7 h-7 rounded-lg bg-sage-100 flex items-center justify-center hover:bg-sage-200 transition-colors">
                   <X className="w-4 h-4 text-sage-500" />
                 </button>
               </div>
 
-              <div className="px-5 pb-5 space-y-2">
-                {selectedMenu.variants?.map((v) => (
-                  <button
-                    key={v.nama}
-                    onClick={() => {
-                      tambahKeKeranjang(selectedMenu, v.nama);
-                      setSelectedMenu(null);
-                    }}
-                    className="w-full text-left px-4 py-3 rounded-lg border border-sage-200 hover:border-sage-400 hover:bg-sage-50 transition-colors"
-                  >
-                    <span className="text-sm font-medium text-sage-800">{v.nama}</span>
-                    {v.tambahHarga > 0 && (
-                      <span className="text-xs text-sage-400 ml-2">(+{formatRupiah(v.tambahHarga)})</span>
-                    )}
-                  </button>
+              <div className="px-5 pb-5 space-y-4 overflow-y-auto flex-1">
+                {selectedMenu.variants?.map((group) => (
+                  <div key={group.nama}>
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <span className="text-sm font-medium text-sage-700">{group.nama}</span>
+                      {group.required && (
+                        <span className="text-[10px] font-semibold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">Wajib</span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {group.options.map((opt) => {
+                        const isSelected = selectedVariants[group.nama] === opt.nama;
+                        return (
+                          <button
+                            key={opt.nama}
+                            onClick={() => setSelectedVariants((prev) => {
+                              const next = { ...prev };
+                              if (isSelected) {
+                                delete next[group.nama];
+                              } else {
+                                next[group.nama] = opt.nama;
+                              }
+                              return next;
+                            })}
+                            className={`px-3 py-2 rounded-lg text-sm font-medium border transition-all ${
+                              isSelected
+                                ? "bg-sage-700 text-white border-sage-700 shadow-sm"
+                                : "bg-white text-sage-600 border-sage-200 hover:border-sage-400 hover:bg-sage-50"
+                            }`}
+                          >
+                            {opt.nama}
+                            {opt.tambahHarga > 0 && (
+                              <span className="ml-1 text-xs opacity-75">+{formatRupiah(opt.tambahHarga)}</span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 ))}
+              </div>
+
+              <div className="px-5 pb-5 pt-2 shrink-0">
+                {(() => {
+                  const requiredGroups = selectedMenu.variants?.filter((g) => g.required) || [];
+                  const allRequiredSelected = requiredGroups.every((g) => selectedVariants[g.nama]);
+                  const hasVariants = (selectedMenu.variants?.length || 0) > 0;
+                  const variantString = hasVariants
+                    ? selectedMenu.variants!
+                        .map((g) => selectedVariants[g.nama])
+                        .filter(Boolean)
+                        .join(" | ") || null
+                    : null;
+                  const harga = hitungHarga(selectedMenu, variantString);
+
+                  return (
+                    <button
+                      onClick={() => {
+                        tambahKeKeranjang(selectedMenu, variantString);
+                        setSelectedMenu(null);
+                        setSelectedVariants({});
+                      }}
+                      disabled={!allRequiredSelected}
+                      className="w-full bg-sage-700 text-white py-2.5 rounded-lg font-bold text-sm hover:bg-sage-800 disabled:bg-sage-300 disabled:cursor-not-allowed transition-colors flex items-center justify-between px-4"
+                    >
+                      <span>{allRequiredSelected ? "Tambah ke Keranjang" : "Pilih semua varian wajib"}</span>
+                      <span>{formatRupiah(harga)}</span>
+                    </button>
+                  );
+                })()}
               </div>
             </motion.div>
           </motion.div>
