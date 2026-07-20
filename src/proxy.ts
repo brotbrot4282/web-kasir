@@ -1,58 +1,110 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyToken } from "@/lib/auth";
+import { jwtVerify } from "jose";
 
-const publicRoutes = ["/login", "/api/auth", "/api/invoice"];
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
+
+const publicPages = ["/login"];
+const publicApiPrefixes = ["/api/auth", "/api/invoice"];
+
+type Role = "OWNER" | "KASIR" | "DAPUR";
+
+const roleApiAccess: Record<Role, string[]> = {
+  OWNER: ["/api"],
+  KASIR: [
+    "/api/auth",
+    "/api/transaksi",
+    "/api/menu",
+    "/api/dapur",
+    "/api/member",
+    "/api/pengaturan-poin",
+    "/api/upload",
+    "/api/invoice",
+    "/api/kasir",
+    "/api/laporan",
+  ],
+  DAPUR: ["/api/auth", "/api/dapur", "/api/invoice"],
+};
+
+const rolePageAccess: Record<Role, string[]> = {
+  OWNER: ["/"],
+  KASIR: ["/kasir", "/"],
+  DAPUR: ["/dapur", "/"],
+};
+
+function getDefaultPage(role: Role): string {
+  switch (role) {
+    case "KASIR":
+      return "/kasir";
+    case "DAPUR":
+      return "/dapur";
+    case "OWNER":
+      return "/";
+  }
+}
+
+function hasApiAccess(role: Role, pathname: string): boolean {
+  return roleApiAccess[role].some((prefix) => pathname.startsWith(prefix));
+}
+
+function hasPageAccess(role: Role, pathname: string): boolean {
+  return rolePageAccess[role].some((prefix) =>
+    prefix === "/" ? pathname === "/" : pathname.startsWith(prefix)
+  );
+}
 
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const isApi = pathname.startsWith("/api");
 
-  if (publicRoutes.some((r) => pathname.startsWith(r))) {
+  // Public API routes
+  if (publicApiPrefixes.some((prefix) => pathname.startsWith(prefix))) {
     return NextResponse.next();
   }
 
-  const isProtected =
-    pathname === "/" ||
-    pathname.startsWith("/kasir") ||
-    pathname.startsWith("/dapur") ||
-    pathname.startsWith("/admin") ||
-    pathname.startsWith("/api");
-
-  if (!isProtected) {
+  // Public pages
+  if (publicPages.includes(pathname)) {
     return NextResponse.next();
   }
 
   const token = request.cookies.get("session")?.value;
 
   if (!token) {
-    if (pathname.startsWith("/api")) {
+    if (isApi) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
+  let role: Role | null = null;
   try {
-    const user = await verifyToken(token);
-    if (!user) throw new Error("Invalid token");
-
-    if (user.role === "KASIR" && !pathname.startsWith("/kasir") && !pathname.startsWith("/api")) {
-      return NextResponse.redirect(new URL("/kasir", request.url));
-    }
-
-    if (user.role === "DAPUR" && !pathname.startsWith("/dapur") && !pathname.startsWith("/api")) {
-      return NextResponse.redirect(new URL("/dapur", request.url));
-    }
-
-    if (user.role === "OWNER" && (pathname === "/kasir" || pathname.startsWith("/dapur"))) {
-      return NextResponse.redirect(new URL("/", request.url));
-    }
-
-    return NextResponse.next();
+    const { payload } = await jwtVerify(token, JWT_SECRET);
+    role = payload.role as Role;
   } catch {
-    if (pathname.startsWith("/api")) {
+    if (isApi) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    return NextResponse.redirect(new URL("/login", request.url));
+    const response = NextResponse.redirect(new URL("/login", request.url));
+    response.cookies.delete("session");
+    return response;
   }
+
+  // Logged-in user visiting /login → redirect to default page
+  if (pathname === "/login") {
+    return NextResponse.redirect(new URL(getDefaultPage(role), request.url));
+  }
+
+  // Role-based access control
+  if (isApi) {
+    if (!hasApiAccess(role, pathname)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  } else {
+    if (!hasPageAccess(role, pathname)) {
+      return NextResponse.redirect(new URL(getDefaultPage(role), request.url));
+    }
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
 import { getSession } from "@/lib/auth";
+import { menuUpdateSchema } from "@/lib/validations";
 
 type Params = Promise<{ id: string }>;
 
@@ -28,35 +29,44 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
 
     const { id } = await params;
     const body = await request.json();
-    const { nama, harga, kategoriId, gambar, stok, isTersedia, variants } = body;
+    const parsed = menuUpdateSchema.safeParse(body);
+
+    if (!parsed.success) {
+      const errors = parsed.error.flatten().fieldErrors;
+      const message = Object.values(errors).flat()[0] || "Input tidak valid";
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
+
+    const data = parsed.data;
 
     const existing = await prisma.menu.findUnique({ where: { id } });
     if (!existing) {
       return NextResponse.json({ error: "Menu tidak ditemukan" }, { status: 404 });
     }
 
-    if (kategoriId) {
-      const kategori = await prisma.kategori.findUnique({ where: { id: kategoriId } });
+    if (data.kategoriId) {
+      const kategori = await prisma.kategori.findUnique({ where: { id: data.kategoriId } });
       if (!kategori) {
         return NextResponse.json({ error: "Kategori tidak ditemukan" }, { status: 400 });
       }
     }
 
-    if (gambar !== undefined && gambar !== existing.gambar && existing.gambar) {
+    if (data.gambar !== undefined && data.gambar !== existing.gambar && existing.gambar) {
       await deleteImageFromStorage(existing.gambar);
     }
 
+    const updateData: Record<string, unknown> = {};
+    if (data.nama !== undefined) updateData.nama = data.nama.trim();
+    if (data.harga !== undefined) updateData.harga = data.harga;
+    if (data.kategoriId !== undefined) updateData.kategoriId = data.kategoriId;
+    if (data.gambar !== undefined) updateData.gambar = data.gambar;
+    if (data.stok !== undefined) updateData.stok = data.stok;
+    if (data.isTersedia !== undefined) updateData.isTersedia = data.isTersedia;
+    if (data.variants !== undefined) updateData.variants = data.variants;
+
     const menu = await prisma.menu.update({
       where: { id },
-      data: {
-        ...(nama !== undefined ? { nama: nama.trim() } : {}),
-        ...(harga !== undefined ? { harga } : {}),
-        ...(kategoriId !== undefined ? { kategoriId } : {}),
-        ...(gambar !== undefined ? { gambar } : {}),
-        ...(stok !== undefined ? { stok } : {}),
-        ...(isTersedia !== undefined ? { isTersedia } : {}),
-        ...(variants !== undefined ? { variants } : {}),
-      },
+      data: updateData as never,
       include: { kategori: true },
     });
 

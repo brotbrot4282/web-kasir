@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { stokCreateSchema } from "@/lib/validations";
 
 export async function GET() {
   const session = await getSession();
@@ -18,17 +19,15 @@ export async function POST(request: NextRequest) {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
-    const { namaBahan, jumlah, satuan } = body;
+    const parsed = stokCreateSchema.safeParse(body);
 
-    if (!namaBahan || typeof namaBahan !== "string" || namaBahan.trim().length === 0) {
-      return NextResponse.json({ error: "Nama bahan wajib diisi" }, { status: 400 });
+    if (!parsed.success) {
+      const errors = parsed.error.flatten().fieldErrors;
+      const message = Object.values(errors).flat()[0] || "Input tidak valid";
+      return NextResponse.json({ error: message }, { status: 400 });
     }
-    if (!jumlah || typeof jumlah !== "number" || jumlah <= 0) {
-      return NextResponse.json({ error: "Jumlah harus angka positif" }, { status: 400 });
-    }
-    if (!satuan || typeof satuan !== "string") {
-      return NextResponse.json({ error: "Satuan wajib diisi" }, { status: 400 });
-    }
+
+    const { namaBahan, jumlah, satuan } = parsed.data;
 
     const bahan = await prisma.stok.create({
       data: {

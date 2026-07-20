@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { generateNoTransaksi, formatRupiah } from "@/lib/utils";
 import { kirimWA } from "@/lib/fonnte";
 import { getSession } from "@/lib/auth";
+import { transaksiSchema } from "@/lib/validations";
 
 const BRAND_NAME = process.env.BRAND_NAME || "WARKOP SOEKARDJO";
 const INSTAGRAM_URL = process.env.INSTAGRAM_URL || "https://www.instagram.com/warkop.soekardjo/";
@@ -74,19 +75,15 @@ export async function POST(request: NextRequest) {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
-    const { items, totalBayar, noWa, memberNama, diskon = 0, metodeBayar = "CASH" } = body;
+    const parsed = transaksiSchema.safeParse(body);
 
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      return NextResponse.json({ error: "Minimal satu item diperlukan" }, { status: 400 });
+    if (!parsed.success) {
+      const errors = parsed.error.flatten().fieldErrors;
+      const message = Object.values(errors).flat()[0] || "Input tidak valid";
+      return NextResponse.json({ error: message }, { status: 400 });
     }
 
-    if (totalBayar === undefined || totalBayar === null || typeof totalBayar !== "number" || totalBayar < 0) {
-      return NextResponse.json({ error: "Total bayar tidak valid" }, { status: 400 });
-    }
-
-    if (typeof diskon !== "number" || diskon < 0) {
-      return NextResponse.json({ error: "Diskon tidak valid" }, { status: 400 });
-    }
+    const { items, totalBayar, noWa, memberNama, diskon, metodeBayar } = parsed.data;
 
     let totalHarga = 0;
     let poinDigunakan = 0;
@@ -198,68 +195,81 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const transaksi = await prisma.transaksi.create({
-      data: {
-        noTransaksi: generateNoTransaksi(),
-        totalHarga,
-        diskon,
-        totalBayar: metodeBayar === "QRIS" ? harusDibayar : totalBayar,
-        kembalian,
-        metodeBayar,
-        poinDigunakan,
-        totalPoin,
-        noWa: noWa?.trim() || null,
-        memberId: member?.id || null,
-        itemTransaksi: {
-          create: itemData,
-        },
-      },
-      include: {
-        itemTransaksi: {
-          include: { menu: true },
-        },
-      },
-    });
+    const transaksi = await prisma.$transaction(async (tx) => {
+      // Atomic stock decrement: prevents race condition
+      for (const item of items) {
+        const result: { stok: number }[] = await tx.$queryRaw`
+          UPDATE menu SET stok = stok - ${item.jumlah}
+          WHERE id = ${item.menuId}::uuid AND stok >= ${item.jumlah}
+          RETURNING stok
+        `;
+        if (result.length === 0) {
+          const menu = await tx.menu.findUnique({ where: { id: item.menuId }, select: { nama: true, stok: true } });
+          throw new Error(`STOK_TIDAK_CUKUP:${menu?.nama ?? item.menuId}:${menu?.stok ?? 0}`);
+        }
+      }
 
-    for (const item of items) {
-      await prisma.menu.update({
-        where: { id: item.menuId },
-        data: { stok: { decrement: item.jumlah } },
-      });
-    }
-
-    let poinDidapat = 0;
-    if (member) {
-      const cashAmount = totalHarga - totalPoin - diskon;
-      poinDidapat = Math.floor(cashAmount / rupiahPerPoin);
-
-      await prisma.rewardPoin.create({
+      const newTransaksi = await tx.transaksi.create({
         data: {
-          memberId: member.id,
-          transaksiId: transaksi.id,
-          poin: poinDidapat,
-          keterangan: `Transaksi ${transaksi.noTransaksi}`,
+          noTransaksi: generateNoTransaksi(),
+          totalHarga,
+          diskon,
+          totalBayar: metodeBayar === "QRIS" ? harusDibayar : totalBayar,
+          kembalian,
+          metodeBayar,
+          poinDigunakan,
+          totalPoin,
+          noWa: noWa?.trim() || null,
+          memberId: member?.id || null,
+          itemTransaksi: {
+            create: itemData,
+          },
+        },
+        include: {
+          itemTransaksi: {
+            include: { menu: true },
+          },
         },
       });
 
-      if (poinDigunakan > 0) {
-        await prisma.rewardPoin.create({
+      let poinDidapat = 0;
+      if (member) {
+        const cashAmount = totalHarga - totalPoin - diskon;
+        poinDidapat = Math.floor(cashAmount / rupiahPerPoin);
+
+        await tx.rewardPoin.create({
           data: {
             memberId: member.id,
-            transaksiId: transaksi.id,
-            poin: -poinDigunakan,
-            keterangan: `Tukar: ${poinItemNames.join(", ")}`,
+            transaksiId: newTransaksi.id,
+            poin: poinDidapat,
+            keterangan: `Transaksi ${newTransaksi.noTransaksi}`,
           },
+        });
+
+        if (poinDigunakan > 0) {
+          await tx.rewardPoin.create({
+            data: {
+              memberId: member.id,
+              transaksiId: newTransaksi.id,
+              poin: -poinDigunakan,
+              keterangan: `Tukar: ${poinItemNames.join(", ")}`,
+            },
+          });
+        }
+
+        await tx.member.update({
+          where: { id: member.id },
+          data: { poin: { increment: poinDidapat - poinDigunakan } },
         });
       }
 
-      await prisma.member.update({
-        where: { id: member.id },
-        data: { poin: { increment: poinDidapat - poinDigunakan } },
-      });
+      return { ...newTransaksi, poinDidapat };
+    });
 
+    if (member) {
       try {
-        const invoiceUrl = `http://localhost:3000/invoice/${transaksi.publicId}`;
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+        const invoiceUrl = `${baseUrl}/invoice/${transaksi.publicId}`;
         const pesan = [
           `Dear ${member.nama || "Customer"},`,
           "",
@@ -270,7 +280,7 @@ export async function POST(request: NextRequest) {
           `* TOTAL TRANSAKSI : ${formatRupiah(transaksi.totalHarga)}`,
           diskon > 0 ? `* Diskon : -${formatRupiah(diskon)}` : "",
           poinDigunakan > 0 ? `* Poin Dipakai : ${poinDigunakan} POINT (${poinItemNames.join(", ")})` : "",
-          `* Poin Didapat : ${formatPoin(poinDidapat)} POINT`,
+          `* Poin Didapat : ${formatPoin(transaksi.poinDidapat)} POINT`,
           "",
           "Untuk melihat rincian transaksi dan point reward yang Anda dapatkan (POINT) klik link berikut",
           invoiceUrl,
@@ -284,7 +294,7 @@ export async function POST(request: NextRequest) {
           "#ojolalibaliomah",
           "#thefriendlyvapestoreinthetown",
         ].join("\n");
-        await kirimWA(noWa, pesan);
+        await kirimWA(noWa!, pesan);
       } catch (waErr) {
         console.warn("Gagal kirim WA:", waErr);
       }
@@ -292,11 +302,19 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       ...transaksi,
-      poinDidapat,
       poinDigunakan,
       totalPoin,
     }, { status: 201 });
-  } catch {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "";
+    if (message.startsWith("STOK_TIDAK_CUKUP:")) {
+      const [, nama, sisa] = message.split(":");
+      return NextResponse.json(
+        { error: `Stok ${nama} tidak mencukupi (sisa ${sisa})` },
+        { status: 400 }
+      );
+    }
+    console.error("Transaksi error:", err);
     return NextResponse.json({ error: "Gagal menyimpan transaksi" }, { status: 500 });
   }
 }

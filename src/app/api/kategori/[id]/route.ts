@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { kategoriSchema } from "@/lib/validations";
 
 type Params = Promise<{ id: string }>;
 
@@ -11,11 +12,15 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
 
     const { id } = await params;
     const body = await request.json();
-    const { nama } = body;
+    const parsed = kategoriSchema.safeParse(body);
 
-    if (!nama || typeof nama !== "string" || nama.trim().length === 0) {
-      return NextResponse.json({ error: "Nama kategori wajib diisi" }, { status: 400 });
+    if (!parsed.success) {
+      const errors = parsed.error.flatten().fieldErrors;
+      const message = Object.values(errors).flat()[0] || "Input tidak valid";
+      return NextResponse.json({ error: message }, { status: 400 });
     }
+
+    const { nama } = parsed.data;
 
     const existing = await prisma.kategori.findUnique({ where: { id } });
     if (!existing) {

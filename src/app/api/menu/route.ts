@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { menuCreateSchema } from "@/lib/validations";
 
 export async function GET() {
   const session = await getSession();
@@ -19,17 +20,15 @@ export async function POST(request: NextRequest) {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
-    const { nama, harga, kategoriId, gambar, stok } = body;
+    const parsed = menuCreateSchema.safeParse(body);
 
-    if (!nama || typeof nama !== "string" || nama.trim().length === 0) {
-      return NextResponse.json({ error: "Nama menu wajib diisi" }, { status: 400 });
+    if (!parsed.success) {
+      const errors = parsed.error.flatten().fieldErrors;
+      const message = Object.values(errors).flat()[0] || "Input tidak valid";
+      return NextResponse.json({ error: message }, { status: 400 });
     }
-    if (!harga || typeof harga !== "number" || harga <= 0) {
-      return NextResponse.json({ error: "Harga harus berupa angka positif" }, { status: 400 });
-    }
-    if (!kategoriId) {
-      return NextResponse.json({ error: "Kategori wajib dipilih" }, { status: 400 });
-    }
+
+    const { nama, harga, kategoriId, gambar, stok, variants } = parsed.data;
 
     const kategori = await prisma.kategori.findUnique({ where: { id: kategoriId } });
     if (!kategori) {
@@ -43,7 +42,8 @@ export async function POST(request: NextRequest) {
         kategoriId,
         gambar: gambar || null,
         stok: stok ?? 0,
-        variants: body.variants ?? [],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        variants: (variants as any) ?? [],
       },
       include: { kategori: true },
     });

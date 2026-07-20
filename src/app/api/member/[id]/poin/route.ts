@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { poinDeductSchema } from "@/lib/validations";
 
 export async function PATCH(
   request: NextRequest,
@@ -12,15 +13,15 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
-    const { poin, keterangan } = body;
+    const parsed = poinDeductSchema.safeParse(body);
 
-    if (!poin || typeof poin !== "number" || poin <= 0) {
-      return NextResponse.json({ error: "Jumlah poin harus angka positif" }, { status: 400 });
+    if (!parsed.success) {
+      const errors = parsed.error.flatten().fieldErrors;
+      const message = Object.values(errors).flat()[0] || "Input tidak valid";
+      return NextResponse.json({ error: message }, { status: 400 });
     }
 
-    if (!keterangan || typeof keterangan !== "string" || !keterangan.trim()) {
-      return NextResponse.json({ error: "Keterangan wajib diisi" }, { status: 400 });
-    }
+    const { poin, keterangan } = parsed.data;
 
     const member = await prisma.member.findUnique({ where: { id } });
     if (!member) {

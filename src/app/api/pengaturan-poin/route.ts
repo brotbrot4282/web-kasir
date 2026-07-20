@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { pengaturanPoinSchema } from "@/lib/validations";
 
 export async function GET() {
   const session = await getSession();
@@ -22,14 +23,15 @@ export async function PUT(request: NextRequest) {
     if (session.role !== "OWNER") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const body = await request.json();
-    const { rupiahPerPoin, poinPerGratisItem } = body;
+    const parsed = pengaturanPoinSchema.safeParse(body);
 
-    if (typeof rupiahPerPoin !== "number" || rupiahPerPoin <= 0) {
-      return NextResponse.json({ error: "Rupiah per poin harus angka positif" }, { status: 400 });
+    if (!parsed.success) {
+      const errors = parsed.error.flatten().fieldErrors;
+      const message = Object.values(errors).flat()[0] || "Input tidak valid";
+      return NextResponse.json({ error: message }, { status: 400 });
     }
-    if (typeof poinPerGratisItem !== "number" || poinPerGratisItem <= 0) {
-      return NextResponse.json({ error: "Poin per gratis item harus angka positif" }, { status: 400 });
-    }
+
+    const { rupiahPerPoin, poinPerGratisItem } = parsed.data;
 
     const pengaturan = await prisma.pengaturanPoin.upsert({
       where: { id: 1 },

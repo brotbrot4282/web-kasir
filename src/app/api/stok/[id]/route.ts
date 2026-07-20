@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { stokUpdateSchema } from "@/lib/validations";
 
 type Params = Promise<{ id: string }>;
 
@@ -11,7 +12,15 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
 
     const { id } = await params;
     const body = await request.json();
-    const { namaBahan, jumlah, satuan } = body;
+    const parsed = stokUpdateSchema.safeParse(body);
+
+    if (!parsed.success) {
+      const errors = parsed.error.flatten().fieldErrors;
+      const message = Object.values(errors).flat()[0] || "Input tidak valid";
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
+
+    const data = parsed.data;
 
     const existing = await prisma.stok.findUnique({ where: { id } });
     if (!existing) {
@@ -21,9 +30,9 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
     const bahan = await prisma.stok.update({
       where: { id },
       data: {
-        ...(namaBahan !== undefined ? { namaBahan: namaBahan.trim() } : {}),
-        ...(jumlah !== undefined ? { jumlah } : {}),
-        ...(satuan !== undefined ? { satuan } : {}),
+        ...(data.namaBahan !== undefined ? { namaBahan: data.namaBahan.trim() } : {}),
+        ...(data.jumlah !== undefined ? { jumlah: data.jumlah } : {}),
+        ...(data.satuan !== undefined ? { satuan: data.satuan } : {}),
       },
     });
 

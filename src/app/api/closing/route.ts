@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { closingSchema } from "@/lib/validations";
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,15 +16,15 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { catatan, belanjaUrgent } = body;
+    const parsed = closingSchema.safeParse(body);
 
-    if (catatan != null && typeof catatan !== "string") {
-      return NextResponse.json({ error: "Catatan harus berupa teks" }, { status: 400 });
+    if (!parsed.success) {
+      const errors = parsed.error.flatten().fieldErrors;
+      const message = Object.values(errors).flat()[0] || "Input tidak valid";
+      return NextResponse.json({ error: message }, { status: 400 });
     }
 
-    if (belanjaUrgent != null && !Array.isArray(belanjaUrgent)) {
-      return NextResponse.json({ error: "Barang urgent harus berupa array" }, { status: 400 });
-    }
+    const { catatan, belanjaUrgent } = parsed.data;
 
     if (!session.shift) {
       return NextResponse.json({ error: "Shift tidak ditemukan" }, { status: 400 });
@@ -84,7 +85,7 @@ export async function POST(request: NextRequest) {
       where: { id: existing.id },
       data: {
         catatan: catatan || null,
-        belanjaUrgent: belanjaUrgent || null,
+        ...(belanjaUrgent ? { belanjaUrgent } : {}),
         totalMakanan,
         totalMinuman,
         totalOmset,

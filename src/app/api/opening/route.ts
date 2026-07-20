@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { openingSchema } from "@/lib/validations";
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,11 +20,15 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { uangAwal } = body;
+    const parsed = openingSchema.safeParse(body);
 
-    if (uangAwal == null || typeof uangAwal !== "number" || uangAwal < 0) {
-      return NextResponse.json({ error: "Uang awal harus berupa angka positif" }, { status: 400 });
+    if (!parsed.success) {
+      const errors = parsed.error.flatten().fieldErrors;
+      const message = Object.values(errors).flat()[0] || "Input tidak valid";
+      return NextResponse.json({ error: message }, { status: 400 });
     }
+
+    const { uangAwal } = parsed.data;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
