@@ -22,6 +22,8 @@ const roleApiAccess: Record<Role, string[]> = {
     "/api/invoice",
     "/api/kasir",
     "/api/laporan",
+    "/api/opening",
+    "/api/closing",
   ],
   DAPUR: ["/api/auth", "/api/dapur", "/api/invoice"],
 };
