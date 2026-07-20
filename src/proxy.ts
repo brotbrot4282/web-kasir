@@ -14,6 +14,7 @@ const roleApiAccess: Record<Role, string[]> = {
     "/api/auth",
     "/api/transaksi",
     "/api/menu",
+    "/api/kategori",
     "/api/dapur",
     "/api/member",
     "/api/pengaturan-poin",
@@ -108,5 +109,5 @@ export default async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..+).*)"],
 };
