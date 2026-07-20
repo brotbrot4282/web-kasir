@@ -97,14 +97,15 @@ export default function KasirPage() {
 
   useEffect(() => {
     if (showClosing) {
+      const totalUrgent = belanjaUrgentItems.reduce((sum, item) => sum + (item.nominal || 0), 0);
       setClosingSummaryLoading(true);
-      fetch("/api/closing/summary")
+      fetch(`/api/closing/summary?belanjaUrgentTotal=${totalUrgent}`)
         .then((r) => r.json())
         .then(setClosingSummary)
         .catch(() => setClosingSummary(null))
         .finally(() => setClosingSummaryLoading(false));
     }
-  }, [showClosing]);
+  }, [showClosing, belanjaUrgentItems]);
 
   useEffect(() => {
     if (!noWa.trim()) {

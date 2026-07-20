@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) {
@@ -12,6 +12,9 @@ export async function GET() {
     if (!session.shift) {
       return NextResponse.json({ error: "Shift tidak ditemukan" }, { status: 400 });
     }
+
+    const { searchParams } = request.nextUrl;
+    const belanjaUrgentTotal = parseInt(searchParams.get("belanjaUrgentTotal") || "0") || 0;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -81,7 +84,7 @@ export async function GET() {
       },
     });
 
-    const totalOmset = makananTotal + minumanTotal;
+    const totalOmset = Math.max(0, makananTotal + minumanTotal - belanjaUrgentTotal);
     const breakdown = Array.from(menuMap.values()).sort((a, b) => b.qty - a.qty);
 
     return NextResponse.json({
