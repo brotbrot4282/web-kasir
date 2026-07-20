@@ -87,8 +87,7 @@ export const closingSchema = z.object({
     .array(
       z.object({
         nama: z.string().min(1),
-        jumlah: z.number().int().positive(),
-        satuan: z.string().min(1),
+        nominal: z.number().int().min(0),
       })
     )
     .nullish(),

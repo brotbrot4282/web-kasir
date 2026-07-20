@@ -285,7 +285,7 @@ describe("closingSchema", () => {
   it("accepts valid belanjaUrgent", () => {
     expect(
       closingSchema.safeParse({
-        belanjaUrgent: [{ nama: "Gula", jumlah: 5, satuan: "kg" }],
+        belanjaUrgent: [{ nama: "Gula", nominal: 50000 }],
       }).success
     ).toBe(true);
   });
@@ -293,7 +293,7 @@ describe("closingSchema", () => {
   it("rejects invalid belanjaUrgent item", () => {
     expect(
       closingSchema.safeParse({
-        belanjaUrgent: [{ nama: "", jumlah: 5, satuan: "kg" }],
+        belanjaUrgent: [{ nama: "", nominal: 50000 }],
       }).success
     ).toBe(false);
   });
