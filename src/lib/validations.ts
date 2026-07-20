@@ -73,6 +73,7 @@ export const poinDeductSchema = z.object({
 export const pengaturanPoinSchema = z.object({
   rupiahPerPoin: z.number().int().positive("Rupiah per poin harus positif"),
   poinPerGratisItem: z.number().int().positive("Poin per gratis item harus positif"),
+  minimalTransaksi: z.number().int().min(0, "Minimal transaksi harus non-negatif"),
 });
 
 // ── Opening / Closing ─────────────────────────────────

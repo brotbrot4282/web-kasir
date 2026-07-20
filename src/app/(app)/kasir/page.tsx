@@ -13,7 +13,7 @@ type Menu = {
   isTersedia: boolean; kategoriId: string; kategori: Kategori; variants: VariantGroup[] | null;
 };
 type KeranjangItem = { key: string; menuId: string; nama: string; harga: number; jumlah: number; subtotal: number; variant: string | null; gratisPoin: boolean };
-type PengaturanPoin = { rupiahPerPoin: number; poinPerGratisItem: number };
+type PengaturanPoin = { rupiahPerPoin: number; poinPerGratisItem: number; minimalTransaksi: number };
 
 export default function KasirPage() {
   const [kategoriList, setKategoriList] = useState<Kategori[]>([]);
@@ -25,7 +25,7 @@ export default function KasirPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [pengaturanPoin, setPengaturanPoin] = useState<PengaturanPoin>({ rupiahPerPoin: 15000, poinPerGratisItem: 5 });
+  const [pengaturanPoin, setPengaturanPoin] = useState<PengaturanPoin>({ rupiahPerPoin: 15000, poinPerGratisItem: 5, minimalTransaksi: 10000 });
   const [diskon, setDiskon] = useState("");
   const [diskonTipe, setDiskonTipe] = useState<"nominal" | "persen">("nominal");
   const [metodeBayar, setMetodeBayar] = useState<"CASH" | "QRIS">("CASH");
@@ -198,6 +198,10 @@ export default function KasirPage() {
       if (!item) return prev;
       const akanGratis = !item.gratisPoin;
       if (akanGratis && poinDigunakan + pengaturanPoin.poinPerGratisItem > memberPoin) return prev;
+      if (akanGratis) {
+        const sisaBayar = prev.reduce((sum, i) => sum + (i.key === key ? 0 : (i.gratisPoin ? 0 : i.subtotal)), 0);
+        if (pengaturanPoin.minimalTransaksi > 0 && sisaBayar < pengaturanPoin.minimalTransaksi) return prev;
+      }
       return prev.map((i) =>
         i.key === key
           ? akanGratis
@@ -206,7 +210,7 @@ export default function KasirPage() {
           : i
       );
     });
-  }, [memberPoin, poinDigunakan, pengaturanPoin.poinPerGratisItem]);
+  }, [memberPoin, poinDigunakan, pengaturanPoin.poinPerGratisItem, pengaturanPoin.minimalTransaksi]);
 
   const ubahJumlah = (key: string, delta: number) => {
     setKeranjang((prev) =>
@@ -749,19 +753,27 @@ export default function KasirPage() {
                     <p className="text-sm font-medium text-sage-800 truncate">{item.nama}</p>
                     <p className="text-xs text-sage-400">{formatRupiah(item.harga)} / item</p>
                   </div>
-                  {memberTerdaftar && memberPoin >= pengaturanPoin.poinPerGratisItem && (
-                    <button
-                      onClick={() => toggleGratisPoin(item.key)}
-                      className={`shrink-0 text-[10px] font-bold px-2 py-1 rounded-lg border transition-colors ${
-                        item.gratisPoin
-                          ? "bg-amber-100 text-amber-700 border-amber-300"
-                          : "bg-sage-50 text-sage-400 border-sage-200 hover:border-amber-300 hover:text-amber-600"
-                      }`}
-                      title={item.gratisPoin ? "Batalkan gratis poin" : `Gratiskan dengan ${pengaturanPoin.poinPerGratisItem} poin`}
-                    >
-                      {item.gratisPoin ? "FREE" : "Poin"}
-                    </button>
-                  )}
+                  {memberTerdaftar && memberPoin >= pengaturanPoin.poinPerGratisItem && (() => {
+                    const akanGratis = !item.gratisPoin;
+                    const sisaBayarIfFree = totalKeranjang - (akanGratis ? item.subtotal : 0);
+                    const blockedByMin = akanGratis && !item.gratisPoin && pengaturanPoin.minimalTransaksi > 0 && sisaBayarIfFree < pengaturanPoin.minimalTransaksi;
+                    return (
+                      <button
+                        onClick={() => toggleGratisPoin(item.key)}
+                        disabled={blockedByMin}
+                        className={`shrink-0 text-[10px] font-bold px-2 py-1 rounded-lg border transition-colors ${
+                          item.gratisPoin
+                            ? "bg-amber-100 text-amber-700 border-amber-300"
+                            : blockedByMin
+                              ? "bg-sage-100 text-sage-300 border-sage-200 cursor-not-allowed"
+                              : "bg-sage-50 text-sage-400 border-sage-200 hover:border-amber-300 hover:text-amber-600"
+                        }`}
+                        title={item.gratisPoin ? "Batalkan gratis poin" : blockedByMin ? `Sisa di bawah minimal ${formatRupiah(pengaturanPoin.minimalTransaksi)}` : `Gratiskan dengan ${pengaturanPoin.poinPerGratisItem} poin`}
+                      >
+                        {item.gratisPoin ? "FREE" : "Poin"}
+                      </button>
+                    );
+                  })()}
                   <div className="flex items-center gap-1.5">
                     <button onClick={() => ubahJumlah(item.key, -1)} disabled={item.gratisPoin} className="w-7 h-7 rounded-lg bg-white border border-sage-200 flex items-center justify-center text-sage-500 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors text-sm font-bold disabled:opacity-30">-</button>
                     <span className="w-6 text-center text-sm font-bold text-sage-800">{item.jumlah}</span>
@@ -806,6 +818,12 @@ export default function KasirPage() {
                         <span className="text-amber-600">Potongan</span>
                         <span className="text-emerald-600 font-semibold">-{formatRupiah(totalPoinRupiah)}</span>
                       </div>
+                      {pengaturanPoin.minimalTransaksi > 0 && (
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-amber-600">Minimal transaksi</span>
+                          <span className="text-blue-600 font-semibold">{formatRupiah(pengaturanPoin.minimalTransaksi)}</span>
+                        </div>
+                      )}
                     </>
                   )}
                 </div>

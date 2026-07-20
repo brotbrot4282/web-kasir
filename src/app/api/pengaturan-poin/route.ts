@@ -31,12 +31,12 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: message }, { status: 400 });
     }
 
-    const { rupiahPerPoin, poinPerGratisItem } = parsed.data;
+    const { rupiahPerPoin, poinPerGratisItem, minimalTransaksi } = parsed.data;
 
     const pengaturan = await prisma.pengaturanPoin.upsert({
       where: { id: 1 },
-      update: { rupiahPerPoin, poinPerGratisItem },
-      create: { id: 1, rupiahPerPoin, poinPerGratisItem },
+      update: { rupiahPerPoin, poinPerGratisItem, minimalTransaksi },
+      create: { id: 1, rupiahPerPoin, poinPerGratisItem, minimalTransaksi },
     });
 
     return NextResponse.json(pengaturan);

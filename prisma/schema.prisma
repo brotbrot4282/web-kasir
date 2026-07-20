@@ -166,6 +166,7 @@ model PengaturanPoin {
   id                Int      @id @default(1)
   rupiahPerPoin     Int      @default(15000) @map("rupiah_per_poin")
   poinPerGratisItem Int      @default(5) @map("poin_per_gratis_item")
+  minimalTransaksi  Int      @default(10000) @map("minimal_transaksi")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
   @@map("pengaturan_poin")

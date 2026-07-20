@@ -3,14 +3,15 @@
 import { useEffect, useState, useCallback } from "react";
 import { motion } from "motion/react";
 import { Toast } from "@/components/Toast";
-import { Coins, Gift, Save, ShoppingCart, Sparkles, BadgeCheck } from "lucide-react";
+import { Coins, Gift, Save, ShoppingCart, Sparkles, BadgeCheck, ShieldCheck } from "lucide-react";
 
-type PengaturanPoin = { id: number; rupiahPerPoin: number; poinPerGratisItem: number; updatedAt: string };
+type PengaturanPoin = { id: number; rupiahPerPoin: number; poinPerGratisItem: number; minimalTransaksi: number; updatedAt: string };
 
 export default function AdminPengaturanPoinPage() {
   const [pengaturan, setPengaturan] = useState<PengaturanPoin | null>(null);
   const [rupiahPerPoin, setRupiahPerPoin] = useState("");
   const [poinPerGratisItem, setPoinPerGratisItem] = useState("");
+  const [minimalTransaksi, setMinimalTransaksi] = useState("");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -21,6 +22,7 @@ export default function AdminPengaturanPoinPage() {
         setPengaturan(data);
         setRupiahPerPoin(data.rupiahPerPoin.toString());
         setPoinPerGratisItem(data.poinPerGratisItem.toString());
+        setMinimalTransaksi(data.minimalTransaksi.toString());
       });
   }, []);
 
@@ -30,16 +32,18 @@ export default function AdminPengaturanPoinPage() {
     e.preventDefault();
     const rpp = parseInt(rupiahPerPoin);
     const ppg = parseInt(poinPerGratisItem);
+    const mt = parseInt(minimalTransaksi);
 
     if (!rpp || rpp <= 0) { setToast({ message: "Rupiah per poin harus angka positif", type: "error" }); return; }
     if (!ppg || ppg <= 0) { setToast({ message: "Poin per gratis item harus angka positif", type: "error" }); return; }
+    if (isNaN(mt) || mt < 0) { setToast({ message: "Minimal transaksi harus angka non-negatif", type: "error" }); return; }
 
     setSaving(true);
     try {
       const res = await fetch("/api/pengaturan-poin", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rupiahPerPoin: rpp, poinPerGratisItem: ppg }),
+        body: JSON.stringify({ rupiahPerPoin: rpp, poinPerGratisItem: ppg, minimalTransaksi: mt }),
       });
       if (!res.ok) { const err = await res.json(); throw new Error(err.error || "Gagal"); }
       setToast({ message: "Pengaturan poin berhasil disimpan", type: "success" });
@@ -53,6 +57,7 @@ export default function AdminPengaturanPoinPage() {
 
   const rpp = parseInt(rupiahPerPoin) || 0;
   const ppg = parseInt(poinPerGratisItem) || 0;
+  const mt = parseInt(minimalTransaksi) || 0;
   const contohPoinDari30k = rpp > 0 ? Math.floor(30000 / rpp) : 0;
   const contohItemGratisDari5poin = ppg > 0 ? Math.floor(5 / ppg) : 0;
 
@@ -65,7 +70,7 @@ export default function AdminPengaturanPoinPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -113,6 +118,31 @@ export default function AdminPengaturanPoinPage() {
               {ppg > 0 ? `${ppg} poin` : "-"}
             </p>
             <p className="text-xs text-white/70 mt-1">Tukar segini poin = 1 item gratis</p>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="relative overflow-hidden rounded-xl p-5 shadow-md"
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-indigo-600" />
+          <div
+            className="absolute inset-0 opacity-[0.05]"
+            style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "16px 16px" }}
+          />
+          <div className="relative z-10">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-white/80">Minimal Transaksi</p>
+              <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                <ShieldCheck className="w-5 h-5 text-white" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-white mt-2 tabular-nums">
+              {mt > 0 ? `Rp ${mt.toLocaleString("id-ID")}` : "Tanpa batas"}
+            </p>
+            <p className="text-xs text-white/70 mt-1">Sisa bayar setelah pakai poin</p>
           </div>
         </motion.div>
       </div>
@@ -176,6 +206,33 @@ export default function AdminPengaturanPoinPage() {
               <p className="text-xs text-emerald-700">
                 Contoh: Tukar <span className="font-semibold">5 poin</span> → bisa gratiskan{" "}
                 <span className="font-semibold">{contohItemGratisDari5poin} item</span> (any item)
+              </p>
+            </div>
+          </div>
+
+          {/* Minimal Transaksi */}
+          <div>
+            <label className="flex items-center gap-2 text-sm font-medium text-sage-700 mb-2">
+              <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center">
+                <ShieldCheck className="w-4 h-4 text-blue-600" />
+              </div>
+              Minimal Transaksi (setelah pakai poin)
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-sage-400">Rp</span>
+              <input
+                type="number"
+                value={minimalTransaksi}
+                onChange={(e) => setMinimalTransaksi(e.target.value)}
+                className="w-full pl-10 pr-12 py-2.5 rounded-lg border border-sage-300 text-sm font-medium text-sage-800 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-colors"
+                min={0}
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-sage-400">rupiah</span>
+            </div>
+            <div className="mt-2 flex items-start gap-2 bg-blue-50 rounded-lg px-3 py-2">
+              <Sparkles className="w-3.5 h-3.5 text-blue-500 mt-0.5 shrink-0" />
+              <p className="text-xs text-blue-700">
+                Sisa yang harus dibayar setelah pakai poin tidak boleh di bawah ini. Isi <span className="font-semibold">0</span> untuk tanpa batas.
               </p>
             </div>
           </div>

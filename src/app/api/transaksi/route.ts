@@ -93,6 +93,7 @@ export async function POST(request: NextRequest) {
     const pengaturan = await prisma.pengaturanPoin.findUnique({ where: { id: 1 } });
     const rupiahPerPoin = pengaturan?.rupiahPerPoin ?? 15000;
     const poinPerGratis = pengaturan?.poinPerGratisItem ?? 5;
+    const minimalTransaksi = pengaturan?.minimalTransaksi ?? 10000;
 
     const itemData: Array<{
       menuId: string;
@@ -176,6 +177,16 @@ export async function POST(request: NextRequest) {
         { error: `Poin tidak cukup (sisa ${member.poin}, butuh ${poinDigunakan})` },
         { status: 400 }
       );
+    }
+
+    if (poinDigunakan > 0 && minimalTransaksi > 0) {
+      const harusDibayarCek = totalHarga - totalPoin;
+      if (harusDibayarCek < minimalTransaksi) {
+        return NextResponse.json(
+          { error: `Sisa transaksi harus minimal Rp ${minimalTransaksi.toLocaleString("id-ID")} setelah pakai poin (sisa Rp ${harusDibayarCek.toLocaleString("id-ID")})` },
+          { status: 400 }
+        );
+      }
     }
 
     const subtotalSebelumDiskon = totalHarga - totalPoin;

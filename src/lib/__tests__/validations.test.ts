@@ -230,19 +230,25 @@ describe("poinDeductSchema", () => {
 describe("pengaturanPoinSchema", () => {
   it("accepts valid values", () => {
     expect(
-      pengaturanPoinSchema.safeParse({ rupiahPerPoin: 15000, poinPerGratisItem: 5 }).success
+      pengaturanPoinSchema.safeParse({ rupiahPerPoin: 15000, poinPerGratisItem: 5, minimalTransaksi: 10000 }).success
+    ).toBe(true);
+  });
+
+  it("accepts zero minimalTransaksi (no limit)", () => {
+    expect(
+      pengaturanPoinSchema.safeParse({ rupiahPerPoin: 15000, poinPerGratisItem: 5, minimalTransaksi: 0 }).success
     ).toBe(true);
   });
 
   it("rejects zero rupiahPerPoin", () => {
     expect(
-      pengaturanPoinSchema.safeParse({ rupiahPerPoin: 0, poinPerGratisItem: 5 }).success
+      pengaturanPoinSchema.safeParse({ rupiahPerPoin: 0, poinPerGratisItem: 5, minimalTransaksi: 10000 }).success
     ).toBe(false);
   });
 
   it("rejects negative poinPerGratisItem", () => {
     expect(
-      pengaturanPoinSchema.safeParse({ rupiahPerPoin: 15000, poinPerGratisItem: -1 }).success
+      pengaturanPoinSchema.safeParse({ rupiahPerPoin: 15000, poinPerGratisItem: -1, minimalTransaksi: 10000 }).success
     ).toBe(false);
   });
 });
