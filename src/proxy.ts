@@ -27,7 +27,7 @@ const roleApiAccess: Record<Role, string[]> = {
 };
 
 const rolePageAccess: Record<Role, string[]> = {
-  OWNER: ["/"],
+  OWNER: ["/", "/admin"],
   KASIR: ["/kasir", "/"],
   DAPUR: ["/dapur", "/"],
 };
