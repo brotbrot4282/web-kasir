@@ -111,9 +111,9 @@ export default function AdminMenuPage() {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       {showForm && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/20 backdrop-blur-sm" onClick={resetForm}>
-          <form onSubmit={simpanMenu} className="bg-white rounded-xl p-6 shadow-xl border border-sage-200 w-full max-w-lg mx-4 space-y-4" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/20 backdrop-blur-sm overflow-y-auto" onClick={resetForm}>
+          <form onSubmit={simpanMenu} className="bg-white rounded-xl p-6 shadow-xl border border-sage-200 w-full max-w-lg mx-4 my-8 max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between shrink-0">
               <h3 className="font-semibold text-sage-800">{editingId ? "Edit Menu" : "Tambah Menu Baru"}</h3>
               <button type="button" onClick={resetForm} className="text-sage-400 hover:text-sage-600 transition-colors">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -121,6 +121,7 @@ export default function AdminMenuPage() {
                 </svg>
               </button>
             </div>
+            <div className="overflow-y-auto flex-1 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-sage-600 mb-1">Nama Menu</label>
@@ -292,7 +293,8 @@ export default function AdminMenuPage() {
               </div>
               <span className="text-sm text-sage-600">Tersedia</span>
             </label>
-            <div className="flex gap-2 pt-1">
+            </div>
+            <div className="flex gap-2 pt-1 shrink-0">
               <button type="submit" className="flex-1 bg-red-800 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-red-900 transition-colors">{editingId ? "Update" : "Simpan"}</button>
               <button type="button" onClick={resetForm} className="flex-1 bg-red-50 text-red-600 px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors">Batal</button>
             </div>
