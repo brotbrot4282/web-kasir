@@ -20,11 +20,13 @@ export default function LaporanPage() {
   const [sampai, setSampai] = useState("");
   const [detail, setDetail] = useState<Transaksi | null>(null);
   const [closingData, setClosingData] = useState<ClosingItem[]>([]);
+  const [closingError, setClosingError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
   const loadData = (d?: string, s?: string, p?: number) => {
     setLoading(true);
+    setClosingError(null);
     const params = new URLSearchParams();
     if (d) params.set("dari", d);
     if (s) params.set("sampai", s);
@@ -32,11 +34,21 @@ export default function LaporanPage() {
     const paramsStr = params.toString();
     Promise.all([
       fetch(`/api/laporan?${paramsStr}`).then((r) => r.json()) as Promise<LaporanData>,
-      fetch(`/api/closing?${paramsStr}`).then((r) => r.json()) as Promise<ClosingItem[]>,
+      fetch(`/api/closing?${paramsStr}`).then(async (r) => {
+        if (!r.ok) {
+          const err = await r.json().catch(() => ({}));
+          throw new Error(err.error || "Gagal memuat data closing");
+        }
+        return r.json() as Promise<ClosingItem[]>;
+      }),
     ]).then(([lapData, closings]) => {
       setData(lapData);
       setTotalPages(lapData.totalPages);
       setClosingData(closings);
+    }).catch((err) => {
+      if (data) {
+        setClosingError(err.message || "Gagal memuat data closing");
+      }
     }).finally(() => setLoading(false));
   };
 
@@ -105,7 +117,11 @@ export default function LaporanPage() {
             </div>
           </div>
 
-          {closingData.length > 0 && (
+          {closingError ? (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+              <p className="text-sm text-red-600">{closingError}</p>
+            </div>
+          ) : closingData.length > 0 ? (
             <div className="bg-white border border-sage-200 rounded-xl overflow-hidden">
               <div className="px-4 py-3 border-b border-sage-100">
                 <h2 className="text-sm font-semibold text-sage-800">Laporan Closing</h2>
@@ -163,6 +179,10 @@ export default function LaporanPage() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          ) : (
+            <div className="bg-white border border-sage-200 rounded-xl p-6 text-center">
+              <p className="text-sm text-sage-400">Belum ada data laporan closing</p>
             </div>
           )}
 

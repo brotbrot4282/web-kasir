@@ -4,6 +4,18 @@ import { getSession } from "@/lib/auth";
 import ExcelJS from "exceljs";
 import { formatRupiah, formatDate } from "@/lib/utils";
 
+function autoWidth(ws: ExcelJS.Workbook["worksheets"][0], padding = 3, max = 60) {
+  ws.columns.forEach((col) => {
+    if (!col || !col.eachCell) return;
+    let longest = (col.header as string)?.length ?? 8;
+    col.eachCell({ includeEmpty: false }, (cell) => {
+      const val = cell.value != null ? String(cell.value) : "";
+      if (val.length > longest) longest = val.length;
+    });
+    col.width = Math.min(longest + padding, max);
+  });
+}
+
 export async function GET(request: NextRequest) {
   const session = await getSession();
   if (!session) {
@@ -65,8 +77,8 @@ export async function GET(request: NextRequest) {
   // ── Sheet 1: Ringkasan ──
   const s1 = wb.addWorksheet("Ringkasan", { views: [{ state: "frozen", ySplit: 1 }] });
   s1.columns = [
-    { header: "Metrik", key: "metrik", width: 25 },
-    { header: "Nilai", key: "nilai", width: 20 },
+    { header: "Metrik", key: "metrik", width: 10 },
+    { header: "Nilai", key: "nilai", width: 10 },
   ];
   s1.getRow(1).eachCell((c) => { c.font = style.header.font; c.fill = style.header.fill; c.alignment = style.header.alignment; c.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } }; });
   const ringkasanData = [
@@ -75,17 +87,18 @@ export async function GET(request: NextRequest) {
     { metrik: "Total Transaksi", nilai: total.toLocaleString() },
     { metrik: "Total Item Terjual", nilai: totalItem.toLocaleString() },
   ];
-  ringkasanData.forEach((r, i) => {
+  ringkasanData.forEach((r) => {
     const row = s1.addRow(r);
     row.eachCell((c) => { c.font = style.cell.font; c.alignment = style.cell.alignment; c.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } }; });
   });
+  autoWidth(s1);
 
   // ── Sheet 2: Menu Terlaris ──
   const s2 = wb.addWorksheet("Menu Terlaris", { views: [{ state: "frozen", ySplit: 1 }] });
   s2.columns = [
     { header: "Rank", key: "rank", width: 8 },
-    { header: "Menu", key: "menu", width: 30 },
-    { header: "Total Terjual", key: "terjual", width: 15 },
+    { header: "Menu", key: "menu", width: 10 },
+    { header: "Total Terjual", key: "terjual", width: 10 },
   ];
   s2.getRow(1).eachCell((c) => { c.font = style.header.font; c.fill = style.header.fill; c.alignment = style.header.alignment; c.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } }; });
   if (menuTerlaris.length === 0) {
@@ -97,18 +110,19 @@ export async function GET(request: NextRequest) {
       row.getCell(3).numFmt = '#,##0';
     });
   }
+  autoWidth(s2);
 
   // ── Sheet 3: Riwayat Transaksi ──
   const s3 = wb.addWorksheet("Riwayat Transaksi", { views: [{ state: "frozen", ySplit: 1 }] });
   s3.columns = [
-    { header: "No. Transaksi", key: "no", width: 22 },
-    { header: "Total Harga", key: "total", width: 16 },
-    { header: "Diskon", key: "diskon", width: 16 },
-    { header: "Bayar", key: "bayar", width: 16 },
-    { header: "Kembalian", key: "kembali", width: 16 },
-    { header: "Item", key: "item", width: 10 },
-    { header: "Tanggal", key: "tanggal", width: 14 },
-    { header: "Detail Item", key: "detail", width: 50 },
+    { header: "No. Transaksi", key: "no", width: 10 },
+    { header: "Total Harga", key: "total", width: 10 },
+    { header: "Diskon", key: "diskon", width: 10 },
+    { header: "Bayar", key: "bayar", width: 10 },
+    { header: "Kembalian", key: "kembali", width: 10 },
+    { header: "Item", key: "item", width: 8 },
+    { header: "Tanggal", key: "tanggal", width: 10 },
+    { header: "Detail Item", key: "detail", width: 10 },
   ];
   s3.getRow(1).eachCell((c) => { c.font = style.header.font; c.fill = style.header.fill; c.alignment = style.header.alignment; c.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } }; });
   if (transaksi.length === 0) {
@@ -121,20 +135,21 @@ export async function GET(request: NextRequest) {
       for (const col of [2, 3, 4, 5]) row.getCell(col).numFmt = '#,##0';
     });
   }
+  autoWidth(s3);
 
   // ── Sheet 4: Closing ──
   const s4 = wb.addWorksheet("Closing Shift", { views: [{ state: "frozen", ySplit: 1 }] });
   s4.columns = [
-    { header: "Tanggal", key: "tanggal", width: 14 },
-    { header: "Shift", key: "shift", width: 12 },
-    { header: "Kasir", key: "kasir", width: 20 },
-    { header: "Uang Awal", key: "uangAwal", width: 16 },
-    { header: "Makanan", key: "makanan", width: 12 },
-    { header: "Minuman", key: "minuman", width: 12 },
-    { header: "Omset", key: "omset", width: 16 },
-    { header: "Transaksi", key: "transaksi", width: 12 },
-    { header: "Catatan", key: "catatan", width: 30 },
-    { header: "Barang Urgent", key: "belanjaUrgent", width: 35 },
+    { header: "Tanggal", key: "tanggal", width: 10 },
+    { header: "Shift", key: "shift", width: 10 },
+    { header: "Kasir", key: "kasir", width: 10 },
+    { header: "Uang Awal", key: "uangAwal", width: 10 },
+    { header: "Makanan", key: "makanan", width: 10 },
+    { header: "Minuman", key: "minuman", width: 10 },
+    { header: "Omset", key: "omset", width: 10 },
+    { header: "Transaksi", key: "transaksi", width: 10 },
+    { header: "Catatan", key: "catatan", width: 10 },
+    { header: "Barang Urgent", key: "belanjaUrgent", width: 10 },
   ];
   s4.getRow(1).eachCell((c) => { c.font = style.header.font; c.fill = style.header.fill; c.alignment = style.header.alignment; c.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } }; });
   if (closingData.length === 0) {
@@ -161,6 +176,7 @@ export async function GET(request: NextRequest) {
       for (const col of [4, 5, 6, 7, 8]) row.getCell(col).numFmt = '#,##0';
     });
   }
+  autoWidth(s4);
 
   const buffer = await wb.xlsx.writeBuffer();
 
