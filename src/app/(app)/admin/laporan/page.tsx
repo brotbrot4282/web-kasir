@@ -32,8 +32,8 @@ export default function LaporanPage() {
     if (s) params.set("sampai", s);
     if (p) params.set("page", String(p));
     const paramsStr = params.toString();
-    Promise.all([
-      fetch(`/api/laporan?${paramsStr}`).then((r) => r.json()) as Promise<LaporanData>,
+    Promise.allSettled([
+      fetch(`/api/laporan?${paramsStr}`).then((r) => r.json()),
       fetch(`/api/closing?${paramsStr}`).then(async (r) => {
         if (!r.ok) {
           const err = await r.json().catch(() => ({}));
@@ -41,13 +41,16 @@ export default function LaporanPage() {
         }
         return r.json() as Promise<ClosingItem[]>;
       }),
-    ]).then(([lapData, closings]) => {
-      setData(lapData);
-      setTotalPages(lapData.totalPages);
-      setClosingData(closings);
-    }).catch((err) => {
-      if (data) {
-        setClosingError(err.message || "Gagal memuat data closing");
+    ]).then(([lapResult, closingResult]) => {
+      if (lapResult.status === "fulfilled") {
+        const lapData = lapResult.value as LaporanData;
+        setData(lapData);
+        setTotalPages(lapData.totalPages);
+      }
+      if (closingResult.status === "fulfilled") {
+        setClosingData(closingResult.value as ClosingItem[]);
+      } else {
+        setClosingError(closingResult.reason?.message || "Gagal memuat data closing");
       }
     }).finally(() => setLoading(false));
   };

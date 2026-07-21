@@ -118,14 +118,24 @@ export async function GET(request: NextRequest) {
 
     const where = dari || sampai ? { tanggal: dateFilter } : {};
 
+    console.log("[Closing GET]", {
+      user: session.username,
+      dari,
+      sampai,
+      where,
+    });
+
     const reports = await prisma.dailyReport.findMany({
       where,
       orderBy: { tanggal: "desc" },
       include: { user: { select: { nama: true } } },
     });
 
+    console.log("[Closing GET] Found", reports.length, "reports");
+
     return NextResponse.json(reports);
-  } catch {
+  } catch (error) {
+    console.error("[Closing GET] Error:", error);
     return NextResponse.json({ error: "Gagal mengambil data closing" }, { status: 500 });
   }
 }
