@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { getTodayWIB } from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,8 +17,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const belanjaUrgentTotal = parseInt(searchParams.get("belanjaUrgentTotal") || "0") || 0;
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = getTodayWIB();
 
     const report = await prisma.dailyReport.findFirst({
       where: {

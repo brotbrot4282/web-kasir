@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { getTodayWIB } from "@/lib/utils";
 
 export async function GET() {
   try {
@@ -17,8 +18,7 @@ export async function GET() {
       include: { user: { select: { nama: true, username: true } } },
     });
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = getTodayWIB();
 
     const todayReports = await prisma.dailyReport.findMany({
       where: { tanggal: { gte: today } },

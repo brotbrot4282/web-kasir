@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { closingSchema } from "@/lib/validations";
+import { getTodayWIB } from "@/lib/utils";
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,8 +31,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Shift tidak ditemukan" }, { status: 400 });
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = getTodayWIB();
 
     const existing = await prisma.dailyReport.findFirst({
       where: {
