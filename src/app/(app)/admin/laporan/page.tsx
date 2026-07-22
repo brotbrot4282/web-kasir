@@ -11,7 +11,7 @@ type Transaksi = {
   itemTransaksi: Array<{ id: string; namaMenu: string; harga: number; jumlah: number; subtotal: number }>;
 };
 type LaporanData = { ringkasan: Ringkasan; menuTerlaris: MenuTerlaris[]; transaksi: Transaksi[]; total: number; totalPages: number; page: number };
-type ClosingItem = { id: string; tanggal: string; createdAt: string; shift: string; uangAwal: number; catatan: string | null; belanjaUrgent: Array<{ nama: string; nominal: number }> | null; totalMakanan: number; totalMinuman: number; totalOmset: number; totalTransaksi: number; user: { nama: string } };
+type ClosingItem = { id: string; tanggal: string; createdAt: string; shift: string; uangAwal: number; catatan: string | null; belanjaUrgent: Array<{ nama: string; nominal: number }> | null; totalMakanan: number; totalMinuman: number; totalOmset: number; totalTransaksi: number; kasAktual: number | null; selisih: number | null; user: { nama: string } };
 
 export default function LaporanPage() {
   const [data, setData] = useState<LaporanData | null>(null);
