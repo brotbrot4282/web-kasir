@@ -49,7 +49,6 @@ export default function KasirPage() {
   const [closingCatatan, setClosingCatatan] = useState("");
   const [closingLoading, setClosingLoading] = useState(false);
   const [closingMsg, setClosingMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [dailySummary, setDailySummary] = useState<{ cup: number; makanan: number } | null>(null);
   const [closingSummary, setClosingSummary] = useState<{
     uangAwal: number;
     makanan: { qty: number; total: number };
@@ -77,13 +76,6 @@ export default function KasirPage() {
   const [riwayatLoading, setRiwayatLoading] = useState(false);
   const [riwayatCetakId, setRiwayatCetakId] = useState<string | null>(null);
 
-  const fetchDailySummary = useCallback(() => {
-    fetch("/api/kasir/daily-summary")
-      .then((r) => r.json())
-      .then(setDailySummary)
-      .catch(() => {});
-  }, []);
-
   useEffect(() => {
     Promise.all([
       fetch("/api/kategori").then((r) => r.json()),
@@ -94,8 +86,7 @@ export default function KasirPage() {
       if (kategori.length > 0) setKategoriAktif(kategori[0].id);
     }).finally(() => setLoading(false));
     fetch("/api/pengaturan-poin").then((r) => r.json()).then(setPengaturanPoin).catch(() => {});
-    fetchDailySummary();
-  }, [fetchDailySummary]);
+  }, []);
 
   useEffect(() => {
     if (showClosing) {
@@ -250,7 +241,6 @@ export default function KasirPage() {
       setTransaksiSukses({ noTransaksi: data.noTransaksi, totalHarga: data.totalHarga, totalBayar: data.totalBayar, kembalian: data.kembalian, metodeBayar, items: [...keranjang], poinDidapat: data.poinDidapat || 0, poinDigunakan: data.poinDigunakan || 0, totalPoin: data.totalPoin || 0, diskon: data.diskon || 0, publicId: data.publicId, noWa: data.noWa || null, memberNama: memberNama.trim() || undefined });
       setKeranjang([]); setTotalBayar(""); setDiskon(""); setNoWa(""); setMemberNama(""); setMetodeBayar("CASH"); setMessage(null);
       fetch("/api/menu").then((r) => r.json()).then(setMenuList);
-      fetchDailySummary();
     } catch (err) {
       setMessage({ type: "error", text: err instanceof Error ? err.message : "Gagal bayar" });
     } finally {
@@ -548,19 +538,6 @@ export default function KasirPage() {
             <p className="text-xs text-sage-400 mt-0.5">{new Date().toLocaleDateString("id-ID", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
           </div>
           <div className="flex items-center gap-3">
-            {dailySummary && (
-              <div className="flex items-center gap-2.5 bg-white border border-sage-200 rounded-lg px-3 py-1.5 shadow-sm">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold text-sky-500">Drink</span>
-                  <span className="text-xs font-bold text-sage-700">{dailySummary.cup}</span>
-                </div>
-                <span className="text-sage-200 text-xs">|</span>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold text-amber-500">Food</span>
-                  <span className="text-xs font-bold text-sage-700">{dailySummary.makanan}</span>
-                </div>
-              </div>
-            )}
             {shiftOpened && (
               <>
                 <button
