@@ -155,6 +155,8 @@ model DailyReport {
   totalMinuman   Int      @default(0) @map("total_minuman")
   totalOmset     Int      @default(0) @map("total_omset")
   totalTransaksi Int      @default(0) @map("total_transaksi")
+  kasAktual      Int?     @map("kas_aktual")
+  selisih        Int?     @map("selisih")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 

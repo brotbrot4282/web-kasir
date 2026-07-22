@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
         tanggal: { gte: today },
         shift: session.shift as "SHIFT_1" | "SHIFT_2",
       },
-      select: { openedAt: true },
+      select: { openedAt: true, uangAwal: true },
     });
 
     if (!report) {
@@ -88,6 +88,7 @@ export async function GET(request: NextRequest) {
     const breakdown = Array.from(menuMap.values()).sort((a, b) => b.qty - a.qty);
 
     return NextResponse.json({
+      uangAwal: report.uangAwal,
       makanan: { qty: makananQty, total: makananTotal },
       minuman: { qty: minumanQty, total: minumanTotal },
       totalOmset,

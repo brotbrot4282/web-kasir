@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: message }, { status: 400 });
     }
 
-    const { catatan, belanjaUrgent } = parsed.data;
+    const { catatan, belanjaUrgent, kasAktual } = parsed.data;
 
     if (!session.shift) {
       return NextResponse.json({ error: "Shift tidak ditemukan" }, { status: 400 });
@@ -76,6 +76,9 @@ export async function POST(request: NextRequest) {
     }
 
     const totalBelanjaUrgent = belanjaUrgent?.reduce((sum, item) => sum + item.nominal, 0) ?? 0;
+    const netOmset = Math.max(0, totalOmset - totalBelanjaUrgent);
+    const kasHarusnya = existing.uangAwal + netOmset;
+    const selisih = kasAktual !== undefined && kasAktual !== null ? kasAktual - kasHarusnya : null;
 
     const totalTransaksi = await prisma.transaksi.count({
       where: {
@@ -90,8 +93,10 @@ export async function POST(request: NextRequest) {
         ...(belanjaUrgent ? { belanjaUrgent } : {}),
         totalMakanan,
         totalMinuman,
-        totalOmset: Math.max(0, totalOmset - totalBelanjaUrgent),
+        totalOmset: netOmset,
         totalTransaksi,
+        kasAktual: kasAktual ?? null,
+        selisih,
       },
     });
 

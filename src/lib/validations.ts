@@ -91,4 +91,5 @@ export const closingSchema = z.object({
       })
     )
     .nullish(),
+  kasAktual: z.number().int().min(0, "Kas aktual harus angka non-negatif").optional(),
 });

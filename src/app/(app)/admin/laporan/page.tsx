@@ -140,6 +140,8 @@ export default function LaporanPage() {
                       <th className="text-right px-4 py-3 text-xs font-medium text-sage-500 uppercase">Makanan</th>
                       <th className="text-right px-4 py-3 text-xs font-medium text-sage-500 uppercase">Minuman</th>
                       <th className="text-right px-4 py-3 text-xs font-medium text-sage-500 uppercase">Omset</th>
+                      <th className="text-right px-4 py-3 text-xs font-medium text-sage-500 uppercase">Kas Aktual</th>
+                      <th className="text-right px-4 py-3 text-xs font-medium text-sage-500 uppercase">Selisih</th>
                       <th className="text-right px-4 py-3 text-xs font-medium text-sage-500 uppercase">Transaksi</th>
                       <th className="text-left px-4 py-3 text-xs font-medium text-sage-500 uppercase">Catatan</th>
                       <th className="text-left px-4 py-3 text-xs font-medium text-sage-500 uppercase">Barang Urgent</th>
@@ -159,6 +161,14 @@ export default function LaporanPage() {
                         <td className="px-4 py-3 text-right font-semibold text-sage-800">{c.totalMakanan} <span className="text-xs text-sage-400 font-normal">item</span></td>
                         <td className="px-4 py-3 text-right font-semibold text-sage-800">{c.totalMinuman} <span className="text-xs text-sage-400 font-normal">item</span></td>
                         <td className="px-4 py-3 text-right font-semibold text-sage-800">{formatRupiah(c.totalOmset)}</td>
+                        <td className="px-4 py-3 text-right font-semibold text-sage-800">{c.kasAktual != null ? formatRupiah(c.kasAktual) : "-"}</td>
+                        <td className="px-4 py-3 text-right font-semibold">
+                          {c.selisih != null ? (
+                            <span className={c.selisih === 0 ? "text-emerald-600" : "text-red-500"}>
+                              {c.selisih === 0 ? "Pas" : (c.selisih > 0 ? `+${formatRupiah(c.selisih)}` : formatRupiah(c.selisih))}
+                            </span>
+                          ) : "-"}
+                        </td>
                         <td className="px-4 py-3 text-right font-semibold text-sage-800">{c.totalTransaksi}</td>
                         <td className="px-4 py-3 text-sm text-sage-600">{c.catatan || "-"}</td>
                         <td className="px-4 py-3 text-sm text-sage-600">

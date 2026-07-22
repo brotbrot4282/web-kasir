@@ -51,6 +51,7 @@ export default function KasirPage() {
   const [closingMsg, setClosingMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [dailySummary, setDailySummary] = useState<{ cup: number; makanan: number } | null>(null);
   const [closingSummary, setClosingSummary] = useState<{
+    uangAwal: number;
     makanan: { qty: number; total: number };
     minuman: { qty: number; total: number };
     totalOmset: number;
@@ -58,6 +59,7 @@ export default function KasirPage() {
     breakdown: { nama: string; qty: number; subtotal: number }[];
   } | null>(null);
   const [closingSummaryLoading, setClosingSummaryLoading] = useState(false);
+  const [kasAktualInput, setKasAktualInput] = useState("");
   const [showOpening, setShowOpening] = useState(false);
   const [uangAwalInput, setUangAwalInput] = useState("");
   const [openingLoading, setOpeningLoading] = useState(false);
@@ -1284,7 +1286,7 @@ export default function KasirPage() {
                   <h2 className="font-semibold text-sage-800">Tutup Shift</h2>
                   <p className="text-xs text-sage-400 mt-0.5">Ringkasan penjualan shift hari ini</p>
                 </div>
-                <button onClick={() => { setShowClosing(false); setBelanjaUrgentItems([]); }} className="w-7 h-7 rounded-lg bg-sage-100 flex items-center justify-center hover:bg-sage-200 transition-colors">
+                <button onClick={() => { setShowClosing(false); setBelanjaUrgentItems([]); setKasAktualInput(""); }} className="w-7 h-7 rounded-lg bg-sage-100 flex items-center justify-center hover:bg-sage-200 transition-colors">
                   <X className="w-4 h-4 text-sage-500" />
                 </button>
               </div>
@@ -1312,8 +1314,16 @@ export default function KasirPage() {
 
                     <div className="bg-sage-50 border border-sage-200 rounded-lg p-3">
                       <div className="flex justify-between items-center">
+                        <span className="text-sm text-sage-600">Uang Awal</span>
+                        <span className="text-sm font-bold text-sage-800">{formatRupiah(closingSummary.uangAwal)}</span>
+                      </div>
+                      <div className="flex justify-between items-center mt-1">
                         <span className="text-sm text-sage-600">Total Omset</span>
                         <span className="text-sm font-bold text-sage-800">{formatRupiah(closingSummary.totalOmset)}</span>
+                      </div>
+                      <div className="border-t border-sage-200 mt-2 pt-2 flex justify-between items-center">
+                        <span className="text-sm font-semibold text-sage-700">Kas Harusnya</span>
+                        <span className="text-sm font-bold text-sage-800">{formatRupiah(closingSummary.uangAwal + closingSummary.totalOmset)}</span>
                       </div>
                       <div className="flex justify-between items-center mt-1">
                         <span className="text-sm text-sage-600">Total Transaksi</span>
@@ -1346,6 +1356,35 @@ export default function KasirPage() {
 
                 {/* Input Manual */}
                 <div className="border-t border-sage-100 pt-4 space-y-3">
+                  <div>
+                    <label className="text-xs font-medium text-sage-600 mb-1 block">Kas Aktual (Hitung Uang di Laci)</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-sage-400">Rp</span>
+                      <input
+                        type="text"
+                        value={kasAktualInput ? parseInt(kasAktualInput.replace(/\D/g, "")).toLocaleString("id-ID") : ""}
+                        onChange={(e) => setKasAktualInput(e.target.value.replace(/\D/g, ""))}
+                        placeholder="0"
+                        className="w-full border border-sage-200 rounded-lg pl-8 pr-3 py-2 text-sm text-right text-sage-800 placeholder:text-sage-400 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 bg-white"
+                      />
+                    </div>
+                    {closingSummary && kasAktualInput && (
+                      <div className="mt-2 flex items-center justify-between bg-sage-50 border border-sage-200 rounded-lg px-3 py-2">
+                        <span className="text-xs font-medium text-sage-600">Selisih</span>
+                        {(() => {
+                          const kasAktual = parseInt(kasAktualInput.replace(/\D/g, "")) || 0;
+                          const kasHarusnya = closingSummary.uangAwal + closingSummary.totalOmset;
+                          const selisih = kasAktual - kasHarusnya;
+                          return (
+                            <span className={`text-sm font-bold ${selisih === 0 ? "text-emerald-600" : "text-red-500"}`}>
+                              {selisih === 0 ? "Pas" : (selisih > 0 ? `+${formatRupiah(selisih)}` : formatRupiah(selisih))}
+                            </span>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </div>
+
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="text-xs font-medium text-sage-600">Barang Urgent</label>
@@ -1424,7 +1463,7 @@ export default function KasirPage() {
 
                 <div className="flex gap-3 pt-1">
                   <button
-                    onClick={() => { setShowClosing(false); setClosingMsg(null); setBelanjaUrgentItems([]); }}
+                    onClick={() => { setShowClosing(false); setClosingMsg(null); setBelanjaUrgentItems([]); setKasAktualInput(""); }}
                     className="flex-1 border border-sage-200 text-sage-600 py-2 rounded-lg font-medium text-sm hover:bg-sage-50 transition-colors"
                   >
                     Batal
@@ -1440,6 +1479,7 @@ export default function KasirPage() {
                           body: JSON.stringify({
                             catatan: closingCatatan || null,
                             belanjaUrgent: belanjaUrgentItems.length > 0 ? belanjaUrgentItems : null,
+                            kasAktual: kasAktualInput ? parseInt(kasAktualInput.replace(/\D/g, "")) || undefined : undefined,
                             totalMakanan: closingSummary?.makanan.qty || 0,
                             totalMinuman: closingSummary?.minuman.qty || 0,
                             totalOmset: closingSummary?.totalOmset || 0,
@@ -1453,6 +1493,7 @@ export default function KasirPage() {
                         setClosingMsg({ type: "success", text: "Laporan closing berhasil disimpan!" });
                         setClosingCatatan("");
                         setBelanjaUrgentItems([]);
+                        setKasAktualInput("");
                         setTimeout(() => { setShowClosing(false); setClosingMsg(null); }, 1500);
                       } catch (err) {
                         setClosingMsg({ type: "error", text: err instanceof Error ? err.message : "Gagal menyimpan" });
