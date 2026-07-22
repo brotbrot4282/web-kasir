@@ -25,9 +25,10 @@ export default function AdminStokPage() {
   const simpan = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.namaBahan.trim()) { setToast({ message: "Nama bahan wajib diisi", type: "error" }); return; }
-    if (!form.jumlah || parseInt(form.jumlah) <= 0) { setToast({ message: "Jumlah harus angka positif", type: "error" }); return; }
+    const jumlahVal = parseFloat(form.jumlah.replace(",", "."));
+    if (!form.jumlah || isNaN(jumlahVal) || jumlahVal <= 0) { setToast({ message: "Jumlah harus angka positif", type: "error" }); return; }
     if (!form.satuan.trim()) { setToast({ message: "Satuan wajib diisi", type: "error" }); return; }
-    const body = { namaBahan: form.namaBahan, jumlah: parseInt(form.jumlah), satuan: form.satuan };
+    const body = { namaBahan: form.namaBahan, jumlah: jumlahVal, satuan: form.satuan };
     try {
       const res = editingId
         ? await fetch(`/api/stok/${editingId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
@@ -148,7 +149,7 @@ export default function AdminStokPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-sage-600 mb-1">Jumlah</label>
-                  <input type="text" value={form.jumlah} onChange={(e) => setForm({ ...form, jumlah: e.target.value.replace(/\D/g, "") })} className="w-full border border-sage-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all" placeholder="0" />
+                  <input type="text" value={form.jumlah} onChange={(e) => setForm({ ...form, jumlah: e.target.value.replace(/[^0-9.,]/g, "") })} className="w-full border border-sage-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all" placeholder="0" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-sage-600 mb-1">Satuan</label>

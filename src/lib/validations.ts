@@ -53,13 +53,13 @@ export const kategoriSchema = z.object({
 // ── Stok ──────────────────────────────────────────────
 export const stokCreateSchema = z.object({
   namaBahan: z.string().min(1, "Nama bahan wajib diisi").max(100),
-  jumlah: z.number().int().positive("Jumlah harus positif"),
+  jumlah: z.number().positive("Jumlah harus positif"),
   satuan: z.string().min(1, "Satuan wajib diisi").max(20),
 });
 
 export const stokUpdateSchema = z.object({
   namaBahan: z.string().min(1).max(100).optional(),
-  jumlah: z.number().int().min(0).optional(),
+  jumlah: z.number().min(0).optional(),
   satuan: z.string().min(1).max(20).optional(),
 });
 

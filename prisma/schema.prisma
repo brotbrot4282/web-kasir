@@ -133,7 +133,7 @@ model User {
 model Stok {
   id         String   @id @default(uuid()) @db.Uuid
   namaBahan  String   @map("nama_bahan")
-  jumlah     Int
+  jumlah     Float
   satuan     String
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
