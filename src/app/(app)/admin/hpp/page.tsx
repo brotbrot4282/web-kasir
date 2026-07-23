@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Toast } from "@/components/Toast";
+import { convertToStokUnit, getAvailableUnits } from "@/lib/hpp";
 
 type StokItem = { id: string; namaBahan: string; jumlah: number; satuan: string; hargaBahan: number };
 type ResepItem = { id: string; menuId: string; stokId: string; jumlah: number; stok: StokItem };
@@ -23,7 +24,7 @@ export default function AdminHPPPage() {
   const [editingResepId, setEditingResepId] = useState<string | null>(null);
   const [editMenuId, setEditMenuId] = useState("");
   const [formMenuId, setFormMenuId] = useState("");
-  const [formItems, setFormItems] = useState<{ stokId: string; jumlah: string }[]>([{ stokId: "", jumlah: "" }]);
+  const [formItems, setFormItems] = useState<{ stokId: string; jumlah: string; satuan: string }[]>([{ stokId: "", jumlah: "", satuan: "" }]);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; nama: string } | null>(null);
 
   const loadData = useCallback(async () => {
@@ -37,23 +38,27 @@ export default function AdminHPPPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const resetForm = () => { setFormMenuId(""); setFormItems([{ stokId: "", jumlah: "" }]); setEditingResepId(null); setEditMenuId(""); setShowForm(false); };
+  const resetForm = () => { setFormMenuId(""); setFormItems([{ stokId: "", jumlah: "", satuan: "" }]); setEditingResepId(null); setEditMenuId(""); setShowForm(false); };
 
   const editResep = (resep: ResepItem, menuId: string) => {
     setFormMenuId(menuId);
     setEditMenuId(menuId);
-    setFormItems([{ stokId: resep.stokId, jumlah: resep.jumlah.toString() }]);
+    setFormItems([{ stokId: resep.stokId, jumlah: resep.jumlah.toString(), satuan: resep.stok.satuan }]);
     setEditingResepId(resep.id);
     setShowForm(true);
   };
 
-  const updateFormItem = (index: number, field: "stokId" | "jumlah", value: string) => {
+  const updateFormItem = (index: number, field: "stokId" | "jumlah" | "satuan", value: string) => {
     const updated = [...formItems];
     updated[index] = { ...updated[index], [field]: value };
+    if (field === "stokId") {
+      const stok = stokList.find((s) => s.id === value);
+      if (stok) updated[index].satuan = stok.satuan;
+    }
     setFormItems(updated);
   };
 
-  const addFormItem = () => setFormItems([...formItems, { stokId: "", jumlah: "" }]);
+  const addFormItem = () => setFormItems([...formItems, { stokId: "", jumlah: "", satuan: "" }]);
   const removeFormItem = (index: number) => setFormItems(formItems.filter((_, i) => i !== index));
 
   const simpan = async (e: React.FormEvent) => {
@@ -67,11 +72,13 @@ export default function AdminHPPPage() {
       if (!item.stokId) { setToast({ message: "Pilih bahan", type: "error" }); return; }
       const jumlahVal = parseFloat(item.jumlah.replace(",", "."));
       if (!item.jumlah || isNaN(jumlahVal) || jumlahVal <= 0) { setToast({ message: "Jumlah harus positif", type: "error" }); return; }
+      const stok = stokList.find((s) => s.id === item.stokId);
+      const jumlahConverted = stok ? convertToStokUnit(jumlahVal, item.satuan || stok.satuan, stok.satuan) : jumlahVal;
       try {
         const res = await fetch(`/api/hpp/${editingResepId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ jumlah: jumlahVal }),
+          body: JSON.stringify({ jumlah: jumlahConverted }),
         });
         if (!res.ok) { const err = await res.json(); throw new Error(err.error); }
         setToast({ message: "Resep berhasil diupdate", type: "success" });
@@ -87,11 +94,13 @@ export default function AdminHPPPage() {
     let errorMsg = "";
     for (const item of validItems) {
       const jumlahVal = parseFloat(item.jumlah.replace(",", "."));
+      const stok = stokList.find((s) => s.id === item.stokId);
+      const jumlahConverted = stok ? convertToStokUnit(jumlahVal, item.satuan || stok.satuan, stok.satuan) : jumlahVal;
       try {
         const res = await fetch("/api/hpp", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ menuId: activeMenuId, stokId: item.stokId, jumlah: jumlahVal }),
+          body: JSON.stringify({ menuId: activeMenuId, stokId: item.stokId, jumlah: jumlahConverted }),
         });
         if (res.ok) { successCount++; }
         else { const err = await res.json(); errorMsg = err.error; }
@@ -295,7 +304,17 @@ export default function AdminHPPPage() {
                       </div>
                       <div className="flex items-center gap-2 pl-7">
                         <input type="text" value={item.jumlah} onChange={(e) => updateFormItem(idx, "jumlah", e.target.value.replace(/[^0-9.,]/g, ""))} className="w-full border border-sage-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all" placeholder="Jumlah per porsi" />
-                        {item.stokId && <span className="text-xs text-sage-400 shrink-0">{stokList.find((s) => s.id === item.stokId)?.satuan}</span>}
+                        {item.stokId && (() => {
+                          const stok = stokList.find((s) => s.id === item.stokId);
+                          if (!stok) return null;
+                          const units = getAvailableUnits(stok.satuan);
+                          if (units.length <= 1) return <span className="text-xs text-sage-400 shrink-0">{stok.satuan}</span>;
+                          return (
+                            <select value={item.satuan} onChange={(e) => updateFormItem(idx, "satuan", e.target.value)} className="appearance-none border border-sage-200 rounded-lg px-2 py-2 pr-7 text-xs bg-white text-sage-700 cursor-pointer hover:border-sage-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all shrink-0">
+                              {units.map((u) => <option key={u} value={u}>{u}</option>)}
+                            </select>
+                          );
+                        })()}
                       </div>
                     </div>
                   ))}
@@ -323,7 +342,20 @@ export default function AdminHPPPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-sage-600 mb-1">Jumlah per Porsi</label>
-                    <input type="text" value={formItems[0]?.jumlah || ""} onChange={(e) => updateFormItem(0, "jumlah", e.target.value.replace(/[^0-9.,]/g, ""))} className="w-full border border-sage-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all" placeholder="0" />
+                    <div className="flex items-center gap-2">
+                      <input type="text" value={formItems[0]?.jumlah || ""} onChange={(e) => updateFormItem(0, "jumlah", e.target.value.replace(/[^0-9.,]/g, ""))} className="w-full border border-sage-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all" placeholder="0" />
+                      {(() => {
+                        const stok = stokList.find((s) => s.id === formItems[0]?.stokId);
+                        if (!stok) return null;
+                        const units = getAvailableUnits(stok.satuan);
+                        if (units.length <= 1) return <span className="text-xs text-sage-400 shrink-0">{stok.satuan}</span>;
+                        return (
+                          <select value={formItems[0]?.satuan || stok.satuan} onChange={(e) => updateFormItem(0, "satuan", e.target.value)} className="appearance-none border border-sage-200 rounded-lg px-2 py-2 pr-7 text-xs bg-white text-sage-700 cursor-pointer hover:border-sage-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all shrink-0">
+                            {units.map((u) => <option key={u} value={u}>{u}</option>)}
+                          </select>
+                        );
+                      })()}
+                    </div>
                   </div>
                 </div>
               )}

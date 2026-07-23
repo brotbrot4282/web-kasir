@@ -17,6 +17,31 @@ export function toBaseUnit(
   return { jumlah: jumlah * conv.factor, satuan: conv.base };
 }
 
+export function convertToStokUnit(
+  jumlah: number,
+  fromSatuan: string,
+  toSatuan: string
+): number {
+  if (fromSatuan === toSatuan) return jumlah;
+  const fromConv = CONVERSION[fromSatuan];
+  const toConv = CONVERSION[toSatuan];
+  if (!fromConv || !toConv) return jumlah;
+  return (jumlah * fromConv.factor) / toConv.factor;
+}
+
+export function getAvailableUnits(stokSatuan: string): string[] {
+  const units: string[] = [stokSatuan];
+  const base = CONVERSION[stokSatuan]?.base;
+  if (base) {
+    for (const [unit, conv] of Object.entries(CONVERSION)) {
+      if (conv.base === base && unit !== stokSatuan) {
+        units.push(unit);
+      }
+    }
+  }
+  return units;
+}
+
 export function hitungHPP(
   resep: { jumlah: number; stok: { hargaBahan: number; satuan: string } }[]
 ): number {

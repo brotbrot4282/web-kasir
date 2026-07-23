@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { hitungHPP, toBaseUnit } from "../hpp";
+import { hitungHPP, toBaseUnit, convertToStokUnit, getAvailableUnits } from "../hpp";
 
 describe("hitungHPP", () => {
   it("menghitung HPP dari satu bahan", () => {
@@ -63,5 +63,49 @@ describe("toBaseUnit", () => {
 
   it("handle unknown satuan", () => {
     expect(toBaseUnit(10, "box")).toEqual({ jumlah: 10, satuan: "box" });
+  });
+});
+
+describe("convertToStokUnit", () => {
+  it("same unit returns same value", () => {
+    expect(convertToStokUnit(100, "gram", "gram")).toBe(100);
+  });
+
+  it("converts gram to kg", () => {
+    expect(convertToStokUnit(180, "gram", "kg")).toBeCloseTo(0.18);
+  });
+
+  it("converts ml to liter", () => {
+    expect(convertToStokUnit(500, "ml", "liter")).toBeCloseTo(0.5);
+  });
+
+  it("kg to kg stays same", () => {
+    expect(convertToStokUnit(2, "kg", "kg")).toBe(2);
+  });
+
+  it("handles unknown satuan gracefully", () => {
+    expect(convertToStokUnit(10, "box", "pcs")).toBe(10);
+  });
+});
+
+describe("getAvailableUnits", () => {
+  it("kg returns kg and gram", () => {
+    expect(getAvailableUnits("kg")).toEqual(["kg", "gram"]);
+  });
+
+  it("liter returns liter and ml", () => {
+    expect(getAvailableUnits("liter")).toEqual(["liter", "ml"]);
+  });
+
+  it("gram returns gram and kg", () => {
+    expect(getAvailableUnits("gram")).toEqual(["gram", "kg"]);
+  });
+
+  it("ml returns ml and liter", () => {
+    expect(getAvailableUnits("ml")).toEqual(["ml", "liter"]);
+  });
+
+  it("pcs returns pcs, bungkus, pack", () => {
+    expect(getAvailableUnits("pcs")).toEqual(["pcs", "bungkus", "pack"]);
   });
 });
