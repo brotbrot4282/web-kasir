@@ -21,7 +21,9 @@ export default function AdminHPPPage() {
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingResepId, setEditingResepId] = useState<string | null>(null);
-  const [form, setForm] = useState({ menuId: "", stokId: "", jumlah: "" });
+  const [editMenuId, setEditMenuId] = useState("");
+  const [formMenuId, setFormMenuId] = useState("");
+  const [formItems, setFormItems] = useState<{ stokId: string; jumlah: string }[]>([{ stokId: "", jumlah: "" }]);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; nama: string } | null>(null);
 
   const loadData = useCallback(async () => {
@@ -35,40 +37,73 @@ export default function AdminHPPPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const resetForm = () => { setForm({ menuId: "", stokId: "", jumlah: "" }); setEditingResepId(null); setShowForm(false); };
+  const resetForm = () => { setFormMenuId(""); setFormItems([{ stokId: "", jumlah: "" }]); setEditingResepId(null); setEditMenuId(""); setShowForm(false); };
 
   const editResep = (resep: ResepItem, menuId: string) => {
-    setForm({ menuId, stokId: resep.stokId, jumlah: resep.jumlah.toString() });
+    setFormMenuId(menuId);
+    setEditMenuId(menuId);
+    setFormItems([{ stokId: resep.stokId, jumlah: resep.jumlah.toString() }]);
     setEditingResepId(resep.id);
     setShowForm(true);
   };
 
+  const updateFormItem = (index: number, field: "stokId" | "jumlah", value: string) => {
+    const updated = [...formItems];
+    updated[index] = { ...updated[index], [field]: value };
+    setFormItems(updated);
+  };
+
+  const addFormItem = () => setFormItems([...formItems, { stokId: "", jumlah: "" }]);
+  const removeFormItem = (index: number) => setFormItems(formItems.filter((_, i) => i !== index));
+
   const simpan = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.menuId) { setToast({ message: "Pilih menu", type: "error" }); return; }
-    if (!form.stokId) { setToast({ message: "Pilih bahan", type: "error" }); return; }
-    const jumlahVal = parseFloat(form.jumlah.replace(",", "."));
-    if (!form.jumlah || isNaN(jumlahVal) || jumlahVal <= 0) { setToast({ message: "Jumlah harus positif", type: "error" }); return; }
+    const activeMenuId = editingResepId ? editMenuId : formMenuId;
 
-    try {
-      if (editingResepId) {
+    if (!activeMenuId) { setToast({ message: "Pilih menu", type: "error" }); return; }
+
+    if (editingResepId) {
+      const item = formItems[0];
+      if (!item.stokId) { setToast({ message: "Pilih bahan", type: "error" }); return; }
+      const jumlahVal = parseFloat(item.jumlah.replace(",", "."));
+      if (!item.jumlah || isNaN(jumlahVal) || jumlahVal <= 0) { setToast({ message: "Jumlah harus positif", type: "error" }); return; }
+      try {
         const res = await fetch(`/api/hpp/${editingResepId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ jumlah: jumlahVal }),
         });
         if (!res.ok) { const err = await res.json(); throw new Error(err.error); }
-      } else {
+        setToast({ message: "Resep berhasil diupdate", type: "success" });
+        resetForm(); loadData();
+      } catch (err) { setToast({ message: err instanceof Error ? err.message : "Gagal simpan", type: "error" }); }
+      return;
+    }
+
+    const validItems = formItems.filter((item) => item.stokId && item.jumlah && parseFloat(item.jumlah.replace(",", ".")) > 0);
+    if (validItems.length === 0) { setToast({ message: "Minimal isi 1 bahan dengan jumlah yang valid", type: "error" }); return; }
+
+    let successCount = 0;
+    let errorMsg = "";
+    for (const item of validItems) {
+      const jumlahVal = parseFloat(item.jumlah.replace(",", "."));
+      try {
         const res = await fetch("/api/hpp", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ menuId: form.menuId, stokId: form.stokId, jumlah: jumlahVal }),
+          body: JSON.stringify({ menuId: activeMenuId, stokId: item.stokId, jumlah: jumlahVal }),
         });
-        if (!res.ok) { const err = await res.json(); throw new Error(err.error); }
-      }
-      setToast({ message: editingResepId ? "Resep berhasil diupdate" : "Bahan berhasil ditambahkan", type: "success" });
+        if (res.ok) { successCount++; }
+        else { const err = await res.json(); errorMsg = err.error; }
+      } catch { errorMsg = "Gagal menyimpan"; }
+    }
+
+    if (successCount > 0) {
+      setToast({ message: `${successCount} bahan berhasil ditambahkan`, type: "success" });
       resetForm(); loadData();
-    } catch (err) { setToast({ message: err instanceof Error ? err.message : "Gagal simpan", type: "error" }); }
+    } else {
+      setToast({ message: errorMsg || "Gagal menyimpan resep", type: "error" });
+    }
   };
 
   const hapus = async (id: string) => {
@@ -206,7 +241,7 @@ export default function AdminHPPPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               onSubmit={simpan}
-              className="bg-white rounded-xl p-6 shadow-xl border border-sage-200 w-full max-w-md mx-4 space-y-4"
+              className="bg-white rounded-xl p-6 shadow-xl border border-sage-200 w-full max-w-md mx-4 space-y-4 max-h-[85vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between">
@@ -221,7 +256,7 @@ export default function AdminHPPPage() {
                 <div>
                   <label className="block text-sm font-medium text-sage-600 mb-1">Menu</label>
                   <div className="relative">
-                    <select value={form.menuId} onChange={(e) => setForm({ ...form, menuId: e.target.value })} className="w-full appearance-none border border-sage-200 rounded-lg px-3 py-2 pr-9 text-sm bg-white text-sage-800 cursor-pointer hover:border-sage-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all">
+                    <select value={formMenuId} onChange={(e) => setFormMenuId(e.target.value)} className="w-full appearance-none border border-sage-200 rounded-lg px-3 py-2 pr-9 text-sm bg-white text-sage-800 cursor-pointer hover:border-sage-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all">
                       <option value="">-- Pilih Menu --</option>
                       {menuList.map((m) => <option key={m.id} value={m.id}>{m.nama} (Rp {m.harga.toLocaleString("id-ID")})</option>)}
                     </select>
@@ -231,34 +266,68 @@ export default function AdminHPPPage() {
                   </div>
                 </div>
               )}
-              <div>
-                <label className="block text-sm font-medium text-sage-600 mb-1">Bahan</label>
-                <div className="relative">
-                  <select value={form.stokId} onChange={(e) => setForm({ ...form, stokId: e.target.value })} disabled={!!editingResepId} className="w-full appearance-none border border-sage-200 rounded-lg px-3 py-2 pr-9 text-sm bg-white text-sage-800 cursor-pointer hover:border-sage-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                    <option value="">-- Pilih Bahan --</option>
-                    {stokList.filter((s) => s.hargaBahan > 0).map((s) => (
-                      <option key={s.id} value={s.id}>{s.namaBahan} (Rp {s.hargaBahan.toLocaleString("id-ID")}/{s.satuan})</option>
-                    ))}
-                  </select>
-                  <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sage-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                  </svg>
+
+              {!editingResepId && (
+                <div className="space-y-3">
+                  <label className="block text-sm font-medium text-sage-600">Bahan</label>
+                  {formItems.map((item, idx) => (
+                    <div key={idx} className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-sage-400 font-medium w-5 shrink-0">{idx + 1}.</span>
+                        <div className="relative flex-1">
+                          <select value={item.stokId} onChange={(e) => updateFormItem(idx, "stokId", e.target.value)} className="w-full appearance-none border border-sage-200 rounded-lg px-3 py-2 pr-9 text-sm bg-white text-sage-800 cursor-pointer hover:border-sage-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all">
+                            <option value="">-- Pilih Bahan --</option>
+                            {stokList.map((s) => (
+                              <option key={s.id} value={s.id}>{s.namaBahan} {s.hargaBahan > 0 ? `(Rp ${s.hargaBahan.toLocaleString("id-ID")}/${s.satuan})` : "(harga belum diisi)"}</option>
+                            ))}
+                          </select>
+                          <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sage-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                          </svg>
+                        </div>
+                        {formItems.length > 1 && (
+                          <button type="button" onClick={() => removeFormItem(idx)} className="w-7 h-7 rounded-lg bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-500 hover:bg-rose-100 transition-colors shrink-0" title="Hapus bahan ini">
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 pl-7">
+                        <input type="text" value={item.jumlah} onChange={(e) => updateFormItem(idx, "jumlah", e.target.value.replace(/[^0-9.,]/g, ""))} className="w-full border border-sage-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all" placeholder="Jumlah per porsi" />
+                        {item.stokId && <span className="text-xs text-sage-400 shrink-0">{stokList.find((s) => s.id === item.stokId)?.satuan}</span>}
+                      </div>
+                    </div>
+                  ))}
+                  <button type="button" onClick={addFormItem} className="flex items-center gap-1.5 text-xs font-medium text-red-700 hover:text-red-800 transition-colors pt-1">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    Tambah Bahan
+                  </button>
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-sage-600 mb-1">Jumlah per Porsi</label>
-                <input type="text" value={form.jumlah} onChange={(e) => setForm({ ...form, jumlah: e.target.value.replace(/[^0-9.,]/g, "") })} className="w-full border border-sage-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all" placeholder="0" />
-                {form.stokId && (
-                  <p className="text-xs text-sage-400 mt-1">
-                    Satuan mengikuti stok: {stokList.find((s) => s.id === form.stokId)?.satuan}
-                    {form.jumlah && parseFloat(form.jumlah.replace(",", ".")) > 0 && stokList.find((s) => s.id === form.stokId) && (
-                      <span className="text-sage-600 ml-1">
-                        (Subtotal: Rp {(parseFloat(form.jumlah.replace(",", ".")) * stokList.find((s) => s.id === form.stokId)!.hargaBahan).toLocaleString("id-ID")})
-                      </span>
-                    )}
-                  </p>
-                )}
-              </div>
+              )}
+
+              {editingResepId && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-sage-600 mb-1">Bahan</label>
+                    <div className="relative">
+                      <select value={formItems[0]?.stokId || ""} onChange={(e) => updateFormItem(0, "stokId", e.target.value)} disabled className="w-full appearance-none border border-sage-200 rounded-lg px-3 py-2 pr-9 text-sm bg-sage-50 text-sage-600 cursor-not-allowed opacity-70">
+                        <option value="">{stokList.find((s) => s.id === formItems[0]?.stokId)?.namaBahan || "-- Bahan --"}</option>
+                      </select>
+                      <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sage-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                      </svg>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-sage-600 mb-1">Jumlah per Porsi</label>
+                    <input type="text" value={formItems[0]?.jumlah || ""} onChange={(e) => updateFormItem(0, "jumlah", e.target.value.replace(/[^0-9.,]/g, ""))} className="w-full border border-sage-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all" placeholder="0" />
+                  </div>
+                </div>
+              )}
+
               <div className="flex gap-2 pt-1">
                 <motion.button whileTap={{ scale: 0.98 }} type="submit" className="flex-1 bg-red-800 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-red-900 transition-colors">
                   {editingResepId ? "Update" : "Simpan"}
