@@ -214,16 +214,24 @@ describe("stokUpdateSchema", () => {
 
 // ── poinDeductSchema ─────────────────────────────────
 describe("poinDeductSchema", () => {
-  it("accepts valid input", () => {
-    expect(poinDeductSchema.safeParse({ poin: 5, keterangan: "Tukar kopi" }).success).toBe(true);
+  it("accepts valid TAMBAH input", () => {
+    expect(poinDeductSchema.safeParse({ poin: 5, keterangan: "Bonus promo", tipe: "TAMBAH" }).success).toBe(true);
+  });
+
+  it("accepts valid KURANG input", () => {
+    expect(poinDeductSchema.safeParse({ poin: 5, keterangan: "Tukar kopi", tipe: "KURANG" }).success).toBe(true);
   });
 
   it("rejects zero poin", () => {
-    expect(poinDeductSchema.safeParse({ poin: 0, keterangan: "test" }).success).toBe(false);
+    expect(poinDeductSchema.safeParse({ poin: 0, keterangan: "test", tipe: "KURANG" }).success).toBe(false);
   });
 
   it("rejects empty keterangan", () => {
-    expect(poinDeductSchema.safeParse({ poin: 5, keterangan: "" }).success).toBe(false);
+    expect(poinDeductSchema.safeParse({ poin: 5, keterangan: "", tipe: "KURANG" }).success).toBe(false);
+  });
+
+  it("rejects invalid tipe", () => {
+    expect(poinDeductSchema.safeParse({ poin: 5, keterangan: "test", tipe: "SALAH" }).success).toBe(false);
   });
 });
 

@@ -14,7 +14,8 @@ export default function AdminCustomerPage() {
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [selectedMember, setSelectedMember] = useState<MemberDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
-  const [poinKurang, setPoinKurang] = useState("");
+  const [modePoin, setModePoin] = useState<"TAMBAH" | "KURANG">("TAMBAH");
+  const [poinInput, setPoinInput] = useState("");
   const [alasan, setAlasan] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -28,12 +29,13 @@ export default function AdminCustomerPage() {
   const openDetail = async (id: string) => {
     setLoadingDetail(true);
     setSelectedMember(null);
+    setModePoin("TAMBAH");
     try {
       const res = await fetch(`/api/member/${id}`);
       if (!res.ok) throw new Error();
       const data = await res.json();
       setSelectedMember(data);
-      setPoinKurang("");
+      setPoinInput("");
       setAlasan("");
     } catch {
       setToast({ message: "Gagal memuat detail member", type: "error" });
@@ -42,22 +44,22 @@ export default function AdminCustomerPage() {
     }
   };
 
-  const kurangiPoin = async () => {
+  const submitPoin = async () => {
     if (!selectedMember) return;
-    const p = parseInt(poinKurang);
+    const p = parseInt(poinInput);
     if (!p || p <= 0) { setToast({ message: "Jumlah poin harus angka positif", type: "error" }); return; }
-    if (p > selectedMember.poin) { setToast({ message: `Poin tidak mencukupi (sisa ${selectedMember.poin})`, type: "error" }); return; }
-    if (!alasan.trim()) { setToast({ message: "Alasan wajib diisi", type: "error" }); return; }
+    if (modePoin === "KURANG" && p > selectedMember.poin) { setToast({ message: `Poin tidak mencukupi (sisa ${selectedMember.poin})`, type: "error" }); return; }
+    if (!alasan.trim()) { setToast({ message: "Keterangan wajib diisi", type: "error" }); return; }
 
     setSubmitting(true);
     try {
       const res = await fetch(`/api/member/${selectedMember.id}/poin`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ poin: p, keterangan: alasan.trim() }),
+        body: JSON.stringify({ poin: p, keterangan: alasan.trim(), tipe: modePoin }),
       });
       if (!res.ok) { const err = await res.json(); throw new Error(err.error); }
-      setToast({ message: `Poin berhasil dikurangi ${p} poin`, type: "success" });
+      setToast({ message: `Poin berhasil ${modePoin === "TAMBAH" ? "ditambah" : "dikurangi"} ${p} poin`, type: "success" });
       openDetail(selectedMember.id);
       loadData();
     } catch (err) {
@@ -163,35 +165,61 @@ export default function AdminCustomerPage() {
               </div>
 
               <div className="p-5 border-b border-sage-100">
-                <h3 className="text-sm font-semibold text-sage-700 mb-3">Kurangi Poin</h3>
+                <div className="flex bg-sage-100 rounded-lg p-0.5 mb-4">
+                  <button
+                    onClick={() => { setModePoin("TAMBAH"); setPoinInput(""); setAlasan(""); }}
+                    className={`flex-1 py-2 text-xs font-semibold rounded-md transition-all ${
+                      modePoin === "TAMBAH"
+                        ? "bg-emerald-500 text-white shadow-sm"
+                        : "text-sage-400 hover:text-sage-600"
+                    }`}
+                  >
+                    Tambah Poin
+                  </button>
+                  <button
+                    onClick={() => { setModePoin("KURANG"); setPoinInput(""); setAlasan(""); }}
+                    className={`flex-1 py-2 text-xs font-semibold rounded-md transition-all ${
+                      modePoin === "KURANG"
+                        ? "bg-rose-500 text-white shadow-sm"
+                        : "text-sage-400 hover:text-sage-600"
+                    }`}
+                  >
+                    Kurangi Poin
+                  </button>
+                </div>
+
                 <div className="space-y-3">
                   <div>
                     <label className="block text-xs text-sage-500 mb-1">Jumlah Poin</label>
                     <input
                       type="text"
-                      value={poinKurang}
-                      onChange={(e) => setPoinKurang(e.target.value.replace(/\D/g, ""))}
+                      value={poinInput}
+                      onChange={(e) => setPoinInput(e.target.value.replace(/\D/g, ""))}
                       placeholder="0"
                       maxLength={5}
                       className="w-full border border-sage-200 rounded-lg px-3 py-2 text-sm text-sage-800 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-sage-500 mb-1">Alasan</label>
+                    <label className="block text-xs text-sage-500 mb-1">Keterangan</label>
                     <input
                       type="text"
                       value={alasan}
                       onChange={(e) => setAlasan(e.target.value)}
-                      placeholder="Misal: Tukar 1 gelas Kopi"
+                      placeholder={modePoin === "TAMBAH" ? "Misal: Bonus poin promo" : "Misal: Tukar 1 gelas Kopi"}
                       className="w-full border border-sage-200 rounded-lg px-3 py-2 text-sm text-sage-800 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400"
                     />
                   </div>
                   <button
-                    onClick={kurangiPoin}
-                    disabled={submitting || !poinKurang || parseInt(poinKurang) <= 0 || !alasan.trim()}
-                    className="w-full bg-rose-500 text-white py-2 rounded-lg font-medium text-sm hover:bg-rose-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    onClick={submitPoin}
+                    disabled={submitting || !poinInput || parseInt(poinInput) <= 0 || !alasan.trim()}
+                    className={`w-full text-white py-2 rounded-lg font-medium text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                      modePoin === "TAMBAH"
+                        ? "bg-emerald-500 hover:bg-emerald-600"
+                        : "bg-rose-500 hover:bg-rose-600"
+                    }`}
                   >
-                    {submitting ? "Menyimpan..." : "Kurangi Poin"}
+                    {submitting ? "Menyimpan..." : modePoin === "TAMBAH" ? "Tambah Poin" : "Kurangi Poin"}
                   </button>
                 </div>
               </div>

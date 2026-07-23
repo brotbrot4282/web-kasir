@@ -21,29 +21,31 @@ export async function PATCH(
       return NextResponse.json({ error: message }, { status: 400 });
     }
 
-    const { poin, keterangan } = parsed.data;
+    const { poin, keterangan, tipe } = parsed.data;
 
     const member = await prisma.member.findUnique({ where: { id } });
     if (!member) {
       return NextResponse.json({ error: "Member tidak ditemukan" }, { status: 404 });
     }
 
-    if (member.poin < poin) {
+    if (tipe === "KURANG" && member.poin < poin) {
       return NextResponse.json(
         { error: `Poin tidak mencukupi (sisa ${member.poin})` },
         { status: 400 }
       );
     }
 
+    const delta = tipe === "TAMBAH" ? poin : -poin;
+
     const [updated] = await Promise.all([
       prisma.member.update({
         where: { id },
-        data: { poin: { decrement: poin } },
+        data: { poin: tipe === "TAMBAH" ? { increment: poin } : { decrement: poin } },
       }),
       prisma.rewardPoin.create({
         data: {
           memberId: id,
-          poin: -poin,
+          poin: delta,
           keterangan: keterangan.trim(),
         },
       }),

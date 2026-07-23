@@ -67,6 +67,7 @@ export const stokUpdateSchema = z.object({
 export const poinDeductSchema = z.object({
   poin: z.number().int().positive("Jumlah poin harus positif"),
   keterangan: z.string().min(1, "Keterangan wajib diisi").max(200),
+  tipe: z.enum(["TAMBAH", "KURANG"], { message: "Tipe harus TAMBAH atau KURANG" }),
 });
 
 // ── Pengaturan Poin ───────────────────────────────────
