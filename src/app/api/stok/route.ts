@@ -27,13 +27,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: message }, { status: 400 });
     }
 
-    const { namaBahan, jumlah, satuan } = parsed.data;
+    const { namaBahan, jumlah, satuan, hargaBahan } = parsed.data;
 
     const bahan = await prisma.stok.create({
       data: {
         namaBahan: namaBahan.trim(),
         jumlah,
         satuan,
+        hargaBahan: hargaBahan ?? 0,
       },
     });
 

@@ -33,6 +33,7 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
         ...(data.namaBahan !== undefined ? { namaBahan: data.namaBahan.trim() } : {}),
         ...(data.jumlah !== undefined ? { jumlah: data.jumlah } : {}),
         ...(data.satuan !== undefined ? { satuan: data.satuan } : {}),
+        ...(data.hargaBahan !== undefined ? { hargaBahan: data.hargaBahan } : {}),
       },
     });
 

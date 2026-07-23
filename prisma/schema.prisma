@@ -28,6 +28,7 @@ model Menu {
   isTersedia Boolean         @default(true) @map("is_tersedia")
   variants   Json?            @default("[]")
   itemTransaksi ItemTransaksi[]
+  resep         Resep[]
   createdAt  DateTime        @default(now()) @map("created_at")
   updatedAt  DateTime        @updatedAt @map("updated_at")
 
@@ -135,6 +136,8 @@ model Stok {
   namaBahan  String   @map("nama_bahan")
   jumlah     Float
   satuan     String
+  hargaBahan Float    @default(0) @map("harga_bahan")
+  resep      Resep[]
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
@@ -162,6 +165,18 @@ model DailyReport {
 
   @@unique([tanggal, shift])
   @@map("daily_report")
+}
+
+model Resep {
+  id     String @id @default(uuid()) @db.Uuid
+  menuId String @map("menu_id") @db.Uuid
+  stokId String @map("stok_id") @db.Uuid
+  jumlah Float
+  menu   Menu   @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  stok   Stok   @relation(fields: [stokId], references: [id], onDelete: Cascade)
+
+  @@unique([menuId, stokId])
+  @@map("resep")
 }
 
 model PengaturanPoin {

@@ -87,18 +87,30 @@ async function main() {
 
   // ── Stok ──
   const stokItems = [
-    ["Kopi Bubuk", 5000, "gram"], ["Susu Cair", 5000, "ml"], ["Gula Pasir", 5000, "gram"],
-    ["Coklat Bubuk", 2000, "gram"], ["Matcha Bubuk", 1000, "gram"], ["Teh Bubuk", 2000, "gram"],
-    ["Red Velvet Powder", 1000, "gram"], ["Es Batu", 100, "plastik"], ["Cup", 500, "pcs"],
-    ["Tutup Cup", 500, "pcs"], ["Sedotan", 1000, "pcs"], ["Minyak Goreng", 5000, "ml"],
-    ["Pisang", 50, "pcs"], ["Kentang", 10000, "gram"], ["Roti Tawar", 50, "pcs"],
-    ["Selai", 2000, "gram"], ["Mentega", 2000, "gram"], ["Keju", 1000, "gram"],
-    ["Plastik Kemasan", 500, "pcs"],
-  ] as const;
-  for (const [namaBahan, jumlah, satuan] of stokItems) {
-    const existing = await prisma.stok.findFirst({ where: { namaBahan } });
-    if (existing) await prisma.stok.update({ where: { id: existing.id }, data: { jumlah, satuan } });
-    else await prisma.stok.create({ data: { namaBahan, jumlah: jumlah as number, satuan } });
+    { namaBahan: "Kopi Bubuk", jumlah: 5000, satuan: "gram", hargaBahan: 120 },
+    { namaBahan: "Susu Cair", jumlah: 5000, satuan: "ml", hargaBahan: 2 },
+    { namaBahan: "Gula Pasir", jumlah: 5000, satuan: "gram", hargaBahan: 15 },
+    { namaBahan: "Coklat Bubuk", jumlah: 2000, satuan: "gram", hargaBahan: 80 },
+    { namaBahan: "Matcha Bubuk", jumlah: 1000, satuan: "gram", hargaBahan: 150 },
+    { namaBahan: "Teh Bubuk", jumlah: 2000, satuan: "gram", hargaBahan: 50 },
+    { namaBahan: "Red Velvet Powder", jumlah: 1000, satuan: "gram", hargaBahan: 120 },
+    { namaBahan: "Es Batu", jumlah: 100, satuan: "pcs", hargaBahan: 500 },
+    { namaBahan: "Cup", jumlah: 500, satuan: "pcs", hargaBahan: 800 },
+    { namaBahan: "Tutup Cup", jumlah: 500, satuan: "pcs", hargaBahan: 300 },
+    { namaBahan: "Sedotan", jumlah: 1000, satuan: "pcs", hargaBahan: 100 },
+    { namaBahan: "Minyak Goreng", jumlah: 5000, satuan: "ml", hargaBahan: 3 },
+    { namaBahan: "Pisang", jumlah: 50, satuan: "pcs", hargaBahan: 3000 },
+    { namaBahan: "Kentang", jumlah: 10000, satuan: "gram", hargaBahan: 25 },
+    { namaBahan: "Roti Tawar", jumlah: 50, satuan: "pcs", hargaBahan: 2500 },
+    { namaBahan: "Selai", jumlah: 2000, satuan: "gram", hargaBahan: 40 },
+    { namaBahan: "Mentega", jumlah: 2000, satuan: "gram", hargaBahan: 60 },
+    { namaBahan: "Keju", jumlah: 1000, satuan: "gram", hargaBahan: 100 },
+    { namaBahan: "Plastik Kemasan", jumlah: 500, satuan: "pcs", hargaBahan: 200 },
+  ];
+  for (const item of stokItems) {
+    const existing = await prisma.stok.findFirst({ where: { namaBahan: item.namaBahan } });
+    if (existing) await prisma.stok.update({ where: { id: existing.id }, data: { jumlah: item.jumlah, satuan: item.satuan, hargaBahan: item.hargaBahan } });
+    else await prisma.stok.create({ data: item });
   }
   console.log("✓ Stok: 19");
 

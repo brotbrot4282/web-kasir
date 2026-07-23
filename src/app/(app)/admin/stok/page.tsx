@@ -4,13 +4,13 @@ import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Toast } from "@/components/Toast";
 
-type StokItem = { id: string; namaBahan: string; jumlah: number; satuan: string; createdAt: string; updatedAt: string };
+type StokItem = { id: string; namaBahan: string; jumlah: number; satuan: string; hargaBahan: number; createdAt: string; updatedAt: string };
 
 export default function AdminStokPage() {
   const [stokList, setStokList] = useState<StokItem[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ namaBahan: "", jumlah: "", satuan: "" });
+  const [form, setForm] = useState({ namaBahan: "", jumlah: "", satuan: "", hargaBahan: "" });
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [search, setSearch] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<StokItem | null>(null);
@@ -18,9 +18,9 @@ export default function AdminStokPage() {
   const loadData = useCallback(() => { fetch("/api/stok").then((r) => r.json()).then(setStokList); }, []);
   useEffect(() => { loadData(); }, [loadData]);
 
-  const resetForm = () => { setForm({ namaBahan: "", jumlah: "", satuan: "" }); setEditingId(null); setShowForm(false); };
+  const resetForm = () => { setForm({ namaBahan: "", jumlah: "", satuan: "", hargaBahan: "" }); setEditingId(null); setShowForm(false); };
 
-  const editStok = (item: StokItem) => { setForm({ namaBahan: item.namaBahan, jumlah: item.jumlah.toString(), satuan: item.satuan }); setEditingId(item.id); setShowForm(true); };
+  const editStok = (item: StokItem) => { setForm({ namaBahan: item.namaBahan, jumlah: item.jumlah.toString(), satuan: item.satuan, hargaBahan: item.hargaBahan.toString() }); setEditingId(item.id); setShowForm(true); };
 
   const simpan = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +28,8 @@ export default function AdminStokPage() {
     const jumlahVal = parseFloat(form.jumlah.replace(",", "."));
     if (!form.jumlah || isNaN(jumlahVal) || jumlahVal <= 0) { setToast({ message: "Jumlah harus angka positif", type: "error" }); return; }
     if (!form.satuan.trim()) { setToast({ message: "Satuan wajib diisi", type: "error" }); return; }
-    const body = { namaBahan: form.namaBahan, jumlah: jumlahVal, satuan: form.satuan };
+    const hargaBahanVal = parseFloat(form.hargaBahan.replace(",", ".")) || 0;
+    const body = { namaBahan: form.namaBahan, jumlah: jumlahVal, satuan: form.satuan, hargaBahan: hargaBahanVal };
     try {
       const res = editingId
         ? await fetch(`/api/stok/${editingId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
@@ -166,6 +167,11 @@ export default function AdminStokPage() {
                   </div>
                 </div>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-sage-600 mb-1">Harga per Satuan (Rp)</label>
+                <input type="text" value={form.hargaBahan} onChange={(e) => setForm({ ...form, hargaBahan: e.target.value.replace(/[^0-9.,]/g, "") })} className="w-full border border-sage-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all" placeholder="0" />
+                <p className="text-xs text-sage-400 mt-1">Contoh: 100000 untuk Rp 100.000/kg</p>
+              </div>
               <div className="flex gap-2 pt-1">
                 <motion.button
                   whileTap={{ scale: 0.98 }}
@@ -237,6 +243,7 @@ export default function AdminStokPage() {
               <tr className="border-b border-sage-100 bg-sage-50/50">
                 <th className="text-left px-4 py-3 text-xs font-semibold text-sage-500 uppercase tracking-wider">Nama Bahan</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-sage-500 uppercase tracking-wider">Stok</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-sage-500 uppercase tracking-wider">Harga/Satuan</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-sage-500 uppercase tracking-wider">Status</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-sage-500 uppercase tracking-wider">Aksi</th>
               </tr>
@@ -269,6 +276,12 @@ export default function AdminStokPage() {
                       <span className="text-sm font-bold text-sage-800">{item.jumlah}</span>
                       <span className="text-xs text-sage-400 ml-0.5">/{item.satuan}</span>
                     </td>
+                    <td className="px-4 py-3.5 text-right">
+                      <span className="text-sm font-medium text-sage-700">
+                        {item.hargaBahan > 0 ? `Rp ${item.hargaBahan.toLocaleString("id-ID")}` : "-"}
+                      </span>
+                      <span className="text-xs text-sage-400">/{item.satuan}</span>
+                    </td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-2">
                         <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold border ${level.color}`}>
@@ -297,7 +310,7 @@ export default function AdminStokPage() {
                             fetch(`/api/stok/${item.id}`, {
                               method: "PUT",
                               headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ namaBahan: item.namaBahan, jumlah: item.jumlah + 1, satuan: item.satuan }),
+                              body: JSON.stringify({ namaBahan: item.namaBahan, jumlah: item.jumlah + 1, satuan: item.satuan, hargaBahan: item.hargaBahan }),
                             }).then((r) => { if (r.ok) loadData(); });
                           }}
                           className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 hover:bg-emerald-100 transition-colors text-sm font-bold"
@@ -333,7 +346,7 @@ export default function AdminStokPage() {
               </AnimatePresence>
               {stokFilter.length === 0 && (
                 <tr>
-                  <td colSpan={4}>
+                  <td colSpan={5}>
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}

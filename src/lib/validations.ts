@@ -55,12 +55,14 @@ export const stokCreateSchema = z.object({
   namaBahan: z.string().min(1, "Nama bahan wajib diisi").max(100),
   jumlah: z.number().positive("Jumlah harus positif"),
   satuan: z.string().min(1, "Satuan wajib diisi").max(20),
+  hargaBahan: z.number().min(0, "Harga bahan tidak boleh negatif").default(0),
 });
 
 export const stokUpdateSchema = z.object({
   namaBahan: z.string().min(1).max(100).optional(),
   jumlah: z.number().min(0).optional(),
   satuan: z.string().min(1).max(20).optional(),
+  hargaBahan: z.number().min(0).optional(),
 });
 
 // ── Member Poin ───────────────────────────────────────
@@ -98,4 +100,15 @@ export const closingSchema = z.object({
     )
     .nullish(),
   kasAktual: z.number().int().min(0, "Kas aktual harus angka non-negatif").optional(),
+});
+
+// ── Resep (HPP) ───────────────────────────────────────
+export const resepSchema = z.object({
+  menuId: z.string().uuid("Menu ID tidak valid"),
+  stokId: z.string().uuid("Stok ID tidak valid"),
+  jumlah: z.number().positive("Jumlah harus positif"),
+});
+
+export const resepUpdateSchema = z.object({
+  jumlah: z.number().positive("Jumlah harus positif"),
 });

@@ -11,6 +11,8 @@ import {
   pengaturanPoinSchema,
   openingSchema,
   closingSchema,
+  resepSchema,
+  resepUpdateSchema,
 } from "../validations";
 
 const UUID = "550e8400-e29b-41d4-a716-446655440000";
@@ -178,10 +180,16 @@ describe("kategoriSchema", () => {
 
 // ── stokCreateSchema ─────────────────────────────────
 describe("stokCreateSchema", () => {
-  const valid = { namaBahan: "Gula", jumlah: 10, satuan: "kg" };
+  const valid = { namaBahan: "Gula", jumlah: 10, satuan: "kg", hargaBahan: 25000 };
 
   it("accepts valid stok", () => {
     expect(stokCreateSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("defaults hargaBahan to 0", () => {
+    const result = stokCreateSchema.safeParse({ namaBahan: "Gula", jumlah: 10, satuan: "kg" });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.hargaBahan).toBe(0);
   });
 
   it("rejects empty namaBahan", () => {
@@ -194,6 +202,14 @@ describe("stokCreateSchema", () => {
 
   it("rejects empty satuan", () => {
     expect(stokCreateSchema.safeParse({ ...valid, satuan: "" }).success).toBe(false);
+  });
+
+  it("rejects negative hargaBahan", () => {
+    expect(stokCreateSchema.safeParse({ ...valid, hargaBahan: -1 }).success).toBe(false);
+  });
+
+  it("accepts zero hargaBahan", () => {
+    expect(stokCreateSchema.safeParse({ ...valid, hargaBahan: 0 }).success).toBe(true);
   });
 });
 
@@ -309,5 +325,45 @@ describe("closingSchema", () => {
 
   it("rejects catatan > 500 chars", () => {
     expect(closingSchema.safeParse({ catatan: "a".repeat(501) }).success).toBe(false);
+  });
+});
+
+// ── resepSchema ──────────────────────────────────────
+describe("resepSchema", () => {
+  const valid = { menuId: UUID, stokId: UUID, jumlah: 0.018 };
+
+  it("accepts valid resep", () => {
+    expect(resepSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("rejects invalid menuId", () => {
+    expect(resepSchema.safeParse({ ...valid, menuId: "bad" }).success).toBe(false);
+  });
+
+  it("rejects invalid stokId", () => {
+    expect(resepSchema.safeParse({ ...valid, stokId: "bad" }).success).toBe(false);
+  });
+
+  it("rejects zero jumlah", () => {
+    expect(resepSchema.safeParse({ ...valid, jumlah: 0 }).success).toBe(false);
+  });
+
+  it("rejects negative jumlah", () => {
+    expect(resepSchema.safeParse({ ...valid, jumlah: -1 }).success).toBe(false);
+  });
+});
+
+// ── resepUpdateSchema ────────────────────────────────
+describe("resepUpdateSchema", () => {
+  it("accepts valid jumlah", () => {
+    expect(resepUpdateSchema.safeParse({ jumlah: 18 }).success).toBe(true);
+  });
+
+  it("rejects zero jumlah", () => {
+    expect(resepUpdateSchema.safeParse({ jumlah: 0 }).success).toBe(false);
+  });
+
+  it("rejects negative jumlah", () => {
+    expect(resepUpdateSchema.safeParse({ jumlah: -5 }).success).toBe(false);
   });
 });
