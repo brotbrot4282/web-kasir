@@ -70,6 +70,11 @@ export const poinDeductSchema = z.object({
   tipe: z.enum(["TAMBAH", "KURANG"], { message: "Tipe harus TAMBAH atau KURANG" }),
 });
 
+export const memberCreateSchema = z.object({
+  noWa: z.string().min(10, "No. WA minimal 10 digit").max(15, "No. WA maksimal 15 digit"),
+  nama: z.string().max(100, "Nama maksimal 100 karakter").optional(),
+});
+
 // ── Pengaturan Poin ───────────────────────────────────
 export const pengaturanPoinSchema = z.object({
   rupiahPerPoin: z.number().int().positive("Rupiah per poin harus positif"),

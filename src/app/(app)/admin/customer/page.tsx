@@ -18,6 +18,10 @@ export default function AdminCustomerPage() {
   const [poinInput, setPoinInput] = useState("");
   const [alasan, setAlasan] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [showTambah, setShowTambah] = useState(false);
+  const [tambahNoWa, setTambahNoWa] = useState("");
+  const [tambahNama, setTambahNama] = useState("");
+  const [tambahLoading, setTambahLoading] = useState(false);
 
   const loadData = useCallback(() => {
     const params = search ? `?search=${encodeURIComponent(search)}` : "";
@@ -69,6 +73,30 @@ export default function AdminCustomerPage() {
     }
   };
 
+  const tambahMember = async () => {
+    const noWa = tambahNoWa.replace(/\D/g, "");
+    if (!noWa || noWa.length < 10) { setToast({ message: "No. WA minimal 10 digit", type: "error" }); return; }
+
+    setTambahLoading(true);
+    try {
+      const res = await fetch("/api/member", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ noWa, nama: tambahNama.trim() || undefined }),
+      });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error); }
+      setToast({ message: "Member berhasil ditambahkan", type: "success" });
+      setShowTambah(false);
+      setTambahNoWa("");
+      setTambahNama("");
+      loadData();
+    } catch (err) {
+      setToast({ message: err instanceof Error ? err.message : "Gagal", type: "error" });
+    } finally {
+      setTambahLoading(false);
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-5">
@@ -76,6 +104,15 @@ export default function AdminCustomerPage() {
           <h1 className="text-lg font-semibold text-sage-800">Customer</h1>
           <p className="text-xs text-sage-400 mt-0.5">Data member & Poin</p>
         </div>
+        <button
+          onClick={() => { setShowTambah(true); setTambahNoWa(""); setTambahNama(""); }}
+          className="flex items-center gap-1.5 bg-emerald-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition-colors shadow-sm"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          Tambah Member
+        </button>
       </div>
 
       <div className="relative mb-4">
@@ -254,6 +291,76 @@ export default function AdminCustomerPage() {
                     ))}
                   </div>
                 )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showTambah && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowTambah(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-xl shadow-xl w-full max-w-sm"
+            >
+              <div className="p-5 border-b border-sage-100">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-semibold text-sage-800">Tambah Member</h2>
+                  <button onClick={() => setShowTambah(false)} className="text-sage-400 hover:text-sage-600 transition-colors p-1">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <p className="text-xs text-sage-400 mt-0.5">Masukkan data member baru</p>
+              </div>
+              <div className="p-5 space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-sage-600 mb-1">No. WhatsApp <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    value={tambahNoWa}
+                    onChange={(e) => setTambahNoWa(e.target.value.replace(/\D/g, ""))}
+                    placeholder="08xxxxxxxxxx"
+                    autoFocus
+                    className="w-full border border-sage-200 rounded-lg px-3 py-2.5 text-sm text-sage-800 placeholder:text-sage-400 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-sage-600 mb-1">Nama <span className="text-sage-400">(opsional)</span></label>
+                  <input
+                    type="text"
+                    value={tambahNama}
+                    onChange={(e) => setTambahNama(e.target.value)}
+                    placeholder="Nama member"
+                    className="w-full border border-sage-200 rounded-lg px-3 py-2.5 text-sm text-sage-800 placeholder:text-sage-400 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400"
+                  />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setShowTambah(false)}
+                    className="flex-1 border border-sage-200 text-sage-600 py-2.5 rounded-lg font-medium text-sm hover:bg-sage-50 transition-colors"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    onClick={tambahMember}
+                    disabled={tambahLoading || !tambahNoWa || tambahNoWa.replace(/\D/g, "").length < 10}
+                    className="flex-1 bg-emerald-600 text-white py-2.5 rounded-lg font-medium text-sm hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {tambahLoading ? "Menyimpan..." : "Simpan"}
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>
