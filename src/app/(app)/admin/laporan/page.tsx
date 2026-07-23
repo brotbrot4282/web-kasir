@@ -7,7 +7,7 @@ type Ringkasan = { totalOmset: number; totalDiskon: number; totalTransaksi: numb
 type MenuTerlaris = { menuId: string; namaMenu: string; totalTerjual: number };
 type Transaksi = {
   id: string; noTransaksi: string; totalHarga: number; diskon: number; totalBayar: number;
-  kembalian: number; createdAt: string;
+  kembalian: number; metodeBayar: string; createdAt: string;
   itemTransaksi: Array<{ id: string; namaMenu: string; harga: number; jumlah: number; subtotal: number }>;
 };
 type LaporanData = { ringkasan: Ringkasan; menuTerlaris: MenuTerlaris[]; transaksi: Transaksi[]; total: number; totalPages: number; page: number };
@@ -227,6 +227,7 @@ export default function LaporanPage() {
                     <th className="text-left px-4 py-3 text-xs font-medium text-sage-500 uppercase">No. Transaksi</th>
                     <th className="text-right px-4 py-3 text-xs font-medium text-sage-500 uppercase">Total</th>
                     <th className="text-center px-4 py-3 text-xs font-medium text-sage-500 uppercase">Item</th>
+                    <th className="text-center px-4 py-3 text-xs font-medium text-sage-500 uppercase">Metode</th>
                     <th className="text-center px-4 py-3 text-xs font-medium text-sage-500 uppercase">Waktu</th>
                     <th className="text-center px-4 py-3 text-xs font-medium text-sage-500 uppercase">Detail</th>
                   </tr>
@@ -237,6 +238,11 @@ export default function LaporanPage() {
                       <td className="px-4 py-3.5 font-mono text-xs text-sage-400">{t.noTransaksi}</td>
                       <td className="px-4 py-3.5 text-right font-medium text-sage-800">{formatRupiah(t.totalHarga)}</td>
                       <td className="px-4 py-3.5 text-center text-sage-500">{t.itemTransaksi.reduce((s, i) => s + i.jumlah, 0)}</td>
+                      <td className="px-4 py-3.5 text-center">
+                        <span className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded ${t.metodeBayar === "QRIS" ? "bg-blue-50 text-blue-600" : "bg-emerald-50 text-emerald-600"}`}>
+                          {t.metodeBayar === "QRIS" ? "QRIS" : "Cash"}
+                        </span>
+                      </td>
                       <td className="px-4 py-3.5 text-center text-sage-400 text-xs">{formatDate(new Date(t.createdAt))}</td>
                       <td className="px-4 py-3.5 text-center">
                         <button onClick={() => setDetail(t)} className="text-red-600 hover:text-red-700 text-sm font-medium transition-colors">
@@ -246,7 +252,7 @@ export default function LaporanPage() {
                     </tr>
                   ))}
                   {data.transaksi.length === 0 && (
-                    <tr><td colSpan={5} className="text-center py-12 text-sage-400 text-sm">Belum ada transaksi</td></tr>
+                    <tr><td colSpan={6} className="text-center py-12 text-sage-400 text-sm">Belum ada transaksi</td></tr>
                   )}
                 </tbody>
               </table>
