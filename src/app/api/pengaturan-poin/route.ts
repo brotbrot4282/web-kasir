@@ -10,7 +10,7 @@ export async function GET() {
   let pengaturan = await prisma.pengaturanPoin.findUnique({ where: { id: 1 } });
   if (!pengaturan) {
     pengaturan = await prisma.pengaturanPoin.create({
-      data: { id: 1, rupiahPerPoin: 15000, poinPerGratisItem: 5 },
+      data: { id: 1, rupiahPerPoin: 15000, nilaiPerPoin: 1000 },
     });
   }
   return NextResponse.json(pengaturan);
@@ -31,12 +31,12 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: message }, { status: 400 });
     }
 
-    const { rupiahPerPoin, poinPerGratisItem, minimalTransaksi } = parsed.data;
+    const { rupiahPerPoin, nilaiPerPoin, minimalTransaksi } = parsed.data;
 
     const pengaturan = await prisma.pengaturanPoin.upsert({
       where: { id: 1 },
-      update: { rupiahPerPoin, poinPerGratisItem, minimalTransaksi },
-      create: { id: 1, rupiahPerPoin, poinPerGratisItem, minimalTransaksi },
+      update: { rupiahPerPoin, nilaiPerPoin, minimalTransaksi },
+      create: { id: 1, rupiahPerPoin, nilaiPerPoin, minimalTransaksi },
     });
 
     return NextResponse.json(pengaturan);

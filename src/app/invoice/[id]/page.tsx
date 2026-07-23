@@ -108,7 +108,7 @@ export default function InvoicePage() {
             </div>
             {data.poinDigunakan > 0 && (
               <div className="flex justify-between text-sm text-rose-500">
-                <span>Poin Dipakai</span><span>{data.poinDigunakan} poin</span>
+                <span>Poin Dipakai</span><span>{data.poinDigunakan} poin (-{formatRupiah(data.totalPoin)})</span>
               </div>
             )}
             {data.diskon > 0 && (
@@ -129,7 +129,7 @@ export default function InvoicePage() {
             )}
             {data.totalPoin > 0 && (
               <div className="border-t border-sage-100 pt-1.5 mt-1.5 flex justify-between text-sm font-medium text-amber-600">
-                <span>Total Poin</span><span>{data.totalPoin} poin</span>
+                <span>Potongan Poin</span><span>-{formatRupiah(data.totalPoin)}</span>
               </div>
             )}
           </div>

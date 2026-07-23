@@ -117,7 +117,7 @@ async function main() {
   await prisma.pengaturanPoin.upsert({
     where: { id: 1 },
     update: {},
-    create: { id: 1, rupiahPerPoin: 15000, poinPerGratisItem: 5 },
+    create: { id: 1, rupiahPerPoin: 15000, nilaiPerPoin: 1000 },
   });
   console.log("✓ Pengaturan Poin: 1\n");
 

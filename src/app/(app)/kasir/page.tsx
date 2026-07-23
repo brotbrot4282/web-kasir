@@ -12,8 +12,8 @@ type Menu = {
   id: string; nama: string; harga: number; stok: number; gambar: string | null;
   isTersedia: boolean; kategoriId: string; kategori: Kategori; variants: VariantGroup[] | null;
 };
-type KeranjangItem = { key: string; menuId: string; nama: string; harga: number; jumlah: number; subtotal: number; variant: string | null; gratisPoin: boolean };
-type PengaturanPoin = { rupiahPerPoin: number; poinPerGratisItem: number; minimalTransaksi: number };
+type KeranjangItem = { key: string; menuId: string; nama: string; harga: number; jumlah: number; subtotal: number; variant: string | null };
+type PengaturanPoin = { rupiahPerPoin: number; nilaiPerPoin: number; minimalTransaksi: number };
 
 export default function KasirPage() {
   const [kategoriList, setKategoriList] = useState<Kategori[]>([]);
@@ -25,10 +25,11 @@ export default function KasirPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [pengaturanPoin, setPengaturanPoin] = useState<PengaturanPoin>({ rupiahPerPoin: 15000, poinPerGratisItem: 5, minimalTransaksi: 10000 });
+  const [pengaturanPoin, setPengaturanPoin] = useState<PengaturanPoin>({ rupiahPerPoin: 15000, nilaiPerPoin: 1000, minimalTransaksi: 10000 });
   const [diskon, setDiskon] = useState("");
   const [diskonTipe, setDiskonTipe] = useState<"nominal" | "persen">("nominal");
   const [metodeBayar, setMetodeBayar] = useState<"CASH" | "QRIS">("CASH");
+  const [poinDigunakanInput, setPoinDigunakanInput] = useState("");
   const [transaksiSukses, setTransaksiSukses] = useState<{
     noTransaksi: string; totalHarga: number; totalBayar: number;
     kembalian: number; metodeBayar: string; items: KeranjangItem[];
@@ -146,16 +147,17 @@ export default function KasirPage() {
     return true;
   });
 
-  const totalKeranjang = keranjang.reduce((sum, item) => sum + (item.gratisPoin ? 0 : item.subtotal), 0);
-  const poinDigunakan = keranjang.filter((i) => i.gratisPoin).length * pengaturanPoin.poinPerGratisItem;
-  const totalPoinRupiah = keranjang.filter((i) => i.gratisPoin).reduce((sum, i) => sum + i.subtotal, 0);
-  const semuaGratis = keranjang.length > 0 && keranjang.every((i) => i.gratisPoin);
+  const totalKeranjang = keranjang.reduce((sum, item) => sum + item.subtotal, 0);
+  const poinDigunakan = Math.min(parseInt(poinDigunakanInput.replace(/\D/g, "")) || 0, memberPoin);
+  const potonganPoin = poinDigunakan * pengaturanPoin.nilaiPerPoin;
+  const sisaSetelahPoin = Math.max(0, totalKeranjang - potonganPoin);
+  const bisaPakaiPoin = memberTerdaftar && memberPoin > 0 && totalKeranjang > 0;
 
   const diskonInput = parseInt(diskon.replace(/\D/g, "")) || 0;
   const totalDiskon = diskonTipe === "persen"
-    ? Math.min(Math.floor(totalKeranjang * diskonInput / 100), totalKeranjang)
-    : Math.min(diskonInput, totalKeranjang);
-  const totalBayarFinal = Math.max(0, totalKeranjang - totalDiskon);
+    ? Math.min(Math.floor(sisaSetelahPoin * diskonInput / 100), sisaSetelahPoin)
+    : Math.min(diskonInput, sisaSetelahPoin);
+  const totalBayarFinal = Math.max(0, sisaSetelahPoin - totalDiskon);
 
   const hitungHarga = useCallback((menu: Menu, variantString: string | null): number => {
     if (!variantString || !menu.variants) return menu.harga;
@@ -182,29 +184,9 @@ export default function KasirPage() {
             : item
         );
       }
-      return [...prev, { key, menuId: menu.id, nama, harga, jumlah: 1, subtotal: harga, variant: variantString, gratisPoin: false }];
+      return [...prev, { key, menuId: menu.id, nama, harga, jumlah: 1, subtotal: harga, variant: variantString }];
     });
   }, [hitungHarga]);
-
-  const toggleGratisPoin = useCallback((key: string) => {
-    setKeranjang((prev) => {
-      const item = prev.find((i) => i.key === key);
-      if (!item) return prev;
-      const akanGratis = !item.gratisPoin;
-      if (akanGratis && poinDigunakan + pengaturanPoin.poinPerGratisItem > memberPoin) return prev;
-      if (akanGratis) {
-        const sisaBayar = prev.reduce((sum, i) => sum + (i.key === key ? 0 : (i.gratisPoin ? 0 : i.subtotal)), 0);
-        if (pengaturanPoin.minimalTransaksi > 0 && sisaBayar < pengaturanPoin.minimalTransaksi) return prev;
-      }
-      return prev.map((i) =>
-        i.key === key
-          ? akanGratis
-            ? { ...i, gratisPoin: true, jumlah: 1, subtotal: i.harga }
-            : { ...i, gratisPoin: false }
-          : i
-      );
-    });
-  }, [memberPoin, poinDigunakan, pengaturanPoin.poinPerGratisItem, pengaturanPoin.minimalTransaksi]);
 
   const ubahJumlah = (key: string, delta: number) => {
     setKeranjang((prev) =>
@@ -228,18 +210,19 @@ export default function KasirPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          items: keranjang.map((i) => ({ menuId: i.menuId, jumlah: i.jumlah, variant: i.variant, gratisPoin: i.gratisPoin })),
+          items: keranjang.map((i) => ({ menuId: i.menuId, jumlah: i.jumlah, variant: i.variant })),
           totalBayar: bayarAmount,
           diskon: totalDiskon,
           metodeBayar,
           noWa: noWa.trim() || undefined,
           memberNama: memberNama.trim() || undefined,
+          poinDigunakan,
         }),
       });
       if (!res.ok) { const err = await res.json(); throw new Error(err.error || "Gagal"); }
       const data = await res.json();
       setTransaksiSukses({ noTransaksi: data.noTransaksi, totalHarga: data.totalHarga, totalBayar: data.totalBayar, kembalian: data.kembalian, metodeBayar, items: [...keranjang], poinDidapat: data.poinDidapat || 0, poinDigunakan: data.poinDigunakan || 0, totalPoin: data.totalPoin || 0, diskon: data.diskon || 0, publicId: data.publicId, noWa: data.noWa || null, memberNama: memberNama.trim() || undefined });
-      setKeranjang([]); setTotalBayar(""); setDiskon(""); setNoWa(""); setMemberNama(""); setMetodeBayar("CASH"); setMessage(null);
+      setKeranjang([]); setTotalBayar(""); setDiskon(""); setNoWa(""); setMemberNama(""); setMetodeBayar("CASH"); setPoinDigunakanInput(""); setMessage(null);
       fetch("/api/menu").then((r) => r.json()).then(setMenuList);
     } catch (err) {
       setMessage({ type: "error", text: err instanceof Error ? err.message : "Gagal bayar" });
@@ -251,7 +234,7 @@ export default function KasirPage() {
   type StrukData = {
     noTransaksi: string; totalHarga: number; totalBayar: number;
     kembalian: number; metodeBayar: string; poinDidapat: number; poinDigunakan: number;
-    diskon: number;
+    totalPoin: number; diskon: number;
     noWa: string | null; memberNama?: string;
     items: KeranjangItem[];
   };
@@ -269,12 +252,10 @@ export default function KasirPage() {
     const itemsHtml = t.items.map((item) => {
       const nm = item.nama.length > 28 ? item.nama.slice(0, 26) + ".." : item.nama;
       const harga = item.subtotal / item.jumlah;
-      const gratisLabel = item.gratisPoin ? " [FREE]" : "";
-      const subtotalStr = item.gratisPoin ? "Gratis" : formatRupiah(item.subtotal);
       return `
         <div style="display:flex;justify-content:space-between;">
-          <span>${nm}${gratisLabel}</span>
-          <span>${subtotalStr}</span>
+          <span>${nm}</span>
+          <span>${formatRupiah(item.subtotal)}</span>
         </div>
         <div style="display:flex;justify-content:space-between;font-size:9px;color:#555;padding-left:4px;">
           <span>${formatRupiah(harga)} x ${item.jumlah}</span>
@@ -313,6 +294,9 @@ export default function KasirPage() {
   ${t.diskon > 0 ? `<div style="display:flex;justify-content:space-between;color:#c00;">
     <span>Diskon</span><span>-${formatRupiah(t.diskon)}</span>
   </div>` : ""}
+  ${t.poinDigunakan > 0 ? `<div style="display:flex;justify-content:space-between;color:#0066cc;">
+    <span>Poin Dipakai</span><span>-${t.poinDigunakan} poin (-${formatRupiah(t.totalPoin || 0)})</span>
+  </div>` : ""}
   <div style="display:flex;justify-content:space-between;">
     <span>Bayar</span><span>${formatRupiah(t.totalBayar)}</span>
   </div>
@@ -321,10 +305,6 @@ export default function KasirPage() {
   </div>
   ${t.metodeBayar !== "QRIS" ? `<div style="display:flex;justify-content:space-between;">
     <span>Kembali</span><span>${formatRupiah(t.kembalian)}</span>
-  </div>` : ""}
-  ${t.poinDigunakan > 0 ? `<div style="border-top:1px dashed #000;margin:6px 0;"></div>
-  <div style="display:flex;justify-content:space-between;">
-    <span>Poin Dipakai</span><span>${t.poinDigunakan} poin</span>
   </div>` : ""}
   ${t.poinDidapat > 0 ? `<div style="border-top:1px dashed #000;margin:6px 0;"></div>
   <div style="display:flex;justify-content:space-between;">
@@ -379,6 +359,7 @@ export default function KasirPage() {
         metodeBayar: full.metodeBayar || "CASH",
         poinDidapat,
         poinDigunakan: full.poinDigunakan || 0,
+        totalPoin: full.totalPoin || 0,
         diskon: full.diskon || 0,
         noWa: full.noWa || full.member?.noWa || null,
         memberNama: full.member?.nama || undefined,
@@ -390,7 +371,6 @@ export default function KasirPage() {
           jumlah: item.jumlah,
           subtotal: item.subtotal,
           variant: item.variant,
-          gratisPoin: item.subtotal === 0,
         })),
       };
       printReceipt(jenis, strukData);
@@ -416,10 +396,9 @@ export default function KasirPage() {
               <div key={item.menuId} className="flex justify-between text-sm">
                 <span className="text-sage-600">
                   {item.nama} <span className="text-sage-400">x{item.jumlah}</span>
-                  {item.gratisPoin && <span className="text-amber-500 font-bold ml-1">[FREE]</span>}
                 </span>
-                <span className={`font-medium ${item.gratisPoin ? "text-amber-500" : "text-sage-800"}`}>
-                  {item.gratisPoin ? "Gratis" : formatRupiah(item.subtotal)}
+                <span className="font-medium text-sage-800">
+                  {formatRupiah(item.subtotal)}
                 </span>
               </div>
             ))}
@@ -449,7 +428,7 @@ export default function KasirPage() {
 
           {transaksiSukses.poinDigunakan > 0 && (
             <div className="flex items-center justify-center gap-1.5 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2 mt-4">
-              <span className="text-sm font-medium text-rose-600">Poin dipakai: {transaksiSukses.poinDigunakan}</span>
+              <span className="text-sm font-medium text-rose-600">Poin dipakai: {transaksiSukses.poinDigunakan} poin (-{formatRupiah(transaksiSukses.totalPoin)})</span>
             </div>
           )}
           {transaksiSukses.poinDidapat > 0 && (
@@ -479,7 +458,7 @@ export default function KasirPage() {
               const poinFmt = new Intl.NumberFormat("id-ID").format(transaksiSukses.poinDidapat);
               const poinPakaiFmt = new Intl.NumberFormat("id-ID").format(transaksiSukses.poinDigunakan);
               const barisPoinPakai = transaksiSukses.poinDigunakan > 0
-                ? `* Poin Dipakai : ${poinPakaiFmt} POINT`
+                ? `* Poin Dipakai : ${poinPakaiFmt} POINT (-${formatRupiah(transaksiSukses.totalPoin)})`
                 : "";
               const pesan = [
                 `Dear ${transaksiSukses.memberNama || "Customer"},`,
@@ -733,37 +712,12 @@ export default function KasirPage() {
                     <p className="text-sm font-medium text-sage-800 truncate">{item.nama}</p>
                     <p className="text-xs text-sage-400">{formatRupiah(item.harga)} / item</p>
                   </div>
-                  {memberTerdaftar && memberPoin >= pengaturanPoin.poinPerGratisItem && (() => {
-                    const akanGratis = !item.gratisPoin;
-                    const sisaBayarIfFree = totalKeranjang - (akanGratis ? item.subtotal : 0);
-                    const blockedByMin = akanGratis && !item.gratisPoin && pengaturanPoin.minimalTransaksi > 0 && sisaBayarIfFree < pengaturanPoin.minimalTransaksi;
-                    return (
-                      <button
-                        onClick={() => toggleGratisPoin(item.key)}
-                        disabled={blockedByMin}
-                        className={`shrink-0 text-[10px] font-bold px-2 py-1 rounded-lg border transition-colors ${
-                          item.gratisPoin
-                            ? "bg-amber-100 text-amber-700 border-amber-300"
-                            : blockedByMin
-                              ? "bg-sage-100 text-sage-300 border-sage-200 cursor-not-allowed"
-                              : "bg-sage-50 text-sage-400 border-sage-200 hover:border-amber-300 hover:text-amber-600"
-                        }`}
-                        title={item.gratisPoin ? "Batalkan gratis poin" : blockedByMin ? `Sisa di bawah minimal ${formatRupiah(pengaturanPoin.minimalTransaksi)}` : `Gratiskan dengan ${pengaturanPoin.poinPerGratisItem} poin`}
-                      >
-                        {item.gratisPoin ? "FREE" : "Poin"}
-                      </button>
-                    );
-                  })()}
                   <div className="flex items-center gap-1.5">
-                    <button onClick={() => ubahJumlah(item.key, -1)} disabled={item.gratisPoin} className="w-7 h-7 rounded-lg bg-white border border-sage-200 flex items-center justify-center text-sage-500 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors text-sm font-bold disabled:opacity-30">-</button>
+                    <button onClick={() => ubahJumlah(item.key, -1)} className="w-7 h-7 rounded-lg bg-white border border-sage-200 flex items-center justify-center text-sage-500 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors text-sm font-bold">-</button>
                     <span className="w-6 text-center text-sm font-bold text-sage-800">{item.jumlah}</span>
-                    <button onClick={() => ubahJumlah(item.key, 1)} disabled={item.gratisPoin} className="w-7 h-7 rounded-lg bg-white border border-sage-200 flex items-center justify-center text-sage-500 hover:bg-sage-100 hover:text-sage-700 hover:border-sage-300 transition-colors text-sm font-bold disabled:opacity-30">+</button>
+                    <button onClick={() => ubahJumlah(item.key, 1)} className="w-7 h-7 rounded-lg bg-white border border-sage-200 flex items-center justify-center text-sage-500 hover:bg-sage-100 hover:text-sage-700 hover:border-sage-300 transition-colors text-sm font-bold">+</button>
                   </div>
-                  {item.gratisPoin ? (
-                    <span className="text-sm font-bold text-amber-600 w-16 text-right">Gratis</span>
-                  ) : (
-                    <p className="text-sm font-bold text-sage-800 w-16 text-right">{formatRupiah(item.subtotal)}</p>
-                  )}
+                  <p className="text-sm font-bold text-sage-800 w-16 text-right">{formatRupiah(item.subtotal)}</p>
                 </motion.div>
               ))}
               </AnimatePresence>
@@ -782,26 +736,44 @@ export default function KasirPage() {
                 </div>
               </div>
 
-              {memberTerdaftar && memberPoin >= pengaturanPoin.poinPerGratisItem && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 space-y-1">
+              {bisaPakaiPoin && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-amber-600 font-medium">Poin tersedia</span>
-                    <span className="text-amber-700 font-bold">{memberPoin} poin</span>
+                    <span className="text-amber-700 font-bold">{memberPoin} poin ({formatRupiah(memberPoin * pengaturanPoin.nilaiPerPoin)})</span>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-amber-600 mb-1">Gunakan Poin</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={poinDigunakanInput}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, "");
+                          const num = parseInt(val) || 0;
+                          if (num > memberPoin) {
+                            setPoinDigunakanInput(memberPoin.toString());
+                          } else {
+                            setPoinDigunakanInput(val);
+                          }
+                        }}
+                        placeholder="0"
+                        min={0}
+                        max={memberPoin}
+                        className="w-full border border-amber-300 rounded-lg px-3 py-2 text-sm font-bold text-sage-800 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 bg-white"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-amber-500">poin</span>
+                    </div>
                   </div>
                   {poinDigunakan > 0 && (
                     <>
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-amber-600">Poin dipakai</span>
-                        <span className="text-amber-700 font-semibold">-{poinDigunakan} poin</span>
+                        <span className="text-amber-600">Potongan poin</span>
+                        <span className="text-emerald-600 font-semibold">-{formatRupiah(potonganPoin)}</span>
                       </div>
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-amber-600">Potongan</span>
-                        <span className="text-emerald-600 font-semibold">-{formatRupiah(totalPoinRupiah)}</span>
-                      </div>
-                      {pengaturanPoin.minimalTransaksi > 0 && (
+                      {pengaturanPoin.minimalTransaksi > 0 && sisaSetelahPoin < pengaturanPoin.minimalTransaksi && (
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-amber-600">Minimal transaksi</span>
-                          <span className="text-blue-600 font-semibold">{formatRupiah(pengaturanPoin.minimalTransaksi)}</span>
+                          <span className="text-red-500 font-medium">Minimal transaksi {formatRupiah(pengaturanPoin.minimalTransaksi)}</span>
                         </div>
                       )}
                     </>
@@ -809,7 +781,7 @@ export default function KasirPage() {
                 </div>
               )}
 
-              {!semuaGratis && (
+              {totalBayarFinal !== 0 && (
                 <div className="space-y-1.5">
                   <label className="block text-xs font-medium text-sage-500">Diskon</label>
                   <div className="flex gap-1.5">
@@ -841,7 +813,7 @@ export default function KasirPage() {
                 </div>
               )}
 
-              {!semuaGratis && (
+              {totalBayarFinal !== 0 && (
                 <div className="space-y-1.5">
                   <label className="block text-xs font-medium text-sage-500">Metode Bayar</label>
                   <div className="flex bg-sage-100 rounded-lg p-1 gap-1">
@@ -871,7 +843,7 @@ export default function KasirPage() {
                 </div>
               )}
 
-              {!semuaGratis && metodeBayar === "CASH" && (
+              {totalBayarFinal !== 0 && metodeBayar === "CASH" && (
                 <div className="space-y-1.5">
                   <label className="block text-xs font-medium text-sage-500">Jumlah Bayar</label>
                   <div className="relative">
@@ -887,16 +859,16 @@ export default function KasirPage() {
                 </div>
               )}
 
-              {!semuaGratis && metodeBayar === "QRIS" && (
+              {totalBayarFinal !== 0 && metodeBayar === "QRIS" && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2.5 text-center">
                   <p className="text-xs text-blue-400">Total yang harus dibayar</p>
                   <p className="text-lg font-bold text-blue-700">{formatRupiah(totalBayarFinal)}</p>
                 </div>
               )}
 
-              {semuaGratis && (
+              {totalBayarFinal === 0 && totalKeranjang > 0 && (
                 <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-3 text-center">
-                  <p className="text-sm font-medium text-emerald-700">Semua item gratis dari Poin</p>
+                  <p className="text-sm font-medium text-emerald-700">Total tertutup poin</p>
                   <p className="text-xs text-emerald-500 mt-0.5">Total bayar: Rp 0</p>
                 </div>
               )}
@@ -933,7 +905,7 @@ export default function KasirPage() {
                 </div>
               </div>
 
-              {!semuaGratis && metodeBayar === "CASH" && totalBayar && parseInt(totalBayar) >= totalBayarFinal && (
+              {totalBayarFinal !== 0 && metodeBayar === "CASH" && totalBayar && parseInt(totalBayar) >= totalBayarFinal && (
                 <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
                   <span className="text-sm font-medium text-emerald-700">Kembalian</span>
                   <span className="text-base font-bold text-emerald-700">{formatRupiah(parseInt(totalBayar) - totalBayarFinal)}</span>
@@ -964,7 +936,7 @@ export default function KasirPage() {
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     Memproses...
                   </span>
-                ) : semuaGratis ? "Bayar (Gratis)" : metodeBayar === "QRIS" ? "Bayar via QRIS" : "Bayar"}
+                ) : totalBayarFinal === 0 && totalKeranjang > 0 ? "Bayar (Poin)" : metodeBayar === "QRIS" ? "Bayar via QRIS" : "Bayar"}
               </button>
             </div>
           )}

@@ -11,7 +11,6 @@ export const transaksiItemSchema = z.object({
   menuId: z.string().uuid("Menu ID tidak valid"),
   jumlah: z.number().int().positive("Jumlah harus lebih dari 0"),
   variant: z.string().nullish(),
-  gratisPoin: z.boolean().optional(),
 });
 
 export const transaksiSchema = z.object({
@@ -23,6 +22,7 @@ export const transaksiSchema = z.object({
   metodeBayar: z.enum(["CASH", "QRIS"], {
     message: "Metode bayar harus CASH atau QRIS",
   }),
+  poinDigunakan: z.number().int().min(0, "Poin tidak boleh negatif").default(0),
 });
 
 // ── Menu ──────────────────────────────────────────────
@@ -72,7 +72,7 @@ export const poinDeductSchema = z.object({
 // ── Pengaturan Poin ───────────────────────────────────
 export const pengaturanPoinSchema = z.object({
   rupiahPerPoin: z.number().int().positive("Rupiah per poin harus positif"),
-  poinPerGratisItem: z.number().int().positive("Poin per gratis item harus positif"),
+  nilaiPerPoin: z.number().int().positive("Nilai per poin harus positif"),
   minimalTransaksi: z.number().int().min(0, "Minimal transaksi harus non-negatif"),
 });
 

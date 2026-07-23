@@ -3,14 +3,14 @@
 import { useEffect, useState, useCallback } from "react";
 import { motion } from "motion/react";
 import { Toast } from "@/components/Toast";
-import { Coins, Gift, Save, ShoppingCart, Sparkles, BadgeCheck, ShieldCheck } from "lucide-react";
+import { Coins, Save, ShoppingCart, Sparkles, ShieldCheck, BadgeCheck } from "lucide-react";
 
-type PengaturanPoin = { id: number; rupiahPerPoin: number; poinPerGratisItem: number; minimalTransaksi: number; updatedAt: string };
+type PengaturanPoin = { id: number; rupiahPerPoin: number; nilaiPerPoin: number; minimalTransaksi: number; updatedAt: string };
 
 export default function AdminPengaturanPoinPage() {
   const [pengaturan, setPengaturan] = useState<PengaturanPoin | null>(null);
   const [rupiahPerPoin, setRupiahPerPoin] = useState("");
-  const [poinPerGratisItem, setPoinPerGratisItem] = useState("");
+  const [nilaiPerPoin, setNilaiPerPoin] = useState("");
   const [minimalTransaksi, setMinimalTransaksi] = useState("");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [saving, setSaving] = useState(false);
@@ -21,7 +21,7 @@ export default function AdminPengaturanPoinPage() {
       .then((data: PengaturanPoin) => {
         setPengaturan(data);
         setRupiahPerPoin(data.rupiahPerPoin.toString());
-        setPoinPerGratisItem(data.poinPerGratisItem.toString());
+        setNilaiPerPoin(data.nilaiPerPoin.toString());
         setMinimalTransaksi(data.minimalTransaksi.toString());
       });
   }, []);
@@ -31,11 +31,11 @@ export default function AdminPengaturanPoinPage() {
   const simpan = async (e: React.FormEvent) => {
     e.preventDefault();
     const rpp = parseInt(rupiahPerPoin);
-    const ppg = parseInt(poinPerGratisItem);
+    const np = parseInt(nilaiPerPoin);
     const mt = parseInt(minimalTransaksi);
 
     if (!rpp || rpp <= 0) { setToast({ message: "Rupiah per poin harus angka positif", type: "error" }); return; }
-    if (!ppg || ppg <= 0) { setToast({ message: "Poin per gratis item harus angka positif", type: "error" }); return; }
+    if (!np || np <= 0) { setToast({ message: "Nilai per poin harus angka positif", type: "error" }); return; }
     if (isNaN(mt) || mt < 0) { setToast({ message: "Minimal transaksi harus angka non-negatif", type: "error" }); return; }
 
     setSaving(true);
@@ -43,7 +43,7 @@ export default function AdminPengaturanPoinPage() {
       const res = await fetch("/api/pengaturan-poin", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rupiahPerPoin: rpp, poinPerGratisItem: ppg, minimalTransaksi: mt }),
+        body: JSON.stringify({ rupiahPerPoin: rpp, nilaiPerPoin: np, minimalTransaksi: mt }),
       });
       if (!res.ok) { const err = await res.json(); throw new Error(err.error || "Gagal"); }
       setToast({ message: "Pengaturan poin berhasil disimpan", type: "success" });
@@ -56,10 +56,10 @@ export default function AdminPengaturanPoinPage() {
   };
 
   const rpp = parseInt(rupiahPerPoin) || 0;
-  const ppg = parseInt(poinPerGratisItem) || 0;
+  const np = parseInt(nilaiPerPoin) || 0;
   const mt = parseInt(minimalTransaksi) || 0;
   const contohPoinDari30k = rpp > 0 ? Math.floor(30000 / rpp) : 0;
-  const contohItemGratisDari5poin = ppg > 0 ? Math.floor(5 / ppg) : 0;
+  const contohPotongan10poin = np > 0 ? 10 * np : 0;
 
   return (
     <div className="space-y-6">
@@ -109,15 +109,15 @@ export default function AdminPengaturanPoinPage() {
           />
           <div className="relative z-10">
             <div className="flex items-center justify-between">
-              <p className="text-sm text-white/80">Poin per Gratis Item</p>
+              <p className="text-sm text-white/80">Nilai per Poin</p>
               <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center backdrop-blur-sm">
-                <Gift className="w-5 h-5 text-white" />
+                <BadgeCheck className="w-5 h-5 text-white" />
               </div>
             </div>
             <p className="text-2xl font-bold text-white mt-2 tabular-nums">
-              {ppg > 0 ? `${ppg} poin` : "-"}
+              {np > 0 ? `Rp ${np.toLocaleString("id-ID")}` : "-"}
             </p>
-            <p className="text-xs text-white/70 mt-1">Tukar segini poin = 1 item gratis</p>
+            <p className="text-xs text-white/70 mt-1">1 poin = Rp ini (potongan langsung)</p>
           </div>
         </motion.div>
 
@@ -161,7 +161,7 @@ export default function AdminPengaturanPoinPage() {
               <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center">
                 <Coins className="w-4 h-4 text-amber-600" />
               </div>
-              Rupiah per Poin
+              Rupiah per Poin (Earning)
             </label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-sage-400">Rp</span>
@@ -183,29 +183,30 @@ export default function AdminPengaturanPoinPage() {
             </div>
           </div>
 
-          {/* Poin per Gratis */}
+          {/* Nilai per Poin */}
           <div>
             <label className="flex items-center gap-2 text-sm font-medium text-sage-700 mb-2">
               <div className="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center">
-                <Gift className="w-4 h-4 text-emerald-600" />
+                <BadgeCheck className="w-4 h-4 text-emerald-600" />
               </div>
-              Poin per Gratis Item
+              Nilai per Poin (Redemption)
             </label>
             <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-sage-400">Rp</span>
               <input
                 type="number"
-                value={poinPerGratisItem}
-                onChange={(e) => setPoinPerGratisItem(e.target.value)}
-                className="w-full pl-3 pr-12 py-2.5 rounded-lg border border-sage-300 text-sm font-medium text-sage-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-colors"
+                value={nilaiPerPoin}
+                onChange={(e) => setNilaiPerPoin(e.target.value)}
+                className="w-full pl-10 pr-12 py-2.5 rounded-lg border border-sage-300 text-sm font-medium text-sage-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-colors"
                 min={1}
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-sage-400">poin</span>
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-sage-400">per poin</span>
             </div>
             <div className="mt-2 flex items-start gap-2 bg-emerald-50 rounded-lg px-3 py-2">
               <BadgeCheck className="w-3.5 h-3.5 text-emerald-500 mt-0.5 shrink-0" />
               <p className="text-xs text-emerald-700">
-                Contoh: Tukar <span className="font-semibold">5 poin</span> → bisa gratiskan{" "}
-                <span className="font-semibold">{contohItemGratisDari5poin} item</span> (any item)
+                Contoh: Tukar <span className="font-semibold">10 poin</span> → potongan{" "}
+                <span className="font-semibold">Rp {contohPotongan10poin.toLocaleString("id-ID")}</span>
               </p>
             </div>
           </div>
@@ -295,12 +296,12 @@ export default function AdminPengaturanPoinPage() {
           {/* Step 3 */}
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
-              <Gift className="w-4 h-4 text-emerald-600" />
+              <BadgeCheck className="w-4 h-4 text-emerald-600" />
             </div>
             <div>
               <p className="text-sm font-medium text-sage-700">3. Tukar Poin</p>
               <p className="text-xs text-sage-400 mt-0.5">
-                {ppg > 0 ? `Tukar ${ppg} poin = 1 item gratis (any item)` : "Atur poin per gratis item di atas"}
+                {np > 0 ? `1 poin = Rp ${np.toLocaleString("id-ID")}, potongan langsung dari total` : "Atur nilai per poin di atas"}
               </p>
             </div>
           </div>

@@ -89,11 +89,12 @@ describe("transaksiSchema", () => {
     ).toBe(false);
   });
 
-  it("accepts optional variant and gratisPoin", () => {
+  it("accepts optional variant and poinDigunakan", () => {
     expect(
       transaksiSchema.safeParse({
         ...valid,
-        items: [{ menuId: UUID, jumlah: 1, variant: "Panas | Gula Sedang", gratisPoin: true }],
+        items: [{ menuId: UUID, jumlah: 1, variant: "Panas | Gula Sedang" }],
+        poinDigunakan: 5,
       }).success
     ).toBe(true);
   });
@@ -230,25 +231,25 @@ describe("poinDeductSchema", () => {
 describe("pengaturanPoinSchema", () => {
   it("accepts valid values", () => {
     expect(
-      pengaturanPoinSchema.safeParse({ rupiahPerPoin: 15000, poinPerGratisItem: 5, minimalTransaksi: 10000 }).success
+      pengaturanPoinSchema.safeParse({ rupiahPerPoin: 15000, nilaiPerPoin: 1000, minimalTransaksi: 10000 }).success
     ).toBe(true);
   });
 
   it("accepts zero minimalTransaksi (no limit)", () => {
     expect(
-      pengaturanPoinSchema.safeParse({ rupiahPerPoin: 15000, poinPerGratisItem: 5, minimalTransaksi: 0 }).success
+      pengaturanPoinSchema.safeParse({ rupiahPerPoin: 15000, nilaiPerPoin: 1000, minimalTransaksi: 0 }).success
     ).toBe(true);
   });
 
   it("rejects zero rupiahPerPoin", () => {
     expect(
-      pengaturanPoinSchema.safeParse({ rupiahPerPoin: 0, poinPerGratisItem: 5, minimalTransaksi: 10000 }).success
+      pengaturanPoinSchema.safeParse({ rupiahPerPoin: 0, nilaiPerPoin: 1000, minimalTransaksi: 10000 }).success
     ).toBe(false);
   });
 
-  it("rejects negative poinPerGratisItem", () => {
+  it("rejects negative nilaiPerPoin", () => {
     expect(
-      pengaturanPoinSchema.safeParse({ rupiahPerPoin: 15000, poinPerGratisItem: -1, minimalTransaksi: 10000 }).success
+      pengaturanPoinSchema.safeParse({ rupiahPerPoin: 15000, nilaiPerPoin: -1, minimalTransaksi: 10000 }).success
     ).toBe(false);
   });
 });

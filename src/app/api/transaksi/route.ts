@@ -83,17 +83,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: message }, { status: 400 });
     }
 
-    const { items, totalBayar, noWa, memberNama, diskon, metodeBayar } = parsed.data;
+    const { items, totalBayar, noWa, memberNama, diskon, metodeBayar, poinDigunakan } = parsed.data;
 
     let totalHarga = 0;
-    let poinDigunakan = 0;
-    let totalPoin = 0;
-    const poinItemNames: string[] = [];
 
     const pengaturan = await prisma.pengaturanPoin.findUnique({ where: { id: 1 } });
     const rupiahPerPoin = pengaturan?.rupiahPerPoin ?? 15000;
-    const poinPerGratis = pengaturan?.poinPerGratisItem ?? 5;
+    const nilaiPerPoin = pengaturan?.nilaiPerPoin ?? 1000;
     const minimalTransaksi = pengaturan?.minimalTransaksi ?? 10000;
+
+    const potonganPoin = poinDigunakan * nilaiPerPoin;
 
     const itemData: Array<{
       menuId: string;
@@ -131,12 +130,6 @@ export async function POST(request: NextRequest) {
       const namaMenu = item.variant ? `${menu.nama} - ${item.variant}` : menu.nama;
       const subtotal = harga * item.jumlah;
       totalHarga += subtotal;
-
-      if (item.gratisPoin) {
-        poinDigunakan += poinPerGratis;
-        totalPoin += subtotal;
-        poinItemNames.push(namaMenu);
-      }
 
       itemData.push({
         menuId: menu.id,
@@ -180,16 +173,16 @@ export async function POST(request: NextRequest) {
     }
 
     if (poinDigunakan > 0 && minimalTransaksi > 0) {
-      const harusDibayarCek = totalHarga - totalPoin;
-      if (harusDibayarCek < minimalTransaksi) {
+      const sisaSetelahPoin = totalHarga - potonganPoin;
+      if (sisaSetelahPoin < minimalTransaksi) {
         return NextResponse.json(
-          { error: `Sisa transaksi harus minimal Rp ${minimalTransaksi.toLocaleString("id-ID")} setelah pakai poin (sisa Rp ${harusDibayarCek.toLocaleString("id-ID")})` },
+          { error: `Sisa transaksi harus minimal Rp ${minimalTransaksi.toLocaleString("id-ID")} setelah pakai poin (sisa Rp ${sisaSetelahPoin.toLocaleString("id-ID")})` },
           { status: 400 }
         );
       }
     }
 
-    const subtotalSebelumDiskon = totalHarga - totalPoin;
+    const subtotalSebelumDiskon = totalHarga - potonganPoin;
     if (diskon > subtotalSebelumDiskon) {
       return NextResponse.json(
         { error: `Diskon tidak boleh melebihi total Rp ${subtotalSebelumDiskon.toLocaleString()}` },
@@ -207,7 +200,6 @@ export async function POST(request: NextRequest) {
     }
 
     const transaksi = await prisma.$transaction(async (tx) => {
-      // Atomic stock decrement: prevents race condition
       for (const item of items) {
         const result: { stok: number }[] = await tx.$queryRaw`
           UPDATE menu SET stok = stok - ${item.jumlah}
@@ -229,7 +221,7 @@ export async function POST(request: NextRequest) {
           kembalian,
           metodeBayar,
           poinDigunakan,
-          totalPoin,
+          totalPoin: potonganPoin,
           noWa: noWa?.trim() || null,
           memberId: member?.id || null,
           itemTransaksi: {
@@ -245,7 +237,7 @@ export async function POST(request: NextRequest) {
 
       let poinDidapat = 0;
       if (member) {
-        const cashAmount = totalHarga - totalPoin - diskon;
+        const cashAmount = totalHarga - potonganPoin - diskon;
         poinDidapat = Math.floor(cashAmount / rupiahPerPoin);
 
         await tx.rewardPoin.create({
@@ -263,7 +255,7 @@ export async function POST(request: NextRequest) {
               memberId: member.id,
               transaksiId: newTransaksi.id,
               poin: -poinDigunakan,
-              keterangan: `Tukar: ${poinItemNames.join(", ")}`,
+              keterangan: `Tukar ${poinDigunakan} poin (-${formatRupiah(potonganPoin)})`,
             },
           });
         }
@@ -290,7 +282,7 @@ export async function POST(request: NextRequest) {
           `* No Invoice : ${transaksi.noTransaksi}`,
           `* TOTAL TRANSAKSI : ${formatRupiah(transaksi.totalHarga)}`,
           diskon > 0 ? `* Diskon : -${formatRupiah(diskon)}` : "",
-          poinDigunakan > 0 ? `* Poin Dipakai : ${poinDigunakan} POINT (${poinItemNames.join(", ")})` : "",
+          poinDigunakan > 0 ? `* Poin Dipakai : ${poinDigunakan} POINT (-${formatRupiah(potonganPoin)})` : "",
           `* Poin Didapat : ${formatPoin(transaksi.poinDidapat)} POINT`,
           "",
           "Untuk melihat rincian transaksi dan point reward yang Anda dapatkan (POINT) klik link berikut",
@@ -314,7 +306,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       ...transaksi,
       poinDigunakan,
-      totalPoin,
+      totalPoin: potonganPoin,
     }, { status: 201 });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "";
