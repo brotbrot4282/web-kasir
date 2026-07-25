@@ -104,15 +104,26 @@ export default function AdminCustomerPage() {
           <h1 className="text-lg font-semibold text-sage-800">Customer</h1>
           <p className="text-xs text-sage-400 mt-0.5">Data member & Poin</p>
         </div>
-        <button
-          onClick={() => { setShowTambah(true); setTambahNoWa(""); setTambahNama(""); }}
-          className="flex items-center gap-1.5 bg-emerald-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition-colors shadow-sm"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-          </svg>
-          Tambah Member
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => window.open("/api/member/export", "_blank")}
+            className="flex items-center gap-1.5 bg-white border border-sage-200 text-sage-700 text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-sage-50 transition-colors shadow-sm"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+            Export Excel
+          </button>
+          <button
+            onClick={() => { setShowTambah(true); setTambahNoWa(""); setTambahNama(""); }}
+            className="flex items-center gap-1.5 bg-emerald-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition-colors shadow-sm"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Tambah Member
+          </button>
+        </div>
       </div>
 
       <div className="relative mb-4">
