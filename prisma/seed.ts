@@ -88,7 +88,7 @@ async function main() {
   // ── Stok ──
   const stokItems = [
     { namaBahan: "Kopi Bubuk", jumlah: 5000, satuan: "gram", hargaBahan: 120 },
-    { namaBahan: "Susu Cair", jumlah: 5000, satuan: "ml", hargaBahan: 2 },
+    { namaBahan: "Susu Cair", jumlah: 5000, satuan: "ml", hargaBahan: 16 },
     { namaBahan: "Gula Pasir", jumlah: 5000, satuan: "gram", hargaBahan: 15 },
     { namaBahan: "Coklat Bubuk", jumlah: 2000, satuan: "gram", hargaBahan: 80 },
     { namaBahan: "Matcha Bubuk", jumlah: 1000, satuan: "gram", hargaBahan: 150 },
@@ -98,7 +98,7 @@ async function main() {
     { namaBahan: "Cup", jumlah: 500, satuan: "pcs", hargaBahan: 800 },
     { namaBahan: "Tutup Cup", jumlah: 500, satuan: "pcs", hargaBahan: 300 },
     { namaBahan: "Sedotan", jumlah: 1000, satuan: "pcs", hargaBahan: 100 },
-    { namaBahan: "Minyak Goreng", jumlah: 5000, satuan: "ml", hargaBahan: 3 },
+    { namaBahan: "Minyak Goreng", jumlah: 5000, satuan: "ml", hargaBahan: 15 },
     { namaBahan: "Pisang", jumlah: 50, satuan: "pcs", hargaBahan: 3000 },
     { namaBahan: "Kentang", jumlah: 10000, satuan: "gram", hargaBahan: 25 },
     { namaBahan: "Roti Tawar", jumlah: 50, satuan: "pcs", hargaBahan: 2500 },
@@ -106,13 +106,160 @@ async function main() {
     { namaBahan: "Mentega", jumlah: 2000, satuan: "gram", hargaBahan: 60 },
     { namaBahan: "Keju", jumlah: 1000, satuan: "gram", hargaBahan: 100 },
     { namaBahan: "Plastik Kemasan", jumlah: 500, satuan: "pcs", hargaBahan: 200 },
+    { namaBahan: "Croissant (Frozen)", jumlah: 50, satuan: "pcs", hargaBahan: 8000 },
   ];
   for (const item of stokItems) {
     const existing = await prisma.stok.findFirst({ where: { namaBahan: item.namaBahan } });
     if (existing) await prisma.stok.update({ where: { id: existing.id }, data: { jumlah: item.jumlah, satuan: item.satuan, hargaBahan: item.hargaBahan } });
     else await prisma.stok.create({ data: item });
   }
-  console.log("✓ Stok: 19");
+  console.log("✓ Stok: 20");
+
+  // ── Resep (HPP) ──
+  const getStokId = async (nama: string) => (await prisma.stok.findFirst({ where: { namaBahan: nama } }))!.id;
+  const getMenuId = async (nama: string) => (await prisma.menu.findFirst({ where: { nama } }))!.id;
+
+  const stokIds = {
+    kopiBubuk: await getStokId("Kopi Bubuk"),
+    susuCair: await getStokId("Susu Cair"),
+    gulaPasir: await getStokId("Gula Pasir"),
+    coklatBubuk: await getStokId("Coklat Bubuk"),
+    matchaBubuk: await getStokId("Matcha Bubuk"),
+    tehBubuk: await getStokId("Teh Bubuk"),
+    redVelvet: await getStokId("Red Velvet Powder"),
+    cup: await getStokId("Cup"),
+    tutupCup: await getStokId("Tutup Cup"),
+    sedotan: await getStokId("Sedotan"),
+    minyakGoreng: await getStokId("Minyak Goreng"),
+    pisang: await getStokId("Pisang"),
+    kentang: await getStokId("Kentang"),
+    rotiTawar: await getStokId("Roti Tawar"),
+    selai: await getStokId("Selai"),
+    mentega: await getStokId("Mentega"),
+    plastik: await getStokId("Plastik Kemasan"),
+    croissant: await getStokId("Croissant (Frozen)"),
+  };
+
+  const setResep = async (menuNama: string, bahanList: { stokId: string; jumlah: number }[]) => {
+    const menuId = await getMenuId(menuNama);
+    for (const b of bahanList) {
+      await prisma.resep.upsert({
+        where: { menuId_stokId: { menuId, stokId: b.stokId } },
+        update: { jumlah: b.jumlah },
+        create: { menuId, stokId: b.stokId, jumlah: b.jumlah },
+      });
+    }
+  };
+
+  // Kopi
+  await setResep("Kopi Hitam", [
+    { stokId: stokIds.kopiBubuk, jumlah: 15 },
+    { stokId: stokIds.gulaPasir, jumlah: 15 },
+    { stokId: stokIds.cup, jumlah: 1 },
+    { stokId: stokIds.tutupCup, jumlah: 1 },
+    { stokId: stokIds.sedotan, jumlah: 1 },
+  ]);
+  await setResep("Kopi Susu", [
+    { stokId: stokIds.kopiBubuk, jumlah: 15 },
+    { stokId: stokIds.susuCair, jumlah: 200 },
+    { stokId: stokIds.gulaPasir, jumlah: 10 },
+    { stokId: stokIds.cup, jumlah: 1 },
+    { stokId: stokIds.tutupCup, jumlah: 1 },
+    { stokId: stokIds.sedotan, jumlah: 1 },
+  ]);
+  await setResep("Espresso", [
+    { stokId: stokIds.kopiBubuk, jumlah: 18 },
+    { stokId: stokIds.cup, jumlah: 1 },
+    { stokId: stokIds.tutupCup, jumlah: 1 },
+  ]);
+  await setResep("Cappuccino", [
+    { stokId: stokIds.kopiBubuk, jumlah: 15 },
+    { stokId: stokIds.susuCair, jumlah: 200 },
+    { stokId: stokIds.gulaPasir, jumlah: 10 },
+    { stokId: stokIds.cup, jumlah: 1 },
+    { stokId: stokIds.tutupCup, jumlah: 1 },
+    { stokId: stokIds.sedotan, jumlah: 1 },
+  ]);
+  await setResep("Cafe Latte", [
+    { stokId: stokIds.kopiBubuk, jumlah: 15 },
+    { stokId: stokIds.susuCair, jumlah: 250 },
+    { stokId: stokIds.gulaPasir, jumlah: 10 },
+    { stokId: stokIds.cup, jumlah: 1 },
+    { stokId: stokIds.tutupCup, jumlah: 1 },
+    { stokId: stokIds.sedotan, jumlah: 1 },
+  ]);
+  await setResep("Americano", [
+    { stokId: stokIds.kopiBubuk, jumlah: 18 },
+    { stokId: stokIds.cup, jumlah: 1 },
+    { stokId: stokIds.tutupCup, jumlah: 1 },
+    { stokId: stokIds.sedotan, jumlah: 1 },
+  ]);
+  await setResep("Mocha", [
+    { stokId: stokIds.kopiBubuk, jumlah: 15 },
+    { stokId: stokIds.susuCair, jumlah: 200 },
+    { stokId: stokIds.coklatBubuk, jumlah: 10 },
+    { stokId: stokIds.gulaPasir, jumlah: 10 },
+    { stokId: stokIds.cup, jumlah: 1 },
+    { stokId: stokIds.tutupCup, jumlah: 1 },
+    { stokId: stokIds.sedotan, jumlah: 1 },
+  ]);
+
+  // Non Kopi
+  await setResep("Matcha Latte", [
+    { stokId: stokIds.matchaBubuk, jumlah: 8 },
+    { stokId: stokIds.susuCair, jumlah: 250 },
+    { stokId: stokIds.gulaPasir, jumlah: 10 },
+    { stokId: stokIds.cup, jumlah: 1 },
+    { stokId: stokIds.tutupCup, jumlah: 1 },
+    { stokId: stokIds.sedotan, jumlah: 1 },
+  ]);
+  await setResep("Chocolate", [
+    { stokId: stokIds.coklatBubuk, jumlah: 15 },
+    { stokId: stokIds.susuCair, jumlah: 200 },
+    { stokId: stokIds.gulaPasir, jumlah: 10 },
+    { stokId: stokIds.cup, jumlah: 1 },
+    { stokId: stokIds.tutupCup, jumlah: 1 },
+    { stokId: stokIds.sedotan, jumlah: 1 },
+  ]);
+  await setResep("Red Velvet", [
+    { stokId: stokIds.redVelvet, jumlah: 10 },
+    { stokId: stokIds.susuCair, jumlah: 250 },
+    { stokId: stokIds.gulaPasir, jumlah: 10 },
+    { stokId: stokIds.cup, jumlah: 1 },
+    { stokId: stokIds.tutupCup, jumlah: 1 },
+    { stokId: stokIds.sedotan, jumlah: 1 },
+  ]);
+  await setResep("Teh Tarik", [
+    { stokId: stokIds.tehBubuk, jumlah: 10 },
+    { stokId: stokIds.susuCair, jumlah: 150 },
+    { stokId: stokIds.gulaPasir, jumlah: 15 },
+    { stokId: stokIds.cup, jumlah: 1 },
+    { stokId: stokIds.tutupCup, jumlah: 1 },
+    { stokId: stokIds.sedotan, jumlah: 1 },
+  ]);
+
+  // Makanan
+  await setResep("Pisang Goreng", [
+    { stokId: stokIds.pisang, jumlah: 2 },
+    { stokId: stokIds.minyakGoreng, jumlah: 100 },
+    { stokId: stokIds.plastik, jumlah: 1 },
+  ]);
+  await setResep("Kentang Goreng", [
+    { stokId: stokIds.kentang, jumlah: 200 },
+    { stokId: stokIds.minyakGoreng, jumlah: 150 },
+    { stokId: stokIds.plastik, jumlah: 1 },
+  ]);
+  await setResep("Roti Bakar", [
+    { stokId: stokIds.rotiTawar, jumlah: 2 },
+    { stokId: stokIds.mentega, jumlah: 15 },
+    { stokId: stokIds.selai, jumlah: 20 },
+    { stokId: stokIds.plastik, jumlah: 1 },
+  ]);
+  await setResep("Croissant", [
+    { stokId: stokIds.croissant, jumlah: 1 },
+    { stokId: stokIds.plastik, jumlah: 1 },
+  ]);
+  console.log("✓ Resep: 15 menu");
 
   // ── Member ──
   const memberData = [
