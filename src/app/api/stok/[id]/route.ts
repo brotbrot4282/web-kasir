@@ -9,6 +9,7 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (session.role !== "OWNER") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const { id } = await params;
     const body = await request.json();
@@ -37,6 +38,18 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
       },
     });
 
+    if (data.hargaBahan !== undefined && data.hargaBahan !== existing.hargaBahan) {
+      await prisma.riwayatHarga.create({
+        data: {
+          stokId: id,
+          hargaLama: existing.hargaBahan,
+          hargaBaru: data.hargaBahan,
+          userId: session.username,
+          keterangan: `Harga diubah dari Rp ${existing.hargaBahan.toLocaleString("id-ID")} ke Rp ${data.hargaBahan.toLocaleString("id-ID")}`,
+        },
+      });
+    }
+
     return NextResponse.json(bahan);
   } catch {
     return NextResponse.json({ error: "Gagal mengupdate stok" }, { status: 500 });
@@ -47,6 +60,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: Params
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (session.role !== "OWNER") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const { id } = await params;
 

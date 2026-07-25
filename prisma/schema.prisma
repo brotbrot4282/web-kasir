@@ -27,6 +27,7 @@ model Menu {
   stok       Int             @default(0)
   isTersedia Boolean         @default(true) @map("is_tersedia")
   variants   Json?            @default("[]")
+  porsiPerResep Int          @default(1) @map("porsi_per_resep")
   itemTransaksi ItemTransaksi[]
   resep         Resep[]
   createdAt  DateTime        @default(now()) @map("created_at")
@@ -132,16 +133,30 @@ model User {
 }
 
 model Stok {
-  id         String   @id @default(uuid()) @db.Uuid
-  namaBahan  String   @map("nama_bahan")
+  id         String          @id @default(uuid()) @db.Uuid
+  namaBahan  String          @map("nama_bahan")
   jumlah     Float
   satuan     String
-  hargaBahan Float    @default(0) @map("harga_bahan")
+  hargaBahan Float           @default(0) @map("harga_bahan")
   resep      Resep[]
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  riwayatHarga RiwayatHarga[]
+  createdAt  DateTime        @default(now()) @map("created_at")
+  updatedAt  DateTime        @updatedAt @map("updated_at")
 
   @@map("stok")
+}
+
+model RiwayatHarga {
+  id           String   @id @default(uuid()) @db.Uuid
+  stokId       String   @map("stok_id") @db.Uuid
+  stok         Stok     @relation(fields: [stokId], references: [id], onDelete: Cascade)
+  hargaLama    Float    @map("harga_lama")
+  hargaBaru    Float    @map("harga_baru")
+  userId       String?  @map("user_id") @db.Uuid
+  keterangan   String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("riwayat_harga")
 }
 
 model DailyReport {

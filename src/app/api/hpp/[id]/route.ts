@@ -9,6 +9,7 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (session.role !== "OWNER") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const { id } = await params;
     const body = await request.json();
@@ -41,6 +42,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: Params
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (session.role !== "OWNER") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const { id } = await params;
 

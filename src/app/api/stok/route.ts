@@ -6,6 +6,7 @@ import { stokCreateSchema } from "@/lib/validations";
 export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (session.role !== "OWNER") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const stok = await prisma.stok.findMany({
     orderBy: { namaBahan: "asc" },
@@ -17,6 +18,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (session.role !== "OWNER") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const body = await request.json();
     const parsed = stokCreateSchema.safeParse(body);
