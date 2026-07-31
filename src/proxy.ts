@@ -18,6 +18,7 @@ const roleApiAccess: Record<Role, string[]> = {
     "/api/dapur",
     "/api/member",
     "/api/pengaturan-poin",
+    "/api/pengaturan-pembayaran",
     "/api/upload",
     "/api/invoice",
     "/api/kasir",

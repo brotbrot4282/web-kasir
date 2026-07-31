@@ -91,7 +91,12 @@ export default function KasirPage() {
       if (kategori.length > 0) setKategoriAktif(kategori[0].id);
     }).finally(() => setLoading(false));
     fetch("/api/pengaturan-poin").then((r) => r.json()).then(setPengaturanPoin).catch(() => {});
-    fetch("/api/pengaturan-pembayaran").then((r) => r.json()).then(setPengaturanPembayaran).catch(() => {});
+    fetch("/api/pengaturan-pembayaran")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data && typeof data.taxCardPersen === "number") setPengaturanPembayaran(data);
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -163,7 +168,8 @@ export default function KasirPage() {
     ? Math.min(Math.floor(sisaSetelahPoin * diskonInput / 100), sisaSetelahPoin)
     : Math.min(diskonInput, sisaSetelahPoin);
   const totalBayarFinal = Math.max(0, sisaSetelahPoin - totalDiskon);
-  const taxCard = metodeBayar === "CARD" ? Math.round((totalBayarFinal * pengaturanPembayaran.taxCardPersen) / 100) : 0;
+  const taxCardPersen = typeof pengaturanPembayaran.taxCardPersen === "number" ? pengaturanPembayaran.taxCardPersen : 0;
+  const taxCard = metodeBayar === "CARD" ? Math.round((totalBayarFinal * taxCardPersen) / 100) : 0;
   const totalBayarCard = totalBayarFinal + taxCard;
 
   const hitungHarga = useCallback((menu: Menu, variantString: string | null): number => {
@@ -896,13 +902,13 @@ export default function KasirPage() {
               {totalBayarFinal !== 0 && metodeBayar === "CARD" && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2.5 space-y-1 text-center">
                   <p className="text-xs text-blue-400">Total yang harus dibayar</p>
-                  {pengaturanPembayaran.taxCardPersen > 0 && (
+                  {taxCardPersen > 0 && (
                     <>
                       <div className="flex justify-between text-xs text-blue-600">
                         <span>Subtotal</span><span>{formatRupiah(totalBayarFinal)}</span>
                       </div>
                       <div className="flex justify-between text-xs text-blue-600">
-                        <span>Tax Card ({pengaturanPembayaran.taxCardPersen}%)</span><span>{formatRupiah(taxCard)}</span>
+                        <span>Tax Card ({taxCardPersen}%)</span><span>{formatRupiah(taxCard)}</span>
                       </div>
                     </>
                   )}
