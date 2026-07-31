@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: message }, { status: 400 });
     }
 
-    const { items, totalBayar, noWa, memberNama, diskon, metodeBayar, poinDigunakan } = parsed.data;
+    const { items, totalBayar, noWa, memberNama, diskon, metodeBayar, poinDigunakan, tipePesanan, catatan } = parsed.data;
 
     let totalHarga = 0;
 
@@ -226,6 +226,8 @@ export async function POST(request: NextRequest) {
           totalBayar: metodeBayar === "CASH" ? totalBayar : totalYangDibayar,
           kembalian,
           metodeBayar,
+          tipePesanan,
+          catatan: catatan?.trim() || null,
           poinDigunakan,
           totalPoin: potonganPoin,
           noWa: noWa?.trim() || null,

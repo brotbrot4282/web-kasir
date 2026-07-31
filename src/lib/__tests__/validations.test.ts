@@ -46,6 +46,7 @@ describe("transaksiSchema", () => {
     items: [{ menuId: UUID, jumlah: 2 }],
     totalBayar: 25000,
     metodeBayar: "CASH" as const,
+    tipePesanan: "DINE_IN" as const,
   };
 
   it("accepts valid transaksi", () => {
@@ -108,6 +109,36 @@ describe("transaksiSchema", () => {
 
   it("rejects negative diskon", () => {
     expect(transaksiSchema.safeParse({ ...valid, diskon: -500 }).success).toBe(false);
+  });
+
+  it("rejects missing tipePesanan", () => {
+    expect(
+      transaksiSchema.safeParse({
+        items: valid.items,
+        totalBayar: valid.totalBayar,
+        metodeBayar: valid.metodeBayar,
+      }).success
+    ).toBe(false);
+  });
+
+  it("rejects invalid tipePesanan", () => {
+    expect(transaksiSchema.safeParse({ ...valid, tipePesanan: "DRIVE" }).success).toBe(false);
+  });
+
+  it("accepts TAKE_AWAY", () => {
+    expect(transaksiSchema.safeParse({ ...valid, tipePesanan: "TAKE_AWAY" }).success).toBe(true);
+  });
+
+  it("accepts catatan", () => {
+    expect(
+      transaksiSchema.safeParse({ ...valid, tipePesanan: "DINE_IN", catatan: "Meja 5" }).success
+    ).toBe(true);
+  });
+
+  it("rejects catatan > 200 chars", () => {
+    expect(
+      transaksiSchema.safeParse({ ...valid, catatan: "a".repeat(201) }).success
+    ).toBe(false);
   });
 });
 

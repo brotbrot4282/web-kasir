@@ -28,6 +28,8 @@ export async function GET() {
           createdAt: true,
           noWa: true,
           totalHarga: true,
+          tipePesanan: true,
+          catatan: true,
           member: { select: { nama: true } },
         },
       },

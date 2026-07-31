@@ -33,6 +33,8 @@ export default function KasirPage() {
   const [diskonTipe, setDiskonTipe] = useState<"nominal" | "persen">("nominal");
   const [metodeBayar, setMetodeBayar] = useState<"CASH" | "QRIS" | "CARD">("CASH");
   const [pengaturanPembayaran, setPengaturanPembayaran] = useState<PengaturanPembayaran>({ taxCardPersen: 0 });
+  const [tipePesanan, setTipePesanan] = useState<"" | "DINE_IN" | "TAKE_AWAY">("");
+  const [nomorMeja, setNomorMeja] = useState("");
   const [poinDigunakanInput, setPoinDigunakanInput] = useState("");
   const [transaksiSukses, setTransaksiSukses] = useState<{
     noTransaksi: string; totalHarga: number; totalBayar: number;
@@ -40,6 +42,7 @@ export default function KasirPage() {
     poinDidapat: number; poinDigunakan: number; totalPoin: number;
     diskon: number; tax: number;
     publicId: string; noWa: string | null; memberNama?: string;
+    tipePesanan: string; catatan: string | null;
   } | null>(null);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -74,7 +77,7 @@ export default function KasirPage() {
     id: string; noTransaksi: string; totalHarga: number; totalBayar: number;
     kembalian: number; metodeBayar: string; createdAt: string; poinDigunakan: number; totalPoin: number;
     diskon: number; tax: number;
-    noWa: string | null; publicId: string;
+    noWa: string | null; publicId: string; tipePesanan: string; catatan: string | null;
     itemTransaksi: Array<{ id: string; namaMenu: string; harga: number; jumlah: number; subtotal: number; variant: string | null }>;
     member: { nama: string | null; noWa: string } | null;
   }>>([]);
@@ -215,6 +218,7 @@ export default function KasirPage() {
     if (submitting) return;
     const bayarAmount = metodeBayar === "CARD" ? totalBayarCard : metodeBayar === "QRIS" ? totalBayarFinal : (parseInt(totalBayar.replace(/\D/g, "")) || 0);
     if (keranjang.length === 0) { setMessage({ type: "error", text: "Keranjang masih kosong" }); return; }
+    if (!tipePesanan) { setMessage({ type: "error", text: "Pilih Dine In atau Take Away" }); return; }
     if (metodeBayar === "CASH" && bayarAmount < totalBayarFinal) { setMessage({ type: "error", text: `Kurang Rp ${(totalBayarFinal - bayarAmount).toLocaleString()}` }); return; }
 
     setSubmitting(true);
@@ -230,12 +234,14 @@ export default function KasirPage() {
           noWa: noWa.trim() || undefined,
           memberNama: memberNama.trim() || undefined,
           poinDigunakan,
+          tipePesanan,
+          catatan: tipePesanan === "DINE_IN" ? nomorMeja.trim() || undefined : undefined,
         }),
       });
       if (!res.ok) { const err = await res.json(); throw new Error(err.error || "Gagal"); }
       const data = await res.json();
-      setTransaksiSukses({ noTransaksi: data.noTransaksi, totalHarga: data.totalHarga, totalBayar: data.totalBayar, kembalian: data.kembalian, metodeBayar, items: [...keranjang], poinDidapat: data.poinDidapat || 0, poinDigunakan: data.poinDigunakan || 0, totalPoin: data.totalPoin || 0, diskon: data.diskon || 0, tax: data.tax || 0, publicId: data.publicId, noWa: data.noWa || null, memberNama: memberNama.trim() || undefined });
-      setKeranjang([]); setTotalBayar(""); setDiskon(""); setNoWa(""); setMemberNama(""); setMetodeBayar("CASH"); setPoinDigunakanInput(""); setMessage(null);
+      setTransaksiSukses({ noTransaksi: data.noTransaksi, totalHarga: data.totalHarga, totalBayar: data.totalBayar, kembalian: data.kembalian, metodeBayar, items: [...keranjang], poinDidapat: data.poinDidapat || 0, poinDigunakan: data.poinDigunakan || 0, totalPoin: data.totalPoin || 0, diskon: data.diskon || 0, tax: data.tax || 0, publicId: data.publicId, noWa: data.noWa || null, memberNama: memberNama.trim() || undefined, tipePesanan, catatan: tipePesanan === "DINE_IN" ? (nomorMeja.trim() || null) : null });
+      setKeranjang([]); setTotalBayar(""); setDiskon(""); setNoWa(""); setMemberNama(""); setMetodeBayar("CASH"); setPoinDigunakanInput(""); setTipePesanan(""); setNomorMeja(""); setMessage(null);
       fetch("/api/menu").then((r) => r.json()).then(setMenuList);
     } catch (err) {
       setMessage({ type: "error", text: err instanceof Error ? err.message : "Gagal bayar" });
@@ -249,6 +255,7 @@ export default function KasirPage() {
     kembalian: number; metodeBayar: string; poinDidapat: number; poinDigunakan: number;
     totalPoin: number; diskon: number; tax: number;
     noWa: string | null; memberNama?: string;
+    tipePesanan: string; catatan: string | null;
     items: KeranjangItem[];
   };
 
@@ -280,6 +287,10 @@ export default function KasirPage() {
       ? `<div style="text-align:center;font-weight:bold;font-size:11px;margin:4px 0;letter-spacing:4px;">=== STRUK CATATAN ===</div>`
       : "";
 
+    const labelTipe = t.tipePesanan === "TAKE_AWAY"
+      ? `<div style="text-align:center;font-weight:bold;font-size:11px;margin:2px 0;letter-spacing:2px;">=== TAKE AWAY ===</div>`
+      : `<div style="text-align:center;font-weight:bold;font-size:11px;margin:2px 0;letter-spacing:2px;">=== DINE IN${t.catatan ? ` - ${t.catatan}` : ""} ===</div>`;
+
     const html = `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8">
@@ -297,6 +308,7 @@ export default function KasirPage() {
   <div style="text-align:center;font-size:9px;color:#666;">${tanggal} ${jam}</div>
   <div style="text-align:center;font-size:9px;color:#666;">${t.noTransaksi}</div>
   ${t.memberNama ? `<div style="text-align:center;font-size:9px;color:#666;margin-top:2px;">${t.memberNama}${t.noWa ? ` (${t.noWa})` : ""}</div>` : ""}
+  ${labelTipe}
   ${labelCatatan}
   <div style="border-top:1px dashed #000;margin:6px 0;"></div>
   ${itemsHtml}
@@ -380,6 +392,8 @@ export default function KasirPage() {
         tax: full.tax || 0,
         noWa: full.noWa || full.member?.noWa || null,
         memberNama: full.member?.nama || undefined,
+        tipePesanan: full.tipePesanan || "DINE_IN",
+        catatan: full.catatan || null,
         items: full.itemTransaksi.map((item: { namaMenu: string; harga: number; jumlah: number; subtotal: number; variant: string | null; menuId: string }) => ({
           key: `${item.menuId}-${item.variant || ""}`,
           menuId: item.menuId,
@@ -407,6 +421,9 @@ export default function KasirPage() {
           <h2 className="font-bold text-lg text-sage-800">WARKOP SOEKARDJO</h2>
           <p className="text-xs text-sage-400 mt-0.5">Struk Pembayaran</p>
           <p className="text-xs font-mono text-sage-300 mt-1">{transaksiSukses.noTransaksi}</p>
+          <p className="text-xs font-bold text-sage-600 mt-1">
+            {transaksiSukses.tipePesanan === "TAKE_AWAY" ? "TAKE AWAY" : `DINE IN${transaksiSukses.catatan ? ` - ${transaksiSukses.catatan}` : ""}`}
+          </p>
 
           <div className="border-t border-dashed border-sage-200 mt-4 pt-4 text-left space-y-2 mb-4">
             {transaksiSukses.items.map((item) => (
@@ -924,6 +941,52 @@ export default function KasirPage() {
               )}
 
               <div className="space-y-1.5">
+                <label className="block text-xs font-medium text-sage-500">Tipe Pesanan <span className="text-rose-500">*</span></label>
+                <div className="flex bg-sage-100 rounded-lg p-1 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setTipePesanan("DINE_IN")}
+                    className={`flex-1 py-2 text-xs font-semibold rounded-md transition-all ${
+                      tipePesanan === "DINE_IN"
+                        ? "bg-white text-sage-800 shadow-sm"
+                        : "text-sage-400 hover:text-sage-600"
+                    }`}
+                  >
+                    Dine In
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTipePesanan("TAKE_AWAY")}
+                    className={`flex-1 py-2 text-xs font-semibold rounded-md transition-all ${
+                      tipePesanan === "TAKE_AWAY"
+                        ? "bg-white text-sage-800 shadow-sm"
+                        : "text-sage-400 hover:text-sage-600"
+                    }`}
+                  >
+                    Take Away
+                  </button>
+                </div>
+              </div>
+
+              {tipePesanan === "DINE_IN" && (
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-medium text-sage-500">Nomor Meja (opsional)</label>
+                  <div className="relative">
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sage-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+                    </svg>
+                    <input
+                      type="text"
+                      value={nomorMeja}
+                      onChange={(e) => setNomorMeja(e.target.value)}
+                      placeholder="contoh: Meja 5"
+                      className="w-full border border-sage-200 rounded-lg pl-9 pr-3 py-2.5 text-sm text-sage-800 placeholder:text-sage-400 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 transition-all bg-white"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
                 <label className="block text-xs font-medium text-sage-500">Nama (opsional)</label>
                 <div className="relative">
                   <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sage-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -978,7 +1041,7 @@ export default function KasirPage() {
 
               <button
                 onClick={bayar}
-                disabled={keranjang.length === 0 || submitting}
+                disabled={keranjang.length === 0 || submitting || !tipePesanan}
                 className="w-full bg-sage-600 text-white py-3 rounded-lg font-bold text-sm hover:bg-sage-700 disabled:bg-sage-100 disabled:text-sage-400 disabled:cursor-not-allowed transition-all duration-200 active:scale-[0.98]"
               >
                 {submitting ? (
@@ -1042,6 +1105,9 @@ export default function KasirPage() {
                             </p>
                             <span className={`inline-block mt-1 text-[10px] font-medium px-1.5 py-0.5 rounded ${t.metodeBayar === "QRIS" ? "bg-blue-50 text-blue-600" : t.metodeBayar === "CARD" ? "bg-violet-50 text-violet-600" : "bg-emerald-50 text-emerald-600"}`}>
                               {metodeLabel(t.metodeBayar)}
+                            </span>
+                            <span className="inline-block ml-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-sage-50 text-sage-600">
+                              {t.tipePesanan === "TAKE_AWAY" ? "Take Away" : t.catatan ? `Dine In · ${t.catatan}` : "Dine In"}
                             </span>
                           </div>
                           <div className="flex gap-1.5 shrink-0">

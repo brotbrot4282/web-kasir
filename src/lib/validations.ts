@@ -22,6 +22,10 @@ export const transaksiSchema = z.object({
   metodeBayar: z.enum(["CASH", "QRIS", "CARD"], {
     message: "Metode bayar harus CASH, QRIS, atau CARD",
   }),
+  tipePesanan: z.enum(["DINE_IN", "TAKE_AWAY"], {
+    message: "Tipe pesanan harus Dine In atau Take Away",
+  }),
+  catatan: z.string().max(200, "Catatan maksimal 200 karakter").nullish(),
   poinDigunakan: z.number().int().min(0, "Poin tidak boleh negatif").default(0),
 });
 

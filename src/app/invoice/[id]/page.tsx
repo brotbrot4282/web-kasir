@@ -9,7 +9,8 @@ type Item = { id: string; namaMenu: string; harga: number; jumlah: number; subto
 type Member = { noWa: string; nama: string | null; poin: number } | null;
 type Transaksi = {
   noTransaksi: string; totalHarga: number; diskon: number; tax: number; totalBayar: number;
-  kembalian: number; metodeBayar: string; poinDigunakan: number; totalPoin: number;
+  kembalian: number; metodeBayar: string; tipePesanan: string; catatan: string | null;
+  poinDigunakan: number; totalPoin: number;
   createdAt: string; itemTransaksi: Item[];
   noWa: string | null; member: Member;
 };
@@ -72,6 +73,16 @@ export default function InvoicePage() {
           <div className="flex justify-between text-sm">
             <span className="text-sage-500">Tanggal</span>
             <span className="text-sage-800">{tgl}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-sage-500">Jenis</span>
+            <span className="font-medium text-sage-800">
+              {data.tipePesanan === "TAKE_AWAY"
+                ? "Take Away"
+                : data.catatan
+                  ? `Dine In · ${data.catatan}`
+                  : "Dine In"}
+            </span>
           </div>
 
           {data.member && (

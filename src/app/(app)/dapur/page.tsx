@@ -13,7 +13,7 @@ type ItemDapur = {
   statusDapur: "MENUNGGU" | "DIMASAK" | "SIAP";
   createdAt: string;
   menu: { nama: string; kategori: { nama: string } };
-  transaksi: { noTransaksi: string; createdAt: string; noWa: string | null; totalHarga: number; member: { nama: string | null } | null };
+  transaksi: { noTransaksi: string; createdAt: string; noWa: string | null; totalHarga: number; tipePesanan: string; catatan: string | null; member: { nama: string | null } | null };
 };
 
 export default function DapurPage() {
@@ -189,6 +189,11 @@ export default function DapurPage() {
                             👤 {item.transaksi.member.nama}
                           </span>
                         )}
+                        {item.transaksi.tipePesanan === "TAKE_AWAY" ? (
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-100/80 px-1.5 py-0.5 rounded">🥡 Take Away</span>
+                        ) : (
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-100/80 px-1.5 py-0.5 rounded">🍽 Dine In{item.transaksi.catatan ? ` · ${item.transaksi.catatan}` : ""}</span>
+                        )}
                       </div>
                       <p className="font-bold text-base text-amber-900">
                         {item.variant ? `${item.menu.nama} - ${item.variant}` : item.menu.nama}
@@ -257,6 +262,11 @@ export default function DapurPage() {
                           <span className="text-[10px] text-blue-600 font-medium truncate max-w-[120px]">
                             👤 {item.transaksi.member.nama}
                           </span>
+                        )}
+                        {item.transaksi.tipePesanan === "TAKE_AWAY" ? (
+                          <span className="text-[10px] font-bold text-blue-700 bg-blue-100/80 px-1.5 py-0.5 rounded">🥡 Take Away</span>
+                        ) : (
+                          <span className="text-[10px] font-bold text-blue-700 bg-blue-100/80 px-1.5 py-0.5 rounded">🍽 Dine In{item.transaksi.catatan ? ` · ${item.transaksi.catatan}` : ""}</span>
                         )}
                       </div>
                       <p className="font-bold text-base text-blue-900">
