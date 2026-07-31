@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { formatRupiah, formatDate } from "@/lib/utils";
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+} from "recharts";
 
 type Ringkasan = { totalOmset: number; totalDiskon: number; totalTransaksi: number; totalItem: number };
 type MenuTerlaris = { menuId: string; namaMenu: string; totalTerjual: number };
@@ -12,6 +15,10 @@ type Transaksi = {
 };
 type LaporanData = { ringkasan: Ringkasan; menuTerlaris: MenuTerlaris[]; transaksi: Transaksi[]; total: number; totalPages: number; page: number };
 type ClosingItem = { id: string; tanggal: string; createdAt: string; shift: string; uangAwal: number; catatan: string | null; belanjaUrgent: Array<{ nama: string; nominal: number }> | null; totalMakanan: number; totalMinuman: number; totalOmset: number; totalTransaksi: number; kasAktual: number | null; selisih: number | null; user: { nama: string } };
+type Rentang = "JAM" | "HARI" | "MINGGU" | "BULAN";
+type TitikGrafik = { label: string; tanggal: string; omset: number; transaksi: number };
+
+const RENTANG_LABEL: Record<Rentang, string> = { JAM: "Per Jam", HARI: "Per Hari", MINGGU: "Per Minggu", BULAN: "Per Bulan" };
 
 export default function LaporanPage() {
   const [data, setData] = useState<LaporanData | null>(null);
@@ -23,25 +30,35 @@ export default function LaporanPage() {
   const [closingError, setClosingError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [rentang, setRentang] = useState<Rentang>("BULAN");
+  const [grafikData, setGrafikData] = useState<TitikGrafik[]>([]);
+  const [grafikLoading, setGrafikLoading] = useState(false);
 
-  const loadData = (d?: string, s?: string, p?: number) => {
+  const loadData = (d?: string, s?: string, p?: number, r?: Rentang) => {
     setLoading(true);
+    setGrafikLoading(true);
     setClosingError(null);
     const params = new URLSearchParams();
     if (d) params.set("dari", d);
     if (s) params.set("sampai", s);
     if (p) params.set("page", String(p));
     const paramsStr = params.toString();
+    const grafikParams = new URLSearchParams();
+    grafikParams.set("rentang", r ?? rentang);
+    if (d) grafikParams.set("dari", d);
+    if (s) grafikParams.set("sampai", s);
+    const grafikStr = grafikParams.toString();
     Promise.allSettled([
-      fetch(`/api/laporan?${paramsStr}`).then((r) => r.json()),
-      fetch(`/api/closing?${paramsStr}`).then(async (r) => {
-        if (!r.ok) {
-          const err = await r.json().catch(() => ({}));
+      fetch(`/api/laporan?${paramsStr}`).then((res) => res.json()),
+      fetch(`/api/closing?${paramsStr}`).then(async (res) => {
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
           throw new Error(err.error || "Gagal memuat data closing");
         }
-        return r.json() as Promise<ClosingItem[]>;
+        return res.json() as Promise<ClosingItem[]>;
       }),
-    ]).then(([lapResult, closingResult]) => {
+      fetch(`/api/laporan/grafik?${grafikStr}`).then((res) => res.json()),
+    ]).then(([lapResult, closingResult, grafikResult]) => {
       if (lapResult.status === "fulfilled") {
         const lapData = lapResult.value as LaporanData;
         setData(lapData);
@@ -52,7 +69,11 @@ export default function LaporanPage() {
       } else {
         setClosingError(closingResult.reason?.message || "Gagal memuat data closing");
       }
-    }).finally(() => setLoading(false));
+      if (grafikResult.status === "fulfilled") {
+        const g = grafikResult.value as { data?: TitikGrafik[] };
+        setGrafikData(g.data ?? []);
+      }
+    }).finally(() => { setLoading(false); setGrafikLoading(false); });
   };
 
   useEffect(() => { setPage(1); loadData(); }, []);
@@ -63,6 +84,7 @@ export default function LaporanPage() {
   const hariIni = () => { const t = getLocalDate(new Date()); setDari(t); setSampai(t); setPage(1); loadData(t, t); };
   const mingguIni = () => { const skrg = new Date(); const t = getLocalDate(skrg); const w = new Date(skrg); w.setDate(w.getDate() - 7); const d = getLocalDate(w); setDari(d); setSampai(t); setPage(1); loadData(d, t); };
   const bulanIni = () => { const skrg = new Date(); const t = getLocalDate(skrg); const b = getLocalDate(new Date(skrg.getFullYear(), skrg.getMonth(), 1)); setDari(b); setSampai(t); setPage(1); loadData(b, t); };
+  const gantiRentang = (r: Rentang) => { setRentang(r); loadData(dari || undefined, sampai || undefined, undefined, r); };
 
   return (
     <div className="space-y-6">
@@ -118,6 +140,102 @@ export default function LaporanPage() {
               <p className="text-sm text-sage-500">Total Item Terjual</p>
               <p className="text-xl font-bold text-sage-800 mt-1">{data.ringkasan.totalItem}</p>
             </div>
+          </div>
+
+          <div className="bg-white border border-sage-200 rounded-xl p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-red-100 to-red-200 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-red-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v18h18" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 15l4-5 3 3 5-7" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold text-sage-800">Grafik Penjualan</h2>
+                  <p className="text-xs text-sage-400">Omset & jumlah transaksi</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 bg-sage-50 border border-sage-200 rounded-lg p-1">
+                {(Object.keys(RENTANG_LABEL) as Rentang[]).map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => gantiRentang(r)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                      r === rentang
+                        ? "bg-red-800 text-white shadow-sm"
+                        : "text-sage-500 hover:text-sage-700 hover:bg-white"
+                    }`}
+                  >
+                    {RENTANG_LABEL[r]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {grafikLoading ? (
+              <div className="w-full animate-pulse rounded-xl bg-sage-200/40" style={{ height: 320 }} />
+            ) : grafikData.length > 0 ? (
+              <div className="w-full" style={{ height: 320 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={grafikData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e5e5" />
+                    <XAxis
+                      dataKey="label"
+                      tick={{ fontSize: 11, fill: "#7c8a83" }}
+                      axisLine={{ stroke: "#e5e5e5" }}
+                      tickLine={false}
+                      minTickGap={28}
+                    />
+                    <YAxis
+                      yAxisId="omset"
+                      tickFormatter={formatRpSingkat}
+                      tick={{ fontSize: 11, fill: "#7c8a83" }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={64}
+                    />
+                    <YAxis
+                      yAxisId="transaksi"
+                      orientation="right"
+                      allowDecimals={false}
+                      tick={{ fontSize: 11, fill: "#7c8a83" }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={36}
+                    />
+                    <Tooltip content={<GrafikTooltip />} cursor={{ stroke: "#d6d3d1", strokeDasharray: "4 4" }} />
+                    <Legend
+                      wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
+                      formatter={(value) => <span className="text-sage-600">{value}</span>}
+                    />
+                    <Line
+                      yAxisId="omset"
+                      type="monotone"
+                      dataKey="omset"
+                      name="Omset"
+                      stroke="#991b1b"
+                      strokeWidth={2.5}
+                      dot={{ r: 3, strokeWidth: 0, fill: "#991b1b" }}
+                      activeDot={{ r: 5 }}
+                    />
+                    <Line
+                      yAxisId="transaksi"
+                      type="monotone"
+                      dataKey="transaksi"
+                      name="Transaksi"
+                      stroke="#10b981"
+                      strokeWidth={2}
+                      dot={{ r: 3, strokeWidth: 0, fill: "#10b981" }}
+                      activeDot={{ r: 5 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="py-16 text-center">
+                <p className="text-sm text-sage-400">Belum ada data penjualan pada rentang ini</p>
+              </div>
+            )}
           </div>
 
           {closingError ? (
@@ -339,6 +457,34 @@ export default function LaporanPage() {
         </>
       ) : (
         <div className="text-center py-20 text-sage-400">Tidak ada data</div>
+      )}
+    </div>
+  );
+}
+
+function formatRpSingkat(n: number): string {
+  if (n >= 1_000_000_000) return `Rp${(n / 1_000_000_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })}M`;
+  if (n >= 1_000_000) return `Rp${(n / 1_000_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })}jt`;
+  if (n >= 1_000) return `Rp${(n / 1_000).toLocaleString("id-ID", { maximumFractionDigits: 0 })}rb`;
+  return `Rp${n}`;
+}
+
+function GrafikTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: TitikGrafik }> }) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload;
+  return (
+    <div className="bg-white border border-sage-200 rounded-lg px-3 py-2 shadow-lg text-xs">
+      <p className="font-semibold text-sage-800 mb-1">{d.label}</p>
+      <p className="text-sage-500">
+        Omset: <span className="font-bold text-red-700">{formatRupiah(d.omset)}</span>
+      </p>
+      <p className="text-sage-500">
+        Transaksi: <span className="font-bold text-emerald-700">{d.transaksi}</span>
+      </p>
+      {d.transaksi > 0 && (
+        <p className="text-sage-400 mt-0.5">
+          Rata-rata/transaksi: <span className="font-semibold text-sage-600">{formatRupiah(Math.round(d.omset / d.transaksi))}</span>
+        </p>
       )}
     </div>
   );
