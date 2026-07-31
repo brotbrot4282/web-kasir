@@ -14,6 +14,9 @@ type Menu = {
 };
 type KeranjangItem = { key: string; menuId: string; nama: string; harga: number; jumlah: number; subtotal: number; variant: string | null };
 type PengaturanPoin = { rupiahPerPoin: number; nilaiPerPoin: number; minimalTransaksi: number };
+type PengaturanPembayaran = { taxCardPersen: number };
+
+const metodeLabel = (m: string) => (m === "QRIS" ? "QRIS" : m === "CARD" ? "Card" : "Tunai");
 
 export default function KasirPage() {
   const [kategoriList, setKategoriList] = useState<Kategori[]>([]);
@@ -28,13 +31,14 @@ export default function KasirPage() {
   const [pengaturanPoin, setPengaturanPoin] = useState<PengaturanPoin>({ rupiahPerPoin: 15000, nilaiPerPoin: 1000, minimalTransaksi: 10000 });
   const [diskon, setDiskon] = useState("");
   const [diskonTipe, setDiskonTipe] = useState<"nominal" | "persen">("nominal");
-  const [metodeBayar, setMetodeBayar] = useState<"CASH" | "QRIS">("CASH");
+  const [metodeBayar, setMetodeBayar] = useState<"CASH" | "QRIS" | "CARD">("CASH");
+  const [pengaturanPembayaran, setPengaturanPembayaran] = useState<PengaturanPembayaran>({ taxCardPersen: 0 });
   const [poinDigunakanInput, setPoinDigunakanInput] = useState("");
   const [transaksiSukses, setTransaksiSukses] = useState<{
     noTransaksi: string; totalHarga: number; totalBayar: number;
     kembalian: number; metodeBayar: string; items: KeranjangItem[];
     poinDidapat: number; poinDigunakan: number; totalPoin: number;
-    diskon: number;
+    diskon: number; tax: number;
     publicId: string; noWa: string | null; memberNama?: string;
   } | null>(null);
 
@@ -69,7 +73,7 @@ export default function KasirPage() {
   const [riwayatData, setRiwayatData] = useState<Array<{
     id: string; noTransaksi: string; totalHarga: number; totalBayar: number;
     kembalian: number; metodeBayar: string; createdAt: string; poinDigunakan: number; totalPoin: number;
-    diskon: number;
+    diskon: number; tax: number;
     noWa: string | null; publicId: string;
     itemTransaksi: Array<{ id: string; namaMenu: string; harga: number; jumlah: number; subtotal: number; variant: string | null }>;
     member: { nama: string | null; noWa: string } | null;
@@ -87,6 +91,7 @@ export default function KasirPage() {
       if (kategori.length > 0) setKategoriAktif(kategori[0].id);
     }).finally(() => setLoading(false));
     fetch("/api/pengaturan-poin").then((r) => r.json()).then(setPengaturanPoin).catch(() => {});
+    fetch("/api/pengaturan-pembayaran").then((r) => r.json()).then(setPengaturanPembayaran).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -158,6 +163,8 @@ export default function KasirPage() {
     ? Math.min(Math.floor(sisaSetelahPoin * diskonInput / 100), sisaSetelahPoin)
     : Math.min(diskonInput, sisaSetelahPoin);
   const totalBayarFinal = Math.max(0, sisaSetelahPoin - totalDiskon);
+  const taxCard = metodeBayar === "CARD" ? Math.round((totalBayarFinal * pengaturanPembayaran.taxCardPersen) / 100) : 0;
+  const totalBayarCard = totalBayarFinal + taxCard;
 
   const hitungHarga = useCallback((menu: Menu, variantString: string | null): number => {
     if (!variantString || !menu.variants) return menu.harga;
@@ -200,7 +207,7 @@ export default function KasirPage() {
 
   const bayar = async () => {
     if (submitting) return;
-    const bayarAmount = metodeBayar === "QRIS" ? totalBayarFinal : (parseInt(totalBayar.replace(/\D/g, "")) || 0);
+    const bayarAmount = metodeBayar === "CARD" ? totalBayarCard : metodeBayar === "QRIS" ? totalBayarFinal : (parseInt(totalBayar.replace(/\D/g, "")) || 0);
     if (keranjang.length === 0) { setMessage({ type: "error", text: "Keranjang masih kosong" }); return; }
     if (metodeBayar === "CASH" && bayarAmount < totalBayarFinal) { setMessage({ type: "error", text: `Kurang Rp ${(totalBayarFinal - bayarAmount).toLocaleString()}` }); return; }
 
@@ -221,7 +228,7 @@ export default function KasirPage() {
       });
       if (!res.ok) { const err = await res.json(); throw new Error(err.error || "Gagal"); }
       const data = await res.json();
-      setTransaksiSukses({ noTransaksi: data.noTransaksi, totalHarga: data.totalHarga, totalBayar: data.totalBayar, kembalian: data.kembalian, metodeBayar, items: [...keranjang], poinDidapat: data.poinDidapat || 0, poinDigunakan: data.poinDigunakan || 0, totalPoin: data.totalPoin || 0, diskon: data.diskon || 0, publicId: data.publicId, noWa: data.noWa || null, memberNama: memberNama.trim() || undefined });
+      setTransaksiSukses({ noTransaksi: data.noTransaksi, totalHarga: data.totalHarga, totalBayar: data.totalBayar, kembalian: data.kembalian, metodeBayar, items: [...keranjang], poinDidapat: data.poinDidapat || 0, poinDigunakan: data.poinDigunakan || 0, totalPoin: data.totalPoin || 0, diskon: data.diskon || 0, tax: data.tax || 0, publicId: data.publicId, noWa: data.noWa || null, memberNama: memberNama.trim() || undefined });
       setKeranjang([]); setTotalBayar(""); setDiskon(""); setNoWa(""); setMemberNama(""); setMetodeBayar("CASH"); setPoinDigunakanInput(""); setMessage(null);
       fetch("/api/menu").then((r) => r.json()).then(setMenuList);
     } catch (err) {
@@ -234,7 +241,7 @@ export default function KasirPage() {
   type StrukData = {
     noTransaksi: string; totalHarga: number; totalBayar: number;
     kembalian: number; metodeBayar: string; poinDidapat: number; poinDigunakan: number;
-    totalPoin: number; diskon: number;
+    totalPoin: number; diskon: number; tax: number;
     noWa: string | null; memberNama?: string;
     items: KeranjangItem[];
   };
@@ -297,13 +304,16 @@ export default function KasirPage() {
   ${t.poinDigunakan > 0 ? `<div style="display:flex;justify-content:space-between;color:#0066cc;">
     <span>Poin Dipakai</span><span>-${t.poinDigunakan} poin (-${formatRupiah(t.totalPoin || 0)})</span>
   </div>` : ""}
+  ${t.tax > 0 ? `<div style="display:flex;justify-content:space-between;">
+    <span>Tax Card</span><span>${formatRupiah(t.tax)}</span>
+  </div>` : ""}
   <div style="display:flex;justify-content:space-between;">
     <span>Bayar</span><span>${formatRupiah(t.totalBayar)}</span>
   </div>
   <div style="display:flex;justify-content:space-between;">
-    <span>Metode</span><span>${t.metodeBayar === "QRIS" ? "QRIS" : "Tunai"}</span>
+    <span>Metode</span><span>${metodeLabel(t.metodeBayar)}</span>
   </div>
-  ${t.metodeBayar !== "QRIS" ? `<div style="display:flex;justify-content:space-between;">
+  ${t.metodeBayar === "CASH" ? `<div style="display:flex;justify-content:space-between;">
     <span>Kembali</span><span>${formatRupiah(t.kembalian)}</span>
   </div>` : ""}
   ${t.poinDidapat > 0 ? `<div style="border-top:1px dashed #000;margin:6px 0;"></div>
@@ -361,6 +371,7 @@ export default function KasirPage() {
         poinDigunakan: full.poinDigunakan || 0,
         totalPoin: full.totalPoin || 0,
         diskon: full.diskon || 0,
+        tax: full.tax || 0,
         noWa: full.noWa || full.member?.noWa || null,
         memberNama: full.member?.nama || undefined,
         items: full.itemTransaksi.map((item: { namaMenu: string; harga: number; jumlah: number; subtotal: number; variant: string | null; menuId: string }) => ({
@@ -413,13 +424,18 @@ export default function KasirPage() {
                 <span>Diskon</span><span>-{formatRupiah(transaksiSukses.diskon)}</span>
               </div>
             )}
+            {transaksiSukses.tax > 0 && (
+              <div className="flex justify-between text-sage-500">
+                <span>Tax Card</span><span>{formatRupiah(transaksiSukses.tax)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-sage-500">
               <span>Bayar</span><span>{formatRupiah(transaksiSukses.totalBayar)}</span>
             </div>
             <div className="flex justify-between text-sage-500">
-              <span>Metode</span><span>{transaksiSukses.metodeBayar === "QRIS" ? "QRIS" : "Tunai"}</span>
+              <span>Metode</span><span>{metodeLabel(transaksiSukses.metodeBayar)}</span>
             </div>
-            {transaksiSukses.metodeBayar !== "QRIS" && (
+            {transaksiSukses.metodeBayar === "CASH" && (
               <div className="flex justify-between text-sage-600 font-medium">
                 <span>Kembali</span><span>{formatRupiah(transaksiSukses.kembalian)}</span>
               </div>
@@ -839,6 +855,17 @@ export default function KasirPage() {
                     >
                       QRIS
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setMetodeBayar("CARD")}
+                      className={`flex-1 py-2 text-xs font-semibold rounded-md transition-all ${
+                        metodeBayar === "CARD"
+                          ? "bg-white text-sage-800 shadow-sm"
+                          : "text-sage-400 hover:text-sage-600"
+                      }`}
+                    >
+                      Card
+                    </button>
                   </div>
                 </div>
               )}
@@ -863,6 +890,23 @@ export default function KasirPage() {
                 <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2.5 text-center">
                   <p className="text-xs text-blue-400">Total yang harus dibayar</p>
                   <p className="text-lg font-bold text-blue-700">{formatRupiah(totalBayarFinal)}</p>
+                </div>
+              )}
+
+              {totalBayarFinal !== 0 && metodeBayar === "CARD" && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2.5 space-y-1 text-center">
+                  <p className="text-xs text-blue-400">Total yang harus dibayar</p>
+                  {pengaturanPembayaran.taxCardPersen > 0 && (
+                    <>
+                      <div className="flex justify-between text-xs text-blue-600">
+                        <span>Subtotal</span><span>{formatRupiah(totalBayarFinal)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs text-blue-600">
+                        <span>Tax Card ({pengaturanPembayaran.taxCardPersen}%)</span><span>{formatRupiah(taxCard)}</span>
+                      </div>
+                    </>
+                  )}
+                  <p className="text-lg font-bold text-blue-700">{formatRupiah(totalBayarCard)}</p>
                 </div>
               )}
 
@@ -936,7 +980,7 @@ export default function KasirPage() {
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     Memproses...
                   </span>
-                ) : totalBayarFinal === 0 && totalKeranjang > 0 ? "Bayar (Poin)" : metodeBayar === "QRIS" ? "Bayar via QRIS" : "Bayar"}
+                ) : totalBayarFinal === 0 && totalKeranjang > 0 ? "Bayar (Poin)" : metodeBayar === "QRIS" ? "Bayar via QRIS" : metodeBayar === "CARD" ? "Bayar via Card" : "Bayar"}
               </button>
             </div>
           )}
@@ -990,8 +1034,8 @@ export default function KasirPage() {
                               {new Date(t.createdAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
                               {t.member?.nama ? ` - ${t.member.nama}` : ""}
                             </p>
-                            <span className={`inline-block mt-1 text-[10px] font-medium px-1.5 py-0.5 rounded ${t.metodeBayar === "QRIS" ? "bg-blue-50 text-blue-600" : "bg-emerald-50 text-emerald-600"}`}>
-                              {t.metodeBayar === "QRIS" ? "QRIS" : "Cash"}
+                            <span className={`inline-block mt-1 text-[10px] font-medium px-1.5 py-0.5 rounded ${t.metodeBayar === "QRIS" ? "bg-blue-50 text-blue-600" : t.metodeBayar === "CARD" ? "bg-violet-50 text-violet-600" : "bg-emerald-50 text-emerald-600"}`}>
+                              {metodeLabel(t.metodeBayar)}
                             </span>
                           </div>
                           <div className="flex gap-1.5 shrink-0">

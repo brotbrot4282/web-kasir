@@ -9,6 +9,7 @@ import {
   stokUpdateSchema,
   poinDeductSchema,
   pengaturanPoinSchema,
+  pengaturanPembayaranSchema,
   openingSchema,
   closingSchema,
   resepSchema,
@@ -67,6 +68,10 @@ describe("transaksiSchema", () => {
 
   it("accepts QRIS payment", () => {
     expect(transaksiSchema.safeParse({ ...valid, metodeBayar: "QRIS" }).success).toBe(true);
+  });
+
+  it("accepts CARD payment", () => {
+    expect(transaksiSchema.safeParse({ ...valid, metodeBayar: "CARD" }).success).toBe(true);
   });
 
   it("rejects negative totalBayar", () => {
@@ -275,6 +280,29 @@ describe("pengaturanPoinSchema", () => {
     expect(
       pengaturanPoinSchema.safeParse({ rupiahPerPoin: 15000, nilaiPerPoin: -1, minimalTransaksi: 10000 }).success
     ).toBe(false);
+  });
+});
+
+// ── pengaturanPembayaranSchema ───────────────────────
+describe("pengaturanPembayaranSchema", () => {
+  it("accepts valid values", () => {
+    expect(pengaturanPembayaranSchema.safeParse({ taxCardPersen: 3 }).success).toBe(true);
+  });
+
+  it("accepts zero tax (no tax)", () => {
+    expect(pengaturanPembayaranSchema.safeParse({ taxCardPersen: 0 }).success).toBe(true);
+  });
+
+  it("rejects negative tax", () => {
+    expect(pengaturanPembayaranSchema.safeParse({ taxCardPersen: -1 }).success).toBe(false);
+  });
+
+  it("rejects tax above 100", () => {
+    expect(pengaturanPembayaranSchema.safeParse({ taxCardPersen: 101 }).success).toBe(false);
+  });
+
+  it("rejects float tax", () => {
+    expect(pengaturanPembayaranSchema.safeParse({ taxCardPersen: 2.5 }).success).toBe(false);
   });
 });
 

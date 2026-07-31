@@ -92,6 +92,9 @@ export async function POST(request: NextRequest) {
     const nilaiPerPoin = pengaturan?.nilaiPerPoin ?? 1000;
     const minimalTransaksi = pengaturan?.minimalTransaksi ?? 10000;
 
+    const pengaturanPembayaran = await prisma.pengaturanPembayaran.findUnique({ where: { id: 1 } });
+    const taxCardPersen = pengaturanPembayaran?.taxCardPersen ?? 0;
+
     const potonganPoin = poinDigunakan * nilaiPerPoin;
 
     const itemData: Array<{
@@ -191,7 +194,9 @@ export async function POST(request: NextRequest) {
     }
 
     const harusDibayar = subtotalSebelumDiskon - diskon;
-    const kembalian = metodeBayar === "QRIS" ? 0 : totalBayar - harusDibayar;
+    const tax = metodeBayar === "CARD" ? Math.round((harusDibayar * taxCardPersen) / 100) : 0;
+    const totalYangDibayar = harusDibayar + tax;
+    const kembalian = metodeBayar === "CASH" ? totalBayar - harusDibayar : 0;
     if (metodeBayar === "CASH" && kembalian < 0) {
       return NextResponse.json(
         { error: `Uang tidak mencukupi, masih kurang Rp ${(harusDibayar - totalBayar).toLocaleString()}` },
@@ -217,7 +222,8 @@ export async function POST(request: NextRequest) {
           noTransaksi: generateNoTransaksi(),
           totalHarga,
           diskon,
-          totalBayar: metodeBayar === "QRIS" ? harusDibayar : totalBayar,
+          tax,
+          totalBayar: metodeBayar === "CASH" ? totalBayar : totalYangDibayar,
           kembalian,
           metodeBayar,
           poinDigunakan,

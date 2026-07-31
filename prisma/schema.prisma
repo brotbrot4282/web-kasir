@@ -68,6 +68,7 @@ model Transaksi {
   noTransaksi   String          @unique @map("no_transaksi")
   totalHarga    Int             @map("total_harga")
   diskon        Int             @default(0)
+  tax           Int             @default(0)
   totalBayar    Int             @map("total_bayar")
   kembalian     Int             @default(0)
   metodeBayar   String          @default("CASH") @map("metode_bayar")
@@ -202,4 +203,12 @@ model PengaturanPoin {
   updatedAt        DateTime @updatedAt @map("updated_at")
 
   @@map("pengaturan_poin")
+}
+
+model PengaturanPembayaran {
+  id            Int      @id @default(1)
+  taxCardPersen Int      @default(0) @map("tax_card_persen")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("pengaturan_pembayaran")
 }

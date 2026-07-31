@@ -239,8 +239,8 @@ export default function LaporanPage() {
                       <td className="px-4 py-3.5 text-right font-medium text-sage-800">{formatRupiah(t.totalHarga)}</td>
                       <td className="px-4 py-3.5 text-center text-sage-500">{t.itemTransaksi.reduce((s, i) => s + i.jumlah, 0)}</td>
                       <td className="px-4 py-3.5 text-center">
-                        <span className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded ${t.metodeBayar === "QRIS" ? "bg-blue-50 text-blue-600" : "bg-emerald-50 text-emerald-600"}`}>
-                          {t.metodeBayar === "QRIS" ? "QRIS" : "Cash"}
+                        <span className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded ${t.metodeBayar === "QRIS" ? "bg-blue-50 text-blue-600" : t.metodeBayar === "CARD" ? "bg-violet-50 text-violet-600" : "bg-emerald-50 text-emerald-600"}`}>
+                          {t.metodeBayar === "QRIS" ? "QRIS" : t.metodeBayar === "CARD" ? "Card" : "Cash"}
                         </span>
                       </td>
                       <td className="px-4 py-3.5 text-center text-sage-400 text-xs">{formatDate(new Date(t.createdAt))}</td>

@@ -118,6 +118,7 @@ export async function GET(request: NextRequest) {
     { header: "No. Transaksi", key: "no", width: 10 },
     { header: "Total Harga", key: "total", width: 10 },
     { header: "Diskon", key: "diskon", width: 10 },
+    { header: "Tax", key: "tax", width: 10 },
     { header: "Bayar", key: "bayar", width: 10 },
     { header: "Kembalian", key: "kembali", width: 10 },
     { header: "Metode Bayar", key: "metodeBayar", width: 10 },
@@ -131,9 +132,9 @@ export async function GET(request: NextRequest) {
   } else {
     transaksi.forEach((t) => {
       const detailItems = t.itemTransaksi.map((i) => `${i.namaMenu} x${i.jumlah} (${formatRupiah(i.subtotal)})`).join(", ");
-      const row = s3.addRow({ no: t.noTransaksi, total: t.totalHarga, diskon: t.diskon ?? 0, bayar: t.totalBayar, kembali: t.kembalian, metodeBayar: t.metodeBayar === "QRIS" ? "QRIS" : "Cash", item: t.itemTransaksi.reduce((s, i) => s + i.jumlah, 0), tanggal: formatDate(t.createdAt), detail: detailItems });
+      const row = s3.addRow({ no: t.noTransaksi, total: t.totalHarga, diskon: t.diskon ?? 0, tax: t.tax ?? 0, bayar: t.totalBayar, kembali: t.kembalian, metodeBayar: t.metodeBayar === "QRIS" ? "QRIS" : t.metodeBayar === "CARD" ? "Card" : "Cash", item: t.itemTransaksi.reduce((s, i) => s + i.jumlah, 0), tanggal: formatDate(t.createdAt), detail: detailItems });
       row.eachCell((c) => { c.font = style.cell.font; c.alignment = style.cell.alignment; c.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } }; });
-      for (const col of [2, 3, 4, 5]) row.getCell(col).numFmt = '#,##0';
+      for (const col of [2, 3, 4, 5, 6]) row.getCell(col).numFmt = '#,##0';
     });
   }
   autoWidth(s3);

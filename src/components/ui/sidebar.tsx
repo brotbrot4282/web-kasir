@@ -18,6 +18,7 @@ const ownerNavItems = [
   { href: "/admin/hpp", label: "Analisa Harga", icon: Calculator },
   { href: "/admin/customer", label: "Customer", icon: Users },
   { href: "/admin/pengaturan-poin", label: "Pengaturan Poin", icon: Settings },
+  { href: "/admin/pengaturan-pembayaran", label: "Pengaturan Pembayaran", icon: Settings },
   { href: "/admin/laporan", label: "Laporan", icon: BarChart3 },
 ];
 

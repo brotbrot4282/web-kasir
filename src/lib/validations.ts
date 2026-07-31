@@ -19,8 +19,8 @@ export const transaksiSchema = z.object({
   noWa: z.string().nullish(),
   memberNama: z.string().nullish(),
   diskon: z.number().min(0, "Diskon tidak boleh negatif").default(0),
-  metodeBayar: z.enum(["CASH", "QRIS"], {
-    message: "Metode bayar harus CASH atau QRIS",
+  metodeBayar: z.enum(["CASH", "QRIS", "CARD"], {
+    message: "Metode bayar harus CASH, QRIS, atau CARD",
   }),
   poinDigunakan: z.number().int().min(0, "Poin tidak boleh negatif").default(0),
 });
@@ -82,6 +82,11 @@ export const pengaturanPoinSchema = z.object({
   rupiahPerPoin: z.number().int().positive("Rupiah per poin harus positif"),
   nilaiPerPoin: z.number().int().positive("Nilai per poin harus positif"),
   minimalTransaksi: z.number().int().min(0, "Minimal transaksi harus non-negatif"),
+});
+
+// ── Pengaturan Pembayaran ─────────────────────────────
+export const pengaturanPembayaranSchema = z.object({
+  taxCardPersen: z.number().int().min(0, "Tax card tidak boleh negatif").max(100, "Tax card maksimal 100%"),
 });
 
 // ── Opening / Closing ─────────────────────────────────

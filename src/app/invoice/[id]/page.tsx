@@ -8,7 +8,7 @@ import Link from "next/link";
 type Item = { id: string; namaMenu: string; harga: number; jumlah: number; subtotal: number; variant: string | null };
 type Member = { noWa: string; nama: string | null; poin: number } | null;
 type Transaksi = {
-  noTransaksi: string; totalHarga: number; diskon: number; totalBayar: number;
+  noTransaksi: string; totalHarga: number; diskon: number; tax: number; totalBayar: number;
   kembalian: number; metodeBayar: string; poinDigunakan: number; totalPoin: number;
   createdAt: string; itemTransaksi: Item[];
   noWa: string | null; member: Member;
@@ -116,13 +116,18 @@ export default function InvoicePage() {
                 <span>Diskon</span><span>-{formatRupiah(data.diskon)}</span>
               </div>
             )}
+            {data.tax > 0 && (
+              <div className="flex justify-between text-sm text-sage-500">
+                <span>Tax Card</span><span>{formatRupiah(data.tax)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-sm text-sage-500">
               <span>Bayar</span><span>{formatRupiah(data.totalBayar)}</span>
             </div>
             <div className="flex justify-between text-sm text-sage-500">
-              <span>Metode</span><span>{data.metodeBayar === "QRIS" ? "QRIS" : "Tunai"}</span>
+              <span>Metode</span><span>{data.metodeBayar === "QRIS" ? "QRIS" : data.metodeBayar === "CARD" ? "Card" : "Tunai"}</span>
             </div>
-            {data.metodeBayar !== "QRIS" && (
+            {data.metodeBayar === "CASH" && (
               <div className="flex justify-between text-sm font-medium text-sage-600">
                 <span>Kembali</span><span>{formatRupiah(data.kembalian)}</span>
               </div>
