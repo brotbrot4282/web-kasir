@@ -2,6 +2,16 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { formatRupiah } from "@/lib/utils";
+import {
+  connectPrinter,
+  disconnectPrinter,
+  getAvailablePrinters,
+  getConnectionStatus,
+  isBridgeAvailable,
+  printStruk,
+  type PrinterInfo,
+  type StrukData,
+} from "@/lib/printer";
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 
@@ -46,6 +56,12 @@ export default function KasirPage() {
   } | null>(null);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [printerConnected, setPrinterConnected] = useState(false);
+  const [showPrinterModal, setShowPrinterModal] = useState(false);
+  const [printerList, setPrinterList] = useState<PrinterInfo[]>([]);
+  const [printerConnecting, setPrinterConnecting] = useState(false);
+  const [printerMsg, setPrinterMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [printMsg, setPrintMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [noWa, setNoWa] = useState("");
   const [memberNama, setMemberNama] = useState("");
   const [memberPoin, setMemberPoin] = useState(0);
@@ -153,6 +169,14 @@ export default function KasirPage() {
       .catch(() => setShowOpening(true));
   }, []);
 
+  useEffect(() => {
+    if (!isBridgeAvailable()) return;
+    const check = () => setPrinterConnected(getConnectionStatus());
+    check();
+    const id = setInterval(check, 3000);
+    return () => clearInterval(id);
+  }, []);
+
   const menuFilter = menuList.filter((m) => {
     if (!m.isTersedia) return false;
     if (kategoriAktif && m.kategoriId !== kategoriAktif) return false;
@@ -248,15 +272,6 @@ export default function KasirPage() {
     } finally {
       setSubmitting(false);
     }
-  };
-
-  type StrukData = {
-    noTransaksi: string; totalHarga: number; totalBayar: number;
-    kembalian: number; metodeBayar: string; poinDidapat: number; poinDigunakan: number;
-    totalPoin: number; diskon: number; tax: number;
-    noWa: string | null; memberNama?: string;
-    tipePesanan: string; catatan: string | null;
-    items: KeranjangItem[];
   };
 
   const printReceipt = useCallback((jenis: "customer" | "catatan", data: StrukData) => {
@@ -358,10 +373,23 @@ export default function KasirPage() {
     }
   }, []);
 
+  const kirimStruk = useCallback((jenis: "customer" | "catatan", data: StrukData) => {
+    if (isBridgeAvailable()) {
+      try {
+        printStruk(data, jenis);
+        setPrintMsg({ type: "success", text: "Struk dikirim ke printer" });
+      } catch (err) {
+        setPrintMsg({ type: "error", text: err instanceof Error ? err.message : "Gagal mencetak struk" });
+      }
+      return;
+    }
+    printReceipt(jenis, data);
+  }, [printReceipt]);
+
   const cetakStruk = useCallback((jenis: "customer" | "catatan") => {
     if (!transaksiSukses) return;
-    printReceipt(jenis, transaksiSukses);
-  }, [transaksiSukses, printReceipt]);
+    kirimStruk(jenis, transaksiSukses);
+  }, [transaksiSukses, kirimStruk]);
 
   const fetchRiwayat = useCallback(() => {
     setRiwayatLoading(true);
@@ -404,12 +432,48 @@ export default function KasirPage() {
           variant: item.variant,
         })),
       };
-      printReceipt(jenis, strukData);
+      kirimStruk(jenis, strukData);
     } catch {
     } finally {
       setRiwayatCetakId(null);
     }
-  }, [printReceipt, pengaturanPoin.rupiahPerPoin]);
+  }, [kirimStruk, pengaturanPoin.rupiahPerPoin]);
+
+  const openPrinterModal = useCallback(() => {
+    setPrinterList(getAvailablePrinters());
+    setPrinterConnected(getConnectionStatus());
+    setPrinterMsg(null);
+    setShowPrinterModal(true);
+  }, []);
+
+  const handleConnectPrinter = useCallback((address: string) => {
+    setPrinterConnecting(true);
+    setPrinterMsg(null);
+    try {
+      const ok = connectPrinter(address);
+      setPrinterConnected(getConnectionStatus());
+      setPrinterMsg(
+        ok && getConnectionStatus()
+          ? { type: "success", text: "Printer terhubung" }
+          : { type: "error", text: "Gagal terhubung ke printer. Pastikan printer menyala dan dekat dengan HP." }
+      );
+    } catch {
+      setPrinterMsg({ type: "error", text: "Gagal terhubung ke printer" });
+    } finally {
+      setPrinterConnecting(false);
+    }
+  }, []);
+
+  const handleDisconnectPrinter = useCallback(() => {
+    setPrinterMsg(null);
+    try {
+      disconnectPrinter();
+      setPrinterConnected(false);
+      setPrinterMsg({ type: "success", text: "Printer diputuskan" });
+    } catch {
+      setPrinterMsg({ type: "error", text: "Gagal memutuskan printer" });
+    }
+  }, []);
 
   if (transaksiSukses) {
     return (
@@ -541,6 +605,20 @@ export default function KasirPage() {
             Transaksi Baru
           </button>
         </div>
+        {printMsg && (
+          <div className={`mt-3 text-xs font-medium p-2.5 rounded-lg text-center ${
+            printMsg.type === "error"
+              ? "bg-rose-50 text-rose-600 border border-rose-200"
+              : "bg-emerald-50 text-emerald-600 border border-emerald-200"
+          }`}>
+            {printMsg.text}
+            {printMsg.type === "error" && isBridgeAvailable() && (
+              <button onClick={() => { setTransaksiSukses(null); setShowPrinterModal(true); openPrinterModal(); }} className="ml-2 underline underline-offset-2">
+                Buka Koneksi
+              </button>
+            )}
+          </div>
+        )}
         <iframe ref={iframeRef} style={{ display: "none", width: 0, height: 0, border: 0, position: "absolute" }} title="print-frame" />
       </div>
     );
@@ -556,6 +634,21 @@ export default function KasirPage() {
             <p className="text-xs text-sage-400 mt-0.5">{new Date().toLocaleDateString("id-ID", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
           </div>
           <div className="flex items-center gap-3">
+            {isBridgeAvailable() && (
+              <button
+                onClick={openPrinterModal}
+                className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-sage-50 transition-colors shadow-sm border ${
+                  printerConnected
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : "bg-white text-sage-600 border-sage-200"
+                }`}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5z" />
+                </svg>
+                {printerConnected ? "Printer Aktif" : "Printer"}
+              </button>
+            )}
             {shiftOpened && (
               <>
                 <button
@@ -1135,6 +1228,95 @@ export default function KasirPage() {
                     ))}
                   </div>
                 )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Printer Modal */}
+      <AnimatePresence>
+        {showPrinterModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => setShowPrinterModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-xl w-full max-w-sm shadow-xl"
+            >
+              <div className="flex items-center justify-between px-5 pt-5 pb-3">
+                <div>
+                  <h2 className="font-semibold text-sage-800">Printer Bluetooth</h2>
+                  <p className="text-xs text-sage-400 mt-0.5">
+                    {printerConnected ? "Terhubung" : "Belum terhubung"}
+                  </p>
+                </div>
+                <button onClick={() => setShowPrinterModal(false)} className="w-7 h-7 rounded-lg bg-sage-100 flex items-center justify-center hover:bg-sage-200 transition-colors">
+                  <X className="w-4 h-4 text-sage-500" />
+                </button>
+              </div>
+
+              <div className="px-5 pb-5 space-y-3">
+                <button
+                  onClick={() => { setPrinterList(getAvailablePrinters()); setPrinterConnected(getConnectionStatus()); }}
+                  className="w-full text-xs font-medium text-sage-600 bg-sage-50 border border-sage-200 py-2 rounded-lg hover:bg-sage-100 transition-colors"
+                >
+                  Cari Ulang Printer
+                </button>
+
+                {printerList.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-sage-500">Tidak ada printer ditemukan</p>
+                    <p className="text-xs text-sage-400 mt-1">Nyalakan printer dan pastikan Bluetooth HP aktif</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {printerList.map((p) => (
+                      <div key={p.address} className="flex items-center justify-between gap-2 border border-sage-200 rounded-lg p-2.5">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-sage-800 truncate">{p.name}</p>
+                          <p className="text-xs text-sage-400 font-mono truncate">{p.address}</p>
+                        </div>
+                        <button
+                          onClick={() => handleConnectPrinter(p.address)}
+                          disabled={printerConnecting}
+                          className="shrink-0 text-xs font-medium text-white bg-sage-600 hover:bg-sage-700 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          {printerConnecting ? "Menghubungkan..." : "Hubungkan"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {printerConnected && (
+                  <button
+                    onClick={handleDisconnectPrinter}
+                    className="w-full text-xs font-medium text-rose-600 bg-rose-50 border border-rose-200 py-2 rounded-lg hover:bg-rose-100 transition-colors"
+                  >
+                    Putuskan Printer
+                  </button>
+                )}
+
+                {printerMsg && (
+                  <div className={`text-xs p-2.5 rounded-lg font-medium ${printerMsg.type === "error" ? "bg-rose-50 text-rose-600" : "bg-emerald-50 text-emerald-600"}`}>
+                    {printerMsg.text}
+                  </div>
+                )}
+
+                <button
+                  onClick={() => setShowPrinterModal(false)}
+                  className="w-full border border-sage-200 text-sage-600 py-2 rounded-lg font-medium text-sm hover:bg-sage-50 transition-colors"
+                >
+                  Tutup
+                </button>
               </div>
             </motion.div>
           </motion.div>
