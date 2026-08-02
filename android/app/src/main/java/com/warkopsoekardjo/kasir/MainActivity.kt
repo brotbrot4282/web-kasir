@@ -50,6 +50,7 @@ class MainActivity : AppCompatActivity() {
                 return openExternalIfNeeded(url.toString())
             }
         }
+        webView.setInitialScale(100)
         webView.loadUrl(BuildConfig.WEB_URL)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
