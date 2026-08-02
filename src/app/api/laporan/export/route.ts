@@ -57,6 +57,22 @@ export async function GET(request: NextRequest) {
   const totalOmset = aggTransaksi._sum.totalHarga || 0;
   const totalDiskon = aggTransaksi._sum.diskon || 0;
 
+  let nominalTanpaPoin = 0;
+  let totalQris = 0;
+  let totalCash = 0;
+  let totalCard = 0;
+  let totalPoinRp = 0;
+  let totalPoinDipakai = 0;
+  for (const t of transaksi) {
+    nominalTanpaPoin += t.totalHarga - (t.diskon ?? 0) + (t.tax ?? 0);
+    const diterima = t.metodeBayar === "CASH" ? t.totalBayar - t.kembalian : t.totalBayar;
+    if (t.metodeBayar === "QRIS") totalQris += diterima;
+    else if (t.metodeBayar === "CARD") totalCard += diterima;
+    else totalCash += diterima;
+    totalPoinRp += t.totalPoin ?? 0;
+    totalPoinDipakai += t.poinDigunakan ?? 0;
+  }
+
   const itemAgg = await prisma.itemTransaksi.aggregate({
     where: dari || sampai ? { transaksi: { createdAt: dateFilter } } : {},
     _sum: { jumlah: true },
@@ -83,7 +99,13 @@ export async function GET(request: NextRequest) {
   s1.getRow(1).eachCell((c) => { c.font = style.header.font; c.fill = style.header.fill; c.alignment = style.header.alignment; c.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } }; });
   const ringkasanData = [
     { metrik: "Total Omset", nilai: formatRupiah(totalOmset) },
+    { metrik: "Nominal Tanpa Potong Poin", nilai: formatRupiah(nominalTanpaPoin) },
+    { metrik: "Total Transaksi QRIS", nilai: formatRupiah(totalQris) },
+    { metrik: "Total Transaksi Cash", nilai: formatRupiah(totalCash) },
+    { metrik: "Total Transaksi Card", nilai: formatRupiah(totalCard) },
     { metrik: "Total Diskon", nilai: formatRupiah(totalDiskon) },
+    { metrik: "Poin Terpakai (Rp)", nilai: formatRupiah(totalPoinRp) },
+    { metrik: "Poin Dipakai", nilai: totalPoinDipakai.toLocaleString() },
     { metrik: "Total Transaksi", nilai: total.toLocaleString() },
     { metrik: "Total Item Terjual", nilai: totalItem.toLocaleString() },
   ];
@@ -117,7 +139,10 @@ export async function GET(request: NextRequest) {
   s3.columns = [
     { header: "No. Transaksi", key: "no", width: 10 },
     { header: "Total Harga", key: "total", width: 10 },
+    { header: "Nominal Tanpa Potong Poin", key: "nominalTanpaPoin", width: 10 },
     { header: "Diskon", key: "diskon", width: 10 },
+    { header: "Potongan Poin (Rp)", key: "potonganPoin", width: 10 },
+    { header: "Jumlah Poin Dipakai", key: "poinDipakai", width: 10 },
     { header: "Tax", key: "tax", width: 10 },
     { header: "Bayar", key: "bayar", width: 10 },
     { header: "Kembalian", key: "kembali", width: 10 },
@@ -132,9 +157,23 @@ export async function GET(request: NextRequest) {
   } else {
     transaksi.forEach((t) => {
       const detailItems = t.itemTransaksi.map((i) => `${i.namaMenu} x${i.jumlah} (${formatRupiah(i.subtotal)})`).join(", ");
-      const row = s3.addRow({ no: t.noTransaksi, total: t.totalHarga, diskon: t.diskon ?? 0, tax: t.tax ?? 0, bayar: t.totalBayar, kembali: t.kembalian, metodeBayar: t.metodeBayar === "QRIS" ? "QRIS" : t.metodeBayar === "CARD" ? "Card" : "Cash", item: t.itemTransaksi.reduce((s, i) => s + i.jumlah, 0), tanggal: formatDate(t.createdAt), detail: detailItems });
+      const row = s3.addRow({
+        no: t.noTransaksi,
+        total: t.totalHarga,
+        nominalTanpaPoin: t.totalHarga - (t.diskon ?? 0) + (t.tax ?? 0),
+        diskon: t.diskon ?? 0,
+        potonganPoin: t.totalPoin ?? 0,
+        poinDipakai: t.poinDigunakan ?? 0,
+        tax: t.tax ?? 0,
+        bayar: t.totalBayar,
+        kembali: t.kembalian,
+        metodeBayar: t.metodeBayar === "QRIS" ? "QRIS" : t.metodeBayar === "CARD" ? "Card" : "Cash",
+        item: t.itemTransaksi.reduce((s, i) => s + i.jumlah, 0),
+        tanggal: formatDate(t.createdAt),
+        detail: detailItems,
+      });
       row.eachCell((c) => { c.font = style.cell.font; c.alignment = style.cell.alignment; c.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } }; });
-      for (const col of [2, 3, 4, 5, 6]) row.getCell(col).numFmt = '#,##0';
+      for (const col of [2, 3, 4, 5, 6, 7, 8, 9]) row.getCell(col).numFmt = '#,##0';
     });
   }
   autoWidth(s3);
