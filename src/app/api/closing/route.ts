@@ -116,6 +116,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const dari = searchParams.get("dari");
     const sampai = searchParams.get("sampai");
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "5");
+    const skip = (page - 1) * limit;
 
     const dateFilter: Record<string, Date> = {};
     if (dari) dateFilter.gte = new Date(dari + "T00:00:00+07:00");
@@ -127,18 +130,30 @@ export async function GET(request: NextRequest) {
       user: session.username,
       dari,
       sampai,
+      page,
+      limit,
       where,
     });
 
-    const reports = await prisma.dailyReport.findMany({
-      where,
-      orderBy: { tanggal: "desc" },
-      include: { user: { select: { nama: true } } },
+    const [total, reports] = await Promise.all([
+      prisma.dailyReport.count({ where }),
+      prisma.dailyReport.findMany({
+        where,
+        orderBy: { tanggal: "desc" },
+        skip,
+        take: limit,
+        include: { user: { select: { nama: true } } },
+      }),
+    ]);
+
+    console.log("[Closing GET] Found", reports.length, "of", total, "reports");
+
+    return NextResponse.json({
+      data: reports,
+      total,
+      totalPages: Math.ceil(total / limit),
+      page,
     });
-
-    console.log("[Closing GET] Found", reports.length, "reports");
-
-    return NextResponse.json(reports);
   } catch (error) {
     console.error("[Closing GET] Error:", error);
     return NextResponse.json({ error: "Gagal mengambil data closing" }, { status: 500 });

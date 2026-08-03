@@ -30,11 +30,13 @@ export default function LaporanPage() {
   const [closingError, setClosingError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [closingPage, setClosingPage] = useState(1);
+  const [closingTotalPages, setClosingTotalPages] = useState(1);
   const [rentang, setRentang] = useState<Rentang>("BULAN");
   const [grafikData, setGrafikData] = useState<TitikGrafik[]>([]);
   const [grafikLoading, setGrafikLoading] = useState(false);
 
-  const loadData = (d?: string, s?: string, p?: number, r?: Rentang) => {
+  const loadData = (d?: string, s?: string, p?: number, r?: Rentang, cp?: number) => {
     setLoading(true);
     setGrafikLoading(true);
     setClosingError(null);
@@ -43,6 +45,11 @@ export default function LaporanPage() {
     if (s) params.set("sampai", s);
     if (p) params.set("page", String(p));
     const paramsStr = params.toString();
+    const closingParams = new URLSearchParams();
+    if (d) closingParams.set("dari", d);
+    if (s) closingParams.set("sampai", s);
+    closingParams.set("page", String(cp ?? closingPage));
+    const closingStr = closingParams.toString();
     const grafikParams = new URLSearchParams();
     grafikParams.set("rentang", r ?? rentang);
     if (d) grafikParams.set("dari", d);
@@ -50,12 +57,12 @@ export default function LaporanPage() {
     const grafikStr = grafikParams.toString();
     Promise.allSettled([
       fetch(`/api/laporan?${paramsStr}`).then((res) => res.json()),
-      fetch(`/api/closing?${paramsStr}`).then(async (res) => {
+      fetch(`/api/closing?${closingStr}`).then(async (res) => {
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
           throw new Error(err.error || "Gagal memuat data closing");
         }
-        return res.json() as Promise<ClosingItem[]>;
+        return res.json() as Promise<{ data: ClosingItem[]; total: number; totalPages: number }>;
       }),
       fetch(`/api/laporan/grafik?${grafikStr}`).then((res) => res.json()),
     ]).then(([lapResult, closingResult, grafikResult]) => {
@@ -65,7 +72,9 @@ export default function LaporanPage() {
         setTotalPages(lapData.totalPages);
       }
       if (closingResult.status === "fulfilled") {
-        setClosingData(closingResult.value as ClosingItem[]);
+        const closeRes = closingResult.value as { data: ClosingItem[]; totalPages: number };
+        setClosingData(closeRes.data);
+        setClosingTotalPages(closeRes.totalPages);
       } else {
         setClosingError(closingResult.reason?.message || "Gagal memuat data closing");
       }
@@ -76,14 +85,33 @@ export default function LaporanPage() {
     }).finally(() => { setLoading(false); setGrafikLoading(false); });
   };
 
-  useEffect(() => { setPage(1); loadData(); }, []);
+  const loadClosing = (p: number) => {
+    setClosingPage(p);
+    setClosingError(null);
+    const params = new URLSearchParams();
+    if (dari) params.set("dari", dari);
+    if (sampai) params.set("sampai", sampai);
+    params.set("page", String(p));
+    fetch(`/api/closing?${params.toString()}`).then(async (res) => {
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Gagal memuat data closing");
+      }
+      return res.json() as Promise<{ data: ClosingItem[]; total: number; totalPages: number }>;
+    }).then((closeRes) => {
+      setClosingData(closeRes.data);
+      setClosingTotalPages(closeRes.totalPages);
+    }).catch((e) => setClosingError(e.message || "Gagal memuat data closing"));
+  };
 
-  const cari = (e: React.FormEvent) => { e.preventDefault(); setPage(1); loadData(dari || undefined, sampai || undefined); };
+  useEffect(() => { loadData(); }, []);
+
+  const cari = (e: React.FormEvent) => { e.preventDefault(); setPage(1); setClosingPage(1); loadData(dari || undefined, sampai || undefined, undefined, undefined, 1); };
   const getLocalDate = (d: Date) =>
     new Intl.DateTimeFormat("fr-CA", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
-  const hariIni = () => { const t = getLocalDate(new Date()); setDari(t); setSampai(t); setPage(1); loadData(t, t); };
-  const mingguIni = () => { const skrg = new Date(); const t = getLocalDate(skrg); const w = new Date(skrg); w.setDate(w.getDate() - 7); const d = getLocalDate(w); setDari(d); setSampai(t); setPage(1); loadData(d, t); };
-  const bulanIni = () => { const skrg = new Date(); const t = getLocalDate(skrg); const b = getLocalDate(new Date(skrg.getFullYear(), skrg.getMonth(), 1)); setDari(b); setSampai(t); setPage(1); loadData(b, t); };
+  const hariIni = () => { const t = getLocalDate(new Date()); setDari(t); setSampai(t); setPage(1); setClosingPage(1); loadData(t, t, undefined, undefined, 1); };
+  const mingguIni = () => { const skrg = new Date(); const t = getLocalDate(skrg); const w = new Date(skrg); w.setDate(w.getDate() - 7); const d = getLocalDate(w); setDari(d); setSampai(t); setPage(1); setClosingPage(1); loadData(d, t, undefined, undefined, 1); };
+  const bulanIni = () => { const skrg = new Date(); const t = getLocalDate(skrg); const b = getLocalDate(new Date(skrg.getFullYear(), skrg.getMonth(), 1)); setDari(b); setSampai(t); setPage(1); setClosingPage(1); loadData(b, t, undefined, undefined, 1); };
   const gantiRentang = (r: Rentang) => { setRentang(r); loadData(dari || undefined, sampai || undefined, undefined, r); };
 
   return (
@@ -243,11 +271,12 @@ export default function LaporanPage() {
               <p className="text-sm text-red-600">{closingError}</p>
             </div>
           ) : closingData.length > 0 ? (
-            <div className="bg-white border border-sage-200 rounded-xl overflow-hidden">
-              <div className="px-4 py-3 border-b border-sage-100">
-                <h2 className="text-sm font-semibold text-sage-800">Laporan Closing</h2>
-              </div>
-              <div className="overflow-x-auto">
+            <>
+              <div className="bg-white border border-sage-200 rounded-xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-sage-100">
+                  <h2 className="text-sm font-semibold text-sage-800">Laporan Closing</h2>
+                </div>
+                <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-sage-100">
@@ -311,6 +340,38 @@ export default function LaporanPage() {
                 </table>
               </div>
             </div>
+              {closingTotalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 pt-2">
+                  <button
+                    onClick={() => { const p = closingPage - 1; loadClosing(p); }}
+                    disabled={closingPage <= 1}
+                    className="px-3 py-1.5 rounded-lg text-sm font-medium border border-sage-200 text-sage-600 hover:bg-sage-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Sebelumnya
+                  </button>
+                  {Array.from({ length: closingTotalPages }, (_, i) => i + 1).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => loadClosing(p)}
+                      className={`min-w-[2rem] px-2 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        p === closingPage
+                          ? "bg-red-800 text-white"
+                          : "border border-sage-200 text-sage-600 hover:bg-sage-50"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => { const p = closingPage + 1; loadClosing(p); }}
+                    disabled={closingPage >= closingTotalPages}
+                    className="px-3 py-1.5 rounded-lg text-sm font-medium border border-sage-200 text-sage-600 hover:bg-sage-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Selanjutnya
+                  </button>
+                </div>
+              )}
+            </>
           ) : (
             <div className="bg-white border border-sage-200 rounded-xl p-6 text-center">
               <p className="text-sm text-sage-400">Belum ada data laporan closing</p>
