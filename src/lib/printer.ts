@@ -138,12 +138,12 @@ export function buildStrukBytes(data: StrukData, jenis: "customer" | "catatan"):
   encoder.initialize();
   encoder.align("center");
   encoder.bold(true);
+  encoder.size(1, 2);
   encoder.line("WARKOP SOEKARDJO");
+  encoder.size(1, 1);
   encoder.bold(false);
-  encoder.font("B");
   encoder.line(`${tanggal} ${jam}`);
   encoder.line(data.noTransaksi);
-  encoder.font("A");
   encoder.align("left");
 
   if (data.memberNama) {
@@ -166,15 +166,15 @@ export function buildStrukBytes(data: StrukData, jenis: "customer" | "catatan"):
     const subtotal = formatRupiah(item.subtotal);
     const maxNama = Math.max(1, COLS - subtotal.length - 1);
     encoder.line(alignLine(truncate(item.nama, maxNama), subtotal));
-    encoder.font("B");
     encoder.line(`  ${formatRupiah(item.harga)} x ${item.jumlah}`);
-    encoder.font("A");
   }
 
   separator();
 
   encoder.bold(true);
+  encoder.size(1, 2);
   encoder.line(alignLine("TOTAL", formatRupiah(data.totalHarga)));
+  encoder.size(1, 1);
   encoder.bold(false);
 
   if (data.diskon > 0) {

@@ -285,26 +285,26 @@ export default function KasirPage() {
     });
 
     const itemsHtml = t.items.map((item) => {
-      const nm = item.nama.length > 28 ? item.nama.slice(0, 26) + ".." : item.nama;
+      const nm = item.nama.length > 24 ? item.nama.slice(0, 22) + ".." : item.nama;
       const harga = item.subtotal / item.jumlah;
       return `
         <div style="display:flex;justify-content:space-between;">
           <span>${nm}</span>
           <span>${formatRupiah(item.subtotal)}</span>
         </div>
-        <div style="display:flex;justify-content:space-between;font-size:9px;color:#555;padding-left:4px;">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;padding-left:4px;">
           <span>${formatRupiah(harga)} x ${item.jumlah}</span>
           <span></span>
         </div>`;
     }).join("");
 
     const labelCatatan = jenis === "catatan"
-      ? `<div style="text-align:center;font-weight:bold;font-size:11px;margin:4px 0;letter-spacing:4px;">=== STRUK CATATAN ===</div>`
+      ? `<div style="text-align:center;font-weight:bold;font-size:13px;margin:4px 0;letter-spacing:4px;">=== STRUK CATATAN ===</div>`
       : "";
 
     const labelTipe = t.tipePesanan === "TAKE_AWAY"
-      ? `<div style="text-align:center;font-weight:bold;font-size:11px;margin:2px 0;letter-spacing:2px;">=== TAKE AWAY ===</div>`
-      : `<div style="text-align:center;font-weight:bold;font-size:11px;margin:2px 0;letter-spacing:2px;">=== DINE IN${t.catatan ? ` - ${t.catatan}` : ""} ===</div>`;
+      ? `<div style="text-align:center;font-weight:bold;font-size:13px;margin:2px 0;letter-spacing:2px;">=== TAKE AWAY ===</div>`
+      : `<div style="text-align:center;font-weight:bold;font-size:13px;margin:2px 0;letter-spacing:2px;">=== DINE IN${t.catatan ? ` - ${t.catatan}` : ""} ===</div>`;
 
     const html = `<!DOCTYPE html>
 <html>
@@ -313,16 +313,16 @@ export default function KasirPage() {
   @page { size: 58mm auto; margin: 0; }
   body {
     font-family: 'Courier New', 'Consolas', 'Lucida Console', monospace;
-    font-size: 11px; line-height: 1.3; padding: 8px 12px; color: #000; margin: 0;
+    font-size: 13px; line-height: 1.4; padding: 8px 12px; color: #000; margin: 0;
   }
 </style>
 </head>
 <body>
-  <img src="/logo.jpg" style="display:block;margin:0 auto 4px;width:32px;height:32px;border-radius:50%;object-fit:cover;" />
-  <div style="text-align:center;font-weight:bold;font-size:14px;margin-bottom:2px;">WARKOP SOEKARDJO</div>
-  <div style="text-align:center;font-size:9px;color:#666;">${tanggal} ${jam}</div>
-  <div style="text-align:center;font-size:9px;color:#666;">${t.noTransaksi}</div>
-  ${t.memberNama ? `<div style="text-align:center;font-size:9px;color:#666;margin-top:2px;">${t.memberNama}${t.noWa ? ` (${t.noWa})` : ""}</div>` : ""}
+  <img src="/logo.jpg" style="display:block;margin:0 auto 4px;width:36px;height:36px;border-radius:50%;object-fit:cover;" />
+  <div style="text-align:center;font-weight:bold;font-size:18px;margin-bottom:2px;">WARKOP SOEKARDJO</div>
+  <div style="text-align:center;font-size:11px;color:#666;">${tanggal} ${jam}</div>
+  <div style="text-align:center;font-size:11px;color:#666;">${t.noTransaksi}</div>
+  ${t.memberNama ? `<div style="text-align:center;font-size:11px;color:#666;margin-top:2px;">${t.memberNama}${t.noWa ? ` (${t.noWa})` : ""}</div>` : ""}
   ${labelTipe}
   ${labelCatatan}
   <div style="border-top:1px dashed #000;margin:6px 0;"></div>
@@ -354,9 +354,9 @@ export default function KasirPage() {
     <span>Poin</span><span>+${t.poinDidapat} poin</span>
   </div>` : ""}
   <div style="border-top:1px dashed #000;margin:6px 0;"></div>
-  <div style="text-align:center;font-weight:bold;margin-top:6px;">Terima kasih</div>
-  <div style="text-align:center;font-size:9px;color:#666;">Barang yang sudah dibeli</div>
-  <div style="text-align:center;font-size:9px;color:#666;">tidak dapat dikembalikan</div>
+  <div style="text-align:center;font-weight:bold;font-size:14px;margin-top:6px;">Terima kasih</div>
+  <div style="text-align:center;font-size:11px;color:#666;">Barang yang sudah dibeli</div>
+  <div style="text-align:center;font-size:11px;color:#666;">tidak dapat dikembalikan</div>
 </body></html>`;
 
     const iframe = iframeRef.current;
@@ -482,16 +482,16 @@ export default function KasirPage() {
           <div className="w-12 h-12 rounded-full bg-sage-100 flex items-center justify-center mx-auto mb-3">
             <span className="text-lg font-bold text-sage-600">W</span>
           </div>
-          <h2 className="font-bold text-lg text-sage-800">WARKOP SOEKARDJO</h2>
-          <p className="text-xs text-sage-400 mt-0.5">Struk Pembayaran</p>
-          <p className="text-xs font-mono text-sage-300 mt-1">{transaksiSukses.noTransaksi}</p>
-          <p className="text-xs font-bold text-sage-600 mt-1">
+          <h2 className="font-bold text-xl text-sage-800">WARKOP SOEKARDJO</h2>
+          <p className="text-sm text-sage-400 mt-0.5">Struk Pembayaran</p>
+          <p className="text-sm font-mono text-sage-300 mt-1">{transaksiSukses.noTransaksi}</p>
+          <p className="text-sm font-bold text-sage-600 mt-1">
             {transaksiSukses.tipePesanan === "TAKE_AWAY" ? "TAKE AWAY" : `DINE IN${transaksiSukses.catatan ? ` - ${transaksiSukses.catatan}` : ""}`}
           </p>
 
           <div className="border-t border-dashed border-sage-200 mt-4 pt-4 text-left space-y-2 mb-4">
             {transaksiSukses.items.map((item) => (
-              <div key={item.menuId} className="flex justify-between text-sm">
+              <div key={item.menuId} className="flex justify-between text-base">
                 <span className="text-sage-600">
                   {item.nama} <span className="text-sage-400">x{item.jumlah}</span>
                 </span>
@@ -502,7 +502,7 @@ export default function KasirPage() {
             ))}
           </div>
 
-          <div className="border-t border-sage-200 pt-3 space-y-1.5 text-sm">
+          <div className="border-t border-sage-200 pt-3 space-y-1.5 text-base">
             <div className="flex justify-between font-bold text-sage-800">
               <span>Total</span><span>{formatRupiah(transaksiSukses.totalHarga)}</span>
             </div>
@@ -540,14 +540,14 @@ export default function KasirPage() {
             </div>
           )}
           {transaksiSukses.memberNama && (
-            <p className="text-xs text-sage-500 mt-3">Customer: {transaksiSukses.memberNama}</p>
+            <p className="text-sm text-sage-500 mt-3">Customer: {transaksiSukses.memberNama}</p>
           )}
-          <p className="text-xs text-sage-300 mt-4">Terima kasih atas kunjungan Anda</p>
+          <p className="text-sm text-sage-300 mt-4">Terima kasih atas kunjungan Anda</p>
           {transaksiSukses.publicId && (
             <a
               href={`/invoice/${transaksiSukses.publicId}`}
               target="_blank"
-              className="block mt-2 text-xs text-sage-400 hover:text-sage-600 transition-colors underline underline-offset-2"
+              className="block mt-2 text-sm text-sage-400 hover:text-sage-600 transition-colors underline underline-offset-2"
             >
               Lihat invoice online
             </a>
