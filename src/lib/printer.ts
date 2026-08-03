@@ -138,8 +138,9 @@ export function buildStrukBytes(data: StrukData, jenis: "customer" | "catatan"):
   encoder.initialize();
   encoder.align("center");
   encoder.bold(true);
-  encoder.size(1, 2);
-  encoder.line("WARKOP SOEKARDJO");
+  encoder.size(2, 2);
+  encoder.line("WARKOP");
+  encoder.line("SOEKARDJO");
   encoder.size(1, 1);
   encoder.bold(false);
   encoder.line(`${tanggal} ${jam}`);
@@ -202,9 +203,10 @@ export function buildStrukBytes(data: StrukData, jenis: "customer" | "catatan"):
   separator();
   encoder.align("center");
   encoder.bold(true);
+  encoder.size(1, 2);
   encoder.line("Terima kasih");
+  encoder.size(1, 1);
   encoder.bold(false);
-  encoder.font("B");
   encoder.line("Barang yang sudah dibeli");
   encoder.line("tidak dapat dikembalikan");
 
