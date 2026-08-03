@@ -10,7 +10,7 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   const result = await prisma.user.update({
     where: { username: "admin@warmindo" },
-    data: { nama: "Admin Warkop Soekardjo" },
+    data: { nama: "Admin Soekardjo" },
   });
   console.log(`✓ Rename: ${result.username} → "${result.nama}"`);
 }

@@ -14,7 +14,7 @@ async function main() {
 
   // ── Users ──
   for (const u of [
-    { username: "admin@warmindo", nama: "Admin Warkop Soekardjo", role: "OWNER" as const },
+    { username: "admin@warmindo", nama: "Admin Soekardjo", role: "OWNER" as const },
     { username: "kasir1@warmindo", nama: "Kasir Shift 1", role: "KASIR" as const, shift: "SHIFT_1" as const },
     { username: "kasir2@warmindo", nama: "Kasir Shift 2", role: "KASIR" as const, shift: "SHIFT_2" as const },
     { username: "dapur@warmindo", nama: "Koki Dapur", role: "DAPUR" as const },
