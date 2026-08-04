@@ -10,14 +10,14 @@ const prisma = new PrismaClient({ adapter });
 
 async function main() {
   console.log("Seeding database...\n");
-  const pw = await bcrypt.hash("warmindo123", 12);
+  const pw = await bcrypt.hash("soekardjo123", 12);
 
   // ── Users ──
   for (const u of [
-    { username: "admin@warmindo", nama: "Admin Soekardjo", role: "OWNER" as const },
-    { username: "kasir1@warmindo", nama: "Kasir Shift 1", role: "KASIR" as const, shift: "SHIFT_1" as const },
-    { username: "kasir2@warmindo", nama: "Kasir Shift 2", role: "KASIR" as const, shift: "SHIFT_2" as const },
-    { username: "dapur@warmindo", nama: "Koki Dapur", role: "DAPUR" as const },
+    { username: "admin@soekardjo", nama: "Admin Soekardjo", role: "OWNER" as const },
+    { username: "kasir1@soekardjo", nama: "Kasir Shift 1", role: "KASIR" as const, shift: "SHIFT_1" as const },
+    { username: "kasir2@soekardjo", nama: "Kasir Shift 2", role: "KASIR" as const, shift: "SHIFT_2" as const },
+    { username: "dapur@soekardjo", nama: "Koki Dapur", role: "DAPUR" as const },
   ]) {
     await prisma.user.upsert({ where: { username: u.username }, update: {}, create: { ...u, password: pw } });
   }
@@ -261,17 +261,6 @@ async function main() {
   ]);
   console.log("✓ Resep: 15 menu");
 
-  // ── Member ──
-  const memberData = [
-    { noWa: "08123456789", nama: "Budi", poin: 10 },
-    { noWa: "08234567890", nama: "Ani", poin: 5 },
-    { noWa: "08345678901", nama: "Citra", poin: 0 },
-  ];
-  for (const m of memberData) {
-    await prisma.member.upsert({ where: { noWa: m.noWa }, update: m, create: m });
-  }
-  console.log("✓ Member: 3");
-
   // ── Pengaturan Poin ──
   await prisma.pengaturanPoin.upsert({
     where: { id: 1 },
@@ -280,53 +269,6 @@ async function main() {
   });
   console.log("✓ Pengaturan Poin: 1\n");
 
-  // ── Sample Transaksi ──
-  const existingTransaksi = await prisma.transaksi.findFirst({ where: { noTransaksi: "INV-SEED-0001" } });
-  if (!existingTransaksi) {
-    const getMenuId = async (nama: string) => (await prisma.menu.findFirst({ where: { nama } }))!.id;
-    const budi = (await prisma.member.findUnique({ where: { noWa: "08123456789" } }))!;
-    const ani = (await prisma.member.findUnique({ where: { noWa: "08234567890" } }))!;
-    const kopiSusu = await getMenuId("Kopi Susu");
-    const pisang = await getMenuId("Pisang Goreng");
-    const tehTarik = await getMenuId("Teh Tarik");
-    const rotiBakar = await getMenuId("Roti Bakar");
-    const kopiHitam = await getMenuId("Kopi Hitam");
-
-    // 1: Budi Kopi Susu 7k
-    const t1 = await prisma.transaksi.create({
-      data: { noTransaksi: "INV-SEED-0001", totalHarga: 7000, totalBayar: 7000, kembalian: 0, metodeBayar: "CASH", noWa: "08123456789", memberId: budi.id, itemTransaksi: { create: [{ menuId: kopiSusu, namaMenu: "Kopi Susu - ICE | Normal | Normal", harga: 7000, jumlah: 1, subtotal: 7000, variant: "ICE | Normal | Normal" }] } },
-    });
-    await prisma.rewardPoin.create({ data: { memberId: budi.id, transaksiId: t1.id, poin: 0, keterangan: `Transaksi ${t1.noTransaksi}` } });
-    await prisma.menu.update({ where: { id: kopiSusu }, data: { stok: { decrement: 1 } } });
-
-    // 2: Budi Pisang Goreng 8k + Teh Tarik ICE 6k = 14k, bayar 15k, dapat 1 poin
-    const t2 = await prisma.transaksi.create({
-      data: { noTransaksi: "INV-SEED-0002", totalHarga: 14000, totalBayar: 15000, kembalian: 1000, metodeBayar: "CASH", noWa: "08123456789", memberId: budi.id, itemTransaksi: { create: [{ menuId: pisang, namaMenu: "Pisang Goreng", harga: 8000, jumlah: 1, subtotal: 8000 }, { menuId: tehTarik, namaMenu: "Teh Tarik - ICE | Normal | Normal", harga: 6000, jumlah: 1, subtotal: 6000, variant: "ICE | Normal | Normal" }] } },
-    });
-    await prisma.rewardPoin.create({ data: { memberId: budi.id, transaksiId: t2.id, poin: 1, keterangan: `Transaksi ${t2.noTransaksi}` } });
-    await prisma.member.update({ where: { id: budi.id }, data: { poin: { increment: 1 } } });
-    for (const id of [pisang, tehTarik]) await prisma.menu.update({ where: { id }, data: { stok: { decrement: 1 } } });
-
-    // 3: Ani Roti Bakar 12k, bayar 12k
-    const t3 = await prisma.transaksi.create({
-      data: { noTransaksi: "INV-SEED-0003", totalHarga: 12000, totalBayar: 12000, kembalian: 0, metodeBayar: "QRIS", noWa: "08234567890", memberId: ani.id, itemTransaksi: { create: [{ menuId: rotiBakar, namaMenu: "Roti Bakar", harga: 12000, jumlah: 1, subtotal: 12000 }] } },
-    });
-    await prisma.rewardPoin.create({ data: { memberId: ani.id, transaksiId: t3.id, poin: 0, keterangan: `Transaksi ${t3.noTransaksi}` } });
-    await prisma.menu.update({ where: { id: rotiBakar }, data: { stok: { decrement: 1 } } });
-
-    // 4: Budi redeem 5 poin -> Kopi Hitam ICE gratis, bayar 0
-    const t4 = await prisma.transaksi.create({
-      data: { noTransaksi: "INV-SEED-0004", totalHarga: 5000, totalBayar: 0, kembalian: 0, metodeBayar: "CASH", poinDigunakan: 5, totalPoin: 5000, noWa: "08123456789", memberId: budi.id, itemTransaksi: { create: [{ menuId: kopiHitam, namaMenu: "Kopi Hitam - ICE | Normal | Normal", harga: 5000, jumlah: 1, subtotal: 5000, variant: "ICE | Normal | Normal" }] } },
-    });
-    await prisma.rewardPoin.create({ data: { memberId: budi.id, transaksiId: t4.id, poin: 0, keterangan: `Transaksi ${t4.noTransaksi}` } });
-    await prisma.rewardPoin.create({ data: { memberId: budi.id, transaksiId: t4.id, poin: -5, keterangan: "Tukar: Kopi Hitam - ICE | Normal | Normal" } });
-    await prisma.member.update({ where: { id: budi.id }, data: { poin: { increment: -5 } } });
-    await prisma.menu.update({ where: { id: kopiHitam }, data: { stok: { decrement: 1 } } });
-
-    console.log("✓ Sample transaksi: 4 (1 redeem)");
-  } else {
-    console.log("✓ Sample transaksi: sudah ada, skip");
-  }
   console.log("\n=== SEED COMPLETE ===");
 }
 
