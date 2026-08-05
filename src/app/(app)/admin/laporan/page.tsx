@@ -35,6 +35,9 @@ export default function LaporanPage() {
   const [rentang, setRentang] = useState<Rentang>("BULAN");
   const [grafikData, setGrafikData] = useState<TitikGrafik[]>([]);
   const [grafikLoading, setGrafikLoading] = useState(false);
+  const [transaksiHapus, setTransaksiHapus] = useState<Transaksi | null>(null);
+  const [menghapus, setMenghapus] = useState(false);
+  const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const loadData = (d?: string, s?: string, p?: number, r?: Rentang, cp?: number) => {
     setLoading(true);
@@ -114,6 +117,26 @@ export default function LaporanPage() {
   const bulanIni = () => { const skrg = new Date(); const t = getLocalDate(skrg); const b = getLocalDate(new Date(skrg.getFullYear(), skrg.getMonth(), 1)); setDari(b); setSampai(t); setPage(1); setClosingPage(1); loadData(b, t, undefined, undefined, 1); };
   const gantiRentang = (r: Rentang) => { setRentang(r); loadData(dari || undefined, sampai || undefined, undefined, r); };
 
+  const hapusTransaksi = async () => {
+    if (!transaksiHapus) return;
+    setMenghapus(true);
+    try {
+      const res = await fetch(`/api/transaksi/${transaksiHapus.id}`, { method: "DELETE" });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMsg({ type: "error", text: body.error || "Gagal menghapus transaksi" });
+      } else {
+        setMsg({ type: "success", text: body.message || "Transaksi berhasil dihapus" });
+        setTransaksiHapus(null);
+        loadData(dari || undefined, sampai || undefined, page);
+      }
+    } catch {
+      setMsg({ type: "error", text: "Gagal menghubungi server" });
+    } finally {
+      setMenghapus(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -146,6 +169,21 @@ export default function LaporanPage() {
           </button>
         </form>
       </div>
+
+      {msg && (
+        <div className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl border text-sm ${
+          msg.type === "success"
+            ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+            : "bg-rose-50 border-rose-200 text-rose-600"
+        }`}>
+          <span>{msg.text}</span>
+          <button onClick={() => setMsg(null)} className="shrink-0 opacity-60 hover:opacity-100 transition-opacity">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-20"><div className="animate-pulse text-sage-400">Memuat data...</div></div>
@@ -424,9 +462,14 @@ export default function LaporanPage() {
                       </td>
                       <td className="px-4 py-3.5 text-center text-sage-400 text-xs">{formatDate(new Date(t.createdAt))}</td>
                       <td className="px-4 py-3.5 text-center">
-                        <button onClick={() => setDetail(t)} className="text-red-600 hover:text-red-700 text-sm font-medium transition-colors">
-                          Lihat
-                        </button>
+                        <div className="flex items-center justify-center gap-3">
+                          <button onClick={() => setDetail(t)} className="text-red-600 hover:text-red-700 text-sm font-medium transition-colors">
+                            Lihat
+                          </button>
+                          <button onClick={() => setTransaksiHapus(t)} className="text-rose-500 hover:text-rose-600 text-sm font-medium transition-colors">
+                            Hapus
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -512,6 +555,50 @@ export default function LaporanPage() {
                     <tr className="text-red-600 font-medium"><td colSpan={3} className="py-1 text-right">Kembali</td><td className="py-1 text-right">{formatRupiah(detail.kembalian)}</td></tr>
                   </tfoot>
                 </table>
+              </div>
+            </div>
+          )}
+
+          {transaksiHapus && (
+            <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/20 backdrop-blur-sm" onClick={() => { if (!menghapus) setTransaksiHapus(null); }}>
+              <div className="bg-white rounded-xl p-6 shadow-xl border border-sage-200 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-sage-800">Hapus Transaksi?</h3>
+                    <p className="font-mono text-xs text-sage-400 mt-0.5">{transaksiHapus.noTransaksi}</p>
+                  </div>
+                  <button onClick={() => { if (!menghapus) setTransaksiHapus(null); }} className="text-sage-400 hover:text-sage-600 transition-colors">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <p className="text-sm text-sage-600">
+                  Transaksi <span className="font-semibold text-sage-800">{formatRupiah(transaksiHapus.totalHarga)}</span> akan dihapus permanen. Stok menu akan dikembalikan dan poin member dikembalikan. Lanjutkan?
+                </p>
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => setTransaksiHapus(null)}
+                    disabled={menghapus}
+                    className="flex-1 text-sm font-medium text-sage-600 bg-sage-100 hover:bg-sage-200 px-4 py-2.5 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    onClick={hapusTransaksi}
+                    disabled={menghapus}
+                    className="flex-1 flex items-center justify-center gap-1.5 text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 px-4 py-2.5 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {menghapus ? (
+                      <>
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v3m0 12v3m9-9h-3M6 12H3m15.36-6.36l-2.12 2.12M7.76 16.24l-2.12 2.12M18.36 18.36l-2.12-2.12M7.76 7.76L5.64 5.64" />
+                        </svg>
+                        Menghapus...
+                      </>
+                    ) : "Hapus"}
+                  </button>
+                </div>
               </div>
             </div>
           )}
