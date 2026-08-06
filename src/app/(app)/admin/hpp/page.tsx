@@ -26,6 +26,7 @@ export default function AdminHPPPage() {
   const [formMenuId, setFormMenuId] = useState("");
   const [formItems, setFormItems] = useState<{ stokId: string; jumlah: string; satuan: string }[]>([{ stokId: "", jumlah: "", satuan: "" }]);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; nama: string } | null>(null);
+  const [quickAdd, setQuickAdd] = useState<{ stokId: string; jumlah: string; satuan: string }>({ stokId: "", jumlah: "", satuan: "" });
 
   const loadData = useCallback(async () => {
     const [menuRes, stokRes] = await Promise.all([
@@ -60,6 +61,26 @@ export default function AdminHPPPage() {
 
   const addFormItem = () => setFormItems([...formItems, { stokId: "", jumlah: "", satuan: "" }]);
   const removeFormItem = (index: number) => setFormItems(formItems.filter((_, i) => i !== index));
+
+  const resetQuickAdd = () => setQuickAdd({ stokId: "", jumlah: "", satuan: "" });
+
+  const tambahCepat = async (menuId: string) => {
+    if (!quickAdd.stokId) { setToast({ message: "Pilih bahan", type: "error" }); return; }
+    const jumlahVal = parseFloat(quickAdd.jumlah.replace(",", "."));
+    if (!quickAdd.jumlah || isNaN(jumlahVal) || jumlahVal <= 0) { setToast({ message: "Jumlah harus positif", type: "error" }); return; }
+    const stok = stokList.find((s) => s.id === quickAdd.stokId);
+    const jumlahConverted = stok ? convertToStokUnit(jumlahVal, quickAdd.satuan || stok.satuan, stok.satuan) : jumlahVal;
+    try {
+      const res = await fetch("/api/hpp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ menuId, stokId: quickAdd.stokId, jumlah: jumlahConverted }),
+      });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error); }
+      setToast({ message: "Bahan berhasil ditambahkan", type: "success" });
+      resetQuickAdd(); loadData();
+    } catch (err) { setToast({ message: err instanceof Error ? err.message : "Gagal menyimpan", type: "error" }); }
+  };
 
   const simpan = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -424,6 +445,12 @@ export default function AdminHPPPage() {
           const laba = menu.harga - hpp;
           const margin = menu.harga > 0 ? (laba / menu.harga) * 100 : 0;
           const isExpanded = expandedMenu === menu.id;
+          const bahanTersedia = stokList.filter((s) => !menu.resep.some((r) => r.stokId === s.id));
+          const stokDipilih = stokList.find((s) => s.id === quickAdd.stokId);
+          const jumlahCepat = parseFloat(quickAdd.jumlah.replace(",", ".")) || 0;
+          const subtotalCepat = stokDipilih && jumlahCepat > 0
+            ? convertToStokUnit(jumlahCepat, quickAdd.satuan || stokDipilih.satuan, stokDipilih.satuan) * stokDipilih.hargaBahan
+            : 0;
 
           return (
             <motion.div
@@ -434,7 +461,7 @@ export default function AdminHPPPage() {
             >
               <div
                 className="flex items-center gap-4 px-4 py-3 cursor-pointer hover:bg-sage-50/50 transition-colors"
-                onClick={() => setExpandedMenu(isExpanded ? null : menu.id)}
+                onClick={() => { setExpandedMenu(isExpanded ? null : menu.id); resetQuickAdd(); }}
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -530,8 +557,88 @@ export default function AdminHPPPage() {
                           </tfoot>
                         </table>
                       ) : (
-                        <p className="text-sm text-sage-400 text-center py-4 italic">Belum ada bahan di resep. Klik &quot;+ Tambah Resep&quot; untuk menambahkan.</p>
+                        <p className="text-sm text-sage-400 text-center py-4 italic">Belum ada bahan di resep. Tambahkan bahan di bawah atau klik &quot;+ Tambah Resep&quot;.</p>
                       )}
+
+                      <div className="mt-4 border-t border-sage-100 pt-3">
+                        <p className="text-xs font-semibold text-sage-500 uppercase tracking-wider mb-2">Tambah Bahan Cepat</p>
+                        {bahanTersedia.length > 0 ? (
+                          <div className="flex flex-wrap items-end gap-2">
+                            <div className="flex-1 min-w-[180px]">
+                              <label className="block text-xs font-medium text-sage-600 mb-1">Bahan</label>
+                              <div className="relative">
+                                <select
+                                  value={quickAdd.stokId}
+                                  onChange={(e) => {
+                                    const stok = stokList.find((s) => s.id === e.target.value);
+                                    setQuickAdd({ ...quickAdd, stokId: e.target.value, satuan: stok ? stok.satuan : "" });
+                                  }}
+                                  className="w-full appearance-none border border-sage-200 rounded-lg px-3 py-2 pr-9 text-sm bg-white text-sage-800 cursor-pointer hover:border-sage-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all"
+                                >
+                                  <option value="">-- Pilih Bahan --</option>
+                                  {bahanTersedia.map((s) => (
+                                    <option key={s.id} value={s.id}>{s.namaBahan} {s.hargaBahan > 0 ? `(Rp ${s.hargaBahan.toLocaleString("id-ID")}/${s.satuan})` : "(harga belum diisi)"}</option>
+                                  ))}
+                                </select>
+                                <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sage-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                </svg>
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-[120px]">
+                              <label className="block text-xs font-medium text-sage-600 mb-1">Jumlah</label>
+                              <input
+                                type="text"
+                                value={quickAdd.jumlah}
+                                onChange={(e) => setQuickAdd({ ...quickAdd, jumlah: e.target.value.replace(/[^0-9.,]/g, "") })}
+                                placeholder="per porsi"
+                                className="w-full border border-sage-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all"
+                              />
+                            </div>
+                            {stokDipilih && (() => {
+                              const units = getAvailableUnits(stokDipilih.satuan);
+                              if (units.length <= 1) {
+                                return (
+                                  <div>
+                                    <label className="block text-xs font-medium text-sage-600 mb-1">Satuan</label>
+                                    <span className="inline-flex items-center px-3 py-2 text-sm text-sage-500 bg-sage-50 border border-sage-200 rounded-lg">{stokDipilih.satuan}</span>
+                                  </div>
+                                );
+                              }
+                              return (
+                                <div>
+                                  <label className="block text-xs font-medium text-sage-600 mb-1">Satuan</label>
+                                  <select
+                                    value={quickAdd.satuan}
+                                    onChange={(e) => setQuickAdd({ ...quickAdd, satuan: e.target.value })}
+                                    className="appearance-none border border-sage-200 rounded-lg px-3 py-2 pr-8 text-sm bg-white text-sage-700 cursor-pointer hover:border-sage-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all"
+                                  >
+                                    {units.map((u) => <option key={u} value={u}>{u}</option>)}
+                                  </select>
+                                </div>
+                              );
+                            })()}
+                            <div className="flex items-center gap-2">
+                              <motion.button
+                                whileTap={{ scale: 0.97 }}
+                                type="button"
+                                onClick={() => tambahCepat(menu.id)}
+                                className="inline-flex items-center gap-1.5 bg-red-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-900 transition-colors shadow-sm"
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                </svg>
+                                Tambah
+                              </motion.button>
+                              {subtotalCepat > 0 && (
+                                <span className="text-sm font-semibold text-sage-800">Rp {subtotalCepat.toLocaleString("id-ID")}</span>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-sage-400 italic">Semua bahan sudah ada di resep menu ini.</p>
+                        )}
+                      </div>
                     </div>
                   </motion.div>
                 )}
