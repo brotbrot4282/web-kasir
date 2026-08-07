@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { getTodayWIB } from "@/lib/utils";
+import { hitungPembayaran } from "@/lib/closing";
 
 export async function GET(request: NextRequest) {
   try {
@@ -87,6 +88,8 @@ export async function GET(request: NextRequest) {
     const totalOmset = Math.max(0, makananTotal + minumanTotal - belanjaUrgentTotal);
     const breakdown = Array.from(menuMap.values()).sort((a, b) => b.qty - a.qty);
 
+    const pembayaran = await hitungPembayaran(start, end);
+
     return NextResponse.json({
       uangAwal: report.uangAwal,
       makanan: { qty: makananQty, total: makananTotal },
@@ -94,6 +97,7 @@ export async function GET(request: NextRequest) {
       totalOmset,
       totalTransaksi: transaksiCount,
       breakdown,
+      pembayaran,
     });
   } catch {
     return NextResponse.json({ error: "Gagal mengambil ringkasan shift" }, { status: 500 });

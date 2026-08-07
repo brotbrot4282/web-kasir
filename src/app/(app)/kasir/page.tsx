@@ -80,6 +80,7 @@ export default function KasirPage() {
     totalOmset: number;
     totalTransaksi: number;
     breakdown: { nama: string; qty: number; subtotal: number }[];
+    pembayaran: { CASH: number; QRIS: number; CARD: number };
   } | null>(null);
   const [closingSummaryLoading, setClosingSummaryLoading] = useState(false);
   const [kasAktualInput, setKasAktualInput] = useState("");
@@ -1556,6 +1557,21 @@ export default function KasirPage() {
                         <p className="text-[10px] font-medium text-blue-500 uppercase tracking-wide">Minuman</p>
                         <p className="text-lg font-bold text-sage-800 mt-0.5">{closingSummary.minuman.qty} <span className="text-xs font-normal text-sage-400">item</span></p>
                         <p className="text-xs text-sage-500">{formatRupiah(closingSummary.minuman.total)}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-3">
+                        <p className="text-[10px] font-medium text-emerald-500 uppercase tracking-wide">Tunai</p>
+                        <p className="text-sm font-bold text-sage-800 mt-0.5">{formatRupiah(closingSummary.pembayaran.CASH)}</p>
+                      </div>
+                      <div className="bg-sky-50 border border-sky-100 rounded-lg p-3">
+                        <p className="text-[10px] font-medium text-sky-500 uppercase tracking-wide">QRIS</p>
+                        <p className="text-sm font-bold text-sage-800 mt-0.5">{formatRupiah(closingSummary.pembayaran.QRIS)}</p>
+                      </div>
+                      <div className="bg-violet-50 border border-violet-100 rounded-lg p-3">
+                        <p className="text-[10px] font-medium text-violet-500 uppercase tracking-wide">Card</p>
+                        <p className="text-sm font-bold text-sage-800 mt-0.5">{formatRupiah(closingSummary.pembayaran.CARD)}</p>
                       </div>
                     </div>
 

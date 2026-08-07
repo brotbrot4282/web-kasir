@@ -188,6 +188,9 @@ export async function GET(request: NextRequest) {
     { header: "Makanan", key: "makanan", width: 10 },
     { header: "Minuman", key: "minuman", width: 10 },
     { header: "Omset", key: "omset", width: 10 },
+    { header: "Cash", key: "cash", width: 10 },
+    { header: "QRIS", key: "qris", width: 10 },
+    { header: "Card", key: "card", width: 10 },
     { header: "Kas Aktual", key: "kasAktual", width: 10 },
     { header: "Selisih", key: "selisih", width: 10 },
     { header: "Transaksi", key: "transaksi", width: 10 },
@@ -207,6 +210,9 @@ export async function GET(request: NextRequest) {
         makanan: c.totalMakanan,
         minuman: c.totalMinuman,
         omset: c.totalOmset,
+        cash: c.totalCash ?? 0,
+        qris: c.totalQris ?? 0,
+        card: c.totalCard ?? 0,
         kasAktual: c.kasAktual ?? "",
         selisih: c.selisih ?? "",
         transaksi: c.totalTransaksi,
@@ -218,7 +224,7 @@ export async function GET(request: NextRequest) {
           : "-",
       });
       row.eachCell((c2) => { c2.font = style.cell.font; c2.alignment = style.cell.alignment; c2.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } }; });
-      for (const col of [4, 5, 6, 7, 8, 9, 10]) row.getCell(col).numFmt = '#,##0';
+      for (const col of [4, 5, 6, 7, 8, 9, 10, 11, 12, 13]) row.getCell(col).numFmt = '#,##0';
     });
   }
   autoWidth(s4);

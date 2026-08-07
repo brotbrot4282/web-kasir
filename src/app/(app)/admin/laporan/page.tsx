@@ -14,7 +14,7 @@ type Transaksi = {
   itemTransaksi: Array<{ id: string; namaMenu: string; harga: number; jumlah: number; subtotal: number }>;
 };
 type LaporanData = { ringkasan: Ringkasan; menuTerlaris: MenuTerlaris[]; transaksi: Transaksi[]; total: number; totalPages: number; page: number };
-type ClosingItem = { id: string; tanggal: string; createdAt: string; shift: string; uangAwal: number; catatan: string | null; belanjaUrgent: Array<{ nama: string; nominal: number }> | null; totalMakanan: number; totalMinuman: number; totalOmset: number; totalTransaksi: number; kasAktual: number | null; selisih: number | null; user: { nama: string } };
+type ClosingItem = { id: string; tanggal: string; createdAt: string; shift: string; uangAwal: number; catatan: string | null; belanjaUrgent: Array<{ nama: string; nominal: number }> | null; totalMakanan: number; totalMinuman: number; totalOmset: number; totalTransaksi: number; totalCash: number; totalQris: number; totalCard: number; kasAktual: number | null; selisih: number | null; user: { nama: string } };
 type Rentang = "JAM" | "HARI" | "MINGGU" | "BULAN";
 type TitikGrafik = { label: string; tanggal: string; omset: number; transaksi: number; laba: number };
 
@@ -336,6 +336,7 @@ export default function LaporanPage() {
                       <th className="text-right px-4 py-3 text-xs font-medium text-sage-500 uppercase">Makanan</th>
                       <th className="text-right px-4 py-3 text-xs font-medium text-sage-500 uppercase">Minuman</th>
                       <th className="text-right px-4 py-3 text-xs font-medium text-sage-500 uppercase">Omset</th>
+                      <th className="text-left px-4 py-3 text-xs font-medium text-sage-500 uppercase">Pembayaran</th>
                       <th className="text-right px-4 py-3 text-xs font-medium text-sage-500 uppercase">Kas Aktual</th>
                       <th className="text-right px-4 py-3 text-xs font-medium text-sage-500 uppercase">Selisih</th>
                       <th className="text-right px-4 py-3 text-xs font-medium text-sage-500 uppercase">Transaksi</th>
@@ -357,6 +358,22 @@ export default function LaporanPage() {
                         <td className="px-4 py-3 text-right font-semibold text-sage-800">{c.totalMakanan} <span className="text-xs text-sage-400 font-normal">item</span></td>
                         <td className="px-4 py-3 text-right font-semibold text-sage-800">{c.totalMinuman} <span className="text-xs text-sage-400 font-normal">item</span></td>
                         <td className="px-4 py-3 text-right font-semibold text-sage-800">{formatRupiah(c.totalOmset)}</td>
+                        <td className="px-4 py-3">
+                          <div className="space-y-0.5 text-xs">
+                            <div className="flex justify-between gap-4">
+                              <span className="text-sage-400">Tunai</span>
+                              <span className="font-semibold text-sage-800">{formatRupiah(c.totalCash ?? 0)}</span>
+                            </div>
+                            <div className="flex justify-between gap-4">
+                              <span className="text-sage-400">QRIS</span>
+                              <span className="font-semibold text-sage-800">{formatRupiah(c.totalQris ?? 0)}</span>
+                            </div>
+                            <div className="flex justify-between gap-4">
+                              <span className="text-sage-400">Card</span>
+                              <span className="font-semibold text-sage-800">{formatRupiah(c.totalCard ?? 0)}</span>
+                            </div>
+                          </div>
+                        </td>
                         <td className="px-4 py-3 text-right font-semibold text-sage-800">{c.kasAktual != null ? formatRupiah(c.kasAktual) : "-"}</td>
                         <td className="px-4 py-3 text-right font-semibold">
                           {c.selisih != null ? (

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { closingSchema } from "@/lib/validations";
 import { getTodayWIB } from "@/lib/utils";
+import { hitungPembayaran } from "@/lib/closing";
 
 export async function POST(request: NextRequest) {
   try {
@@ -86,6 +87,8 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    const pembayaran = await hitungPembayaran(start, end);
+
     const report = await prisma.dailyReport.update({
       where: { id: existing.id },
       data: {
@@ -95,6 +98,9 @@ export async function POST(request: NextRequest) {
         totalMinuman,
         totalOmset: netOmset,
         totalTransaksi,
+        totalCash: pembayaran.CASH,
+        totalQris: pembayaran.QRIS,
+        totalCard: pembayaran.CARD,
         kasAktual: kasAktual ?? null,
         selisih,
       },
