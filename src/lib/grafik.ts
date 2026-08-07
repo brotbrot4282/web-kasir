@@ -5,6 +5,7 @@ export type TitikGrafik = {
   tanggal: string;
   omset: number;
   transaksi: number;
+  laba: number;
 };
 
 const BULAN_ID = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
@@ -76,18 +77,19 @@ function eachWibDay(start: Date, end: Date): Date[] {
   return days;
 }
 
-type Agg = { omset: number; transaksi: number };
+type Agg = { omset: number; transaksi: number; laba: number };
 
 function aggByKey(
-  transactions: Array<{ createdAt: Date; totalHarga: number }>,
+  transactions: Array<{ createdAt: Date; totalHarga: number; laba: number }>,
   keyFn: (p: { year: number; month: number; day: number; hour: number }) => string
 ): Map<string, Agg> {
   const map = new Map<string, Agg>();
   for (const t of transactions) {
     const key = keyFn(wibParts(new Date(t.createdAt)));
-    const agg = map.get(key) ?? { omset: 0, transaksi: 0 };
+    const agg = map.get(key) ?? { omset: 0, transaksi: 0, laba: 0 };
     agg.omset += t.totalHarga;
     agg.transaksi += 1;
+    agg.laba += t.laba;
     map.set(key, agg);
   }
   return map;
@@ -101,7 +103,7 @@ function formatWeekLabel(monday: Date): string {
 }
 
 export function buildGrafikData(
-  transactions: Array<{ createdAt: Date; totalHarga: number }>,
+  transactions: Array<{ createdAt: Date; totalHarga: number; laba: number }>,
   rentang: Rentang,
   dari?: Date,
   sampai?: Date
@@ -114,17 +116,19 @@ export function buildGrafikData(
   const end = sampai ? new Date(sampai) : maxTime != null ? new Date(maxTime) : new Date();
 
   if (rentang === "JAM") {
-    const buckets = Array.from({ length: 24 }, () => ({ omset: 0, transaksi: 0 }));
+    const buckets = Array.from({ length: 24 }, () => ({ omset: 0, transaksi: 0, laba: 0 }));
     for (const t of transactions) {
       const { hour } = wibParts(new Date(t.createdAt));
       buckets[hour].omset += t.totalHarga;
       buckets[hour].transaksi += 1;
+      buckets[hour].laba += t.laba;
     }
     return buckets.map((b, i) => ({
       label: `${pad(i)}:00`,
       tanggal: pad(i),
       omset: b.omset,
       transaksi: b.transaksi,
+      laba: b.laba,
     }));
   }
 
@@ -145,6 +149,7 @@ export function buildGrafikData(
         tanggal: key,
         omset: agg?.omset ?? 0,
         transaksi: agg?.transaksi ?? 0,
+        laba: agg?.laba ?? 0,
       });
       month += 1;
       if (month > 12) {
@@ -173,6 +178,7 @@ export function buildGrafikData(
         tanggal: key,
         omset: agg?.omset ?? 0,
         transaksi: agg?.transaksi ?? 0,
+        laba: agg?.laba ?? 0,
       });
     } else {
       const { year: wkYear, week } = getIsoWeek(new Date(wibMidnightUtc(year, month, dayOfMonth)));
@@ -187,6 +193,7 @@ export function buildGrafikData(
         tanggal: key,
         omset: agg?.omset ?? 0,
         transaksi: agg?.transaksi ?? 0,
+        laba: agg?.laba ?? 0,
       });
     }
   }

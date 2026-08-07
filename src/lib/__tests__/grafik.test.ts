@@ -34,34 +34,36 @@ describe("getIsoWeek", () => {
 describe("buildGrafikData", () => {
   it("JAM: fills 24 hourly buckets and sums across range", () => {
     const tx = [
-      { createdAt: wib(2026, 5, 12, 8, 0), totalHarga: 20000 },
-      { createdAt: wib(2026, 5, 12, 8, 30), totalHarga: 15000 },
-      { createdAt: wib(2026, 5, 12, 17, 0), totalHarga: 50000 },
-      { createdAt: wib(2026, 5, 13, 8, 0), totalHarga: 10000 },
+      { createdAt: wib(2026, 5, 12, 8, 0), totalHarga: 20000, laba: 10000 },
+      { createdAt: wib(2026, 5, 12, 8, 30), totalHarga: 15000, laba: 8000 },
+      { createdAt: wib(2026, 5, 12, 17, 0), totalHarga: 50000, laba: 25000 },
+      { createdAt: wib(2026, 5, 13, 8, 0), totalHarga: 10000, laba: 5000 },
     ];
     const result = buildGrafikData(tx, "JAM", wib(2026, 5, 12, 0), wib(2026, 5, 13, 23));
     expect(result).toHaveLength(24);
-    expect(result[8]).toEqual({ label: "08:00", tanggal: "08", omset: 45000, transaksi: 3 });
-    expect(result[17]).toEqual({ label: "17:00", tanggal: "17", omset: 50000, transaksi: 1 });
-    expect(result[0]).toEqual({ label: "00:00", tanggal: "00", omset: 0, transaksi: 0 });
+    expect(result[8]).toEqual({ label: "08:00", tanggal: "08", omset: 45000, transaksi: 3, laba: 23000 });
+    expect(result[17]).toEqual({ label: "17:00", tanggal: "17", omset: 50000, transaksi: 1, laba: 25000 });
+    expect(result[0]).toEqual({ label: "00:00", tanggal: "00", omset: 0, transaksi: 0, laba: 0 });
   });
 
   it("HARI: fills every day between range including zeros", () => {
     const tx = [
-      { createdAt: wib(2026, 5, 12, 9, 0), totalHarga: 30000 },
-      { createdAt: wib(2026, 5, 14, 9, 0), totalHarga: 45000 },
+      { createdAt: wib(2026, 5, 12, 9, 0), totalHarga: 30000, laba: 12000 },
+      { createdAt: wib(2026, 5, 14, 9, 0), totalHarga: 45000, laba: 20000 },
     ];
     const result = buildGrafikData(tx, "HARI", wib(2026, 5, 12, 0), wib(2026, 5, 14, 23));
     expect(result.map((r) => r.tanggal)).toEqual(["2026-05-12", "2026-05-13", "2026-05-14"]);
     expect(result[0].omset).toBe(30000);
-    expect(result[1]).toMatchObject({ omset: 0, transaksi: 0 });
+    expect(result[0].laba).toBe(12000);
+    expect(result[1]).toMatchObject({ omset: 0, transaksi: 0, laba: 0 });
     expect(result[2].omset).toBe(45000);
+    expect(result[2].laba).toBe(20000);
   });
 
   it("HARI: derives range from data when dari/sampai omitted", () => {
     const tx = [
-      { createdAt: wib(2026, 5, 12, 9, 0), totalHarga: 30000 },
-      { createdAt: wib(2026, 5, 14, 9, 0), totalHarga: 45000 },
+      { createdAt: wib(2026, 5, 12, 9, 0), totalHarga: 30000, laba: 12000 },
+      { createdAt: wib(2026, 5, 14, 9, 0), totalHarga: 45000, laba: 20000 },
     ];
     const result = buildGrafikData(tx, "HARI");
     expect(result.map((r) => r.tanggal)).toEqual(["2026-05-12", "2026-05-13", "2026-05-14"]);
@@ -69,29 +71,33 @@ describe("buildGrafikData", () => {
 
   it("MINGGU: groups by ISO week", () => {
     const tx = [
-      { createdAt: wib(2026, 5, 4, 9, 0), totalHarga: 20000 },
-      { createdAt: wib(2026, 5, 10, 9, 0), totalHarga: 30000 },
-      { createdAt: wib(2026, 5, 11, 9, 0), totalHarga: 50000 },
+      { createdAt: wib(2026, 5, 4, 9, 0), totalHarga: 20000, laba: 10000 },
+      { createdAt: wib(2026, 5, 10, 9, 0), totalHarga: 30000, laba: 15000 },
+      { createdAt: wib(2026, 5, 11, 9, 0), totalHarga: 50000, laba: 25000 },
     ];
     const result = buildGrafikData(tx, "MINGGU", wib(2026, 5, 1, 0), wib(2026, 5, 31, 23));
     expect(result).toHaveLength(5);
-    expect(result[0]).toMatchObject({ omset: 0, transaksi: 0 });
+    expect(result[0]).toMatchObject({ omset: 0, transaksi: 0, laba: 0 });
     expect(result[1].omset).toBe(50000);
     expect(result[1].transaksi).toBe(2);
+    expect(result[1].laba).toBe(25000);
     expect(result[2].omset).toBe(50000);
     expect(result[2].transaksi).toBe(1);
+    expect(result[2].laba).toBe(25000);
   });
 
   it("BULAN: fills every month between range", () => {
     const tx = [
-      { createdAt: wib(2026, 1, 15, 9, 0), totalHarga: 10000 },
-      { createdAt: wib(2026, 3, 15, 9, 0), totalHarga: 25000 },
+      { createdAt: wib(2026, 1, 15, 9, 0), totalHarga: 10000, laba: 4000 },
+      { createdAt: wib(2026, 3, 15, 9, 0), totalHarga: 25000, laba: 11000 },
     ];
     const result = buildGrafikData(tx, "BULAN", wib(2026, 1, 1, 0), wib(2026, 3, 31, 23));
     expect(result.map((r) => r.tanggal)).toEqual(["2026-01", "2026-02", "2026-03"]);
     expect(result[0].omset).toBe(10000);
-    expect(result[1]).toMatchObject({ omset: 0, transaksi: 0 });
+    expect(result[0].laba).toBe(4000);
+    expect(result[1]).toMatchObject({ omset: 0, transaksi: 0, laba: 0 });
     expect(result[2].omset).toBe(25000);
+    expect(result[2].laba).toBe(11000);
   });
 
   it("returns empty array when no transactions and no range", () => {

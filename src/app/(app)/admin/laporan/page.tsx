@@ -16,7 +16,7 @@ type Transaksi = {
 type LaporanData = { ringkasan: Ringkasan; menuTerlaris: MenuTerlaris[]; transaksi: Transaksi[]; total: number; totalPages: number; page: number };
 type ClosingItem = { id: string; tanggal: string; createdAt: string; shift: string; uangAwal: number; catatan: string | null; belanjaUrgent: Array<{ nama: string; nominal: number }> | null; totalMakanan: number; totalMinuman: number; totalOmset: number; totalTransaksi: number; kasAktual: number | null; selisih: number | null; user: { nama: string } };
 type Rentang = "JAM" | "HARI" | "MINGGU" | "BULAN";
-type TitikGrafik = { label: string; tanggal: string; omset: number; transaksi: number };
+type TitikGrafik = { label: string; tanggal: string; omset: number; transaksi: number; laba: number };
 
 const RENTANG_LABEL: Record<Rentang, string> = { JAM: "Per Jam", HARI: "Per Hari", MINGGU: "Per Minggu", BULAN: "Per Bulan" };
 
@@ -219,7 +219,7 @@ export default function LaporanPage() {
                 </div>
                 <div>
                   <h2 className="text-sm font-semibold text-sage-800">Grafik Penjualan</h2>
-                  <p className="text-xs text-sage-400">Omset & jumlah transaksi</p>
+                  <p className="text-xs text-sage-400">Omset, laba kotor & jumlah transaksi</p>
                 </div>
               </div>
               <div className="flex items-center gap-1 bg-sage-50 border border-sage-200 rounded-lg p-1">
@@ -292,6 +292,17 @@ export default function LaporanPage() {
                       stroke="#10b981"
                       strokeWidth={2}
                       dot={{ r: 3, strokeWidth: 0, fill: "#10b981" }}
+                      activeDot={{ r: 5 }}
+                    />
+                    <Line
+                      yAxisId="omset"
+                      type="monotone"
+                      dataKey="laba"
+                      name="Laba Kotor"
+                      stroke="#d97706"
+                      strokeWidth={2}
+                      strokeDasharray="5 4"
+                      dot={{ r: 3, strokeWidth: 0, fill: "#d97706" }}
                       activeDot={{ r: 5 }}
                     />
                   </LineChart>
@@ -625,6 +636,9 @@ function GrafikTooltip({ active, payload }: { active?: boolean; payload?: Array<
       <p className="font-semibold text-sage-800 mb-1">{d.label}</p>
       <p className="text-sage-500">
         Omset: <span className="font-bold text-red-700">{formatRupiah(d.omset)}</span>
+      </p>
+      <p className="text-sage-500">
+        Laba Kotor: <span className="font-bold text-amber-600">{formatRupiah(d.laba)}</span>
       </p>
       <p className="text-sage-500">
         Transaksi: <span className="font-bold text-emerald-700">{d.transaksi}</span>

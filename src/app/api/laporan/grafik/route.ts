@@ -21,13 +21,40 @@ export async function GET(request: NextRequest) {
 
   const where = dari || sampai ? { createdAt: dateFilter } : {};
 
-  const transaksi = await prisma.transaksi.findMany({
-    where,
-    select: { createdAt: true, totalHarga: true },
+  const [transaksi, menus] = await Promise.all([
+    prisma.transaksi.findMany({
+      where,
+      select: {
+        createdAt: true,
+        totalHarga: true,
+        itemTransaksi: { select: { menuId: true, harga: true, jumlah: true } },
+      },
+    }),
+    prisma.menu.findMany({
+      select: {
+        id: true,
+        resep: { select: { jumlah: true, stok: { select: { hargaBahan: true } } } },
+      },
+    }),
+  ]);
+
+  const hppPerMenu = new Map<string, number>();
+  for (const menu of menus) {
+    const hpp = menu.resep.reduce((t, r) => t + r.jumlah * r.stok.hargaBahan, 0);
+    hppPerMenu.set(menu.id, hpp);
+  }
+
+  const dataTx = transaksi.map((t) => {
+    let laba = 0;
+    for (const item of t.itemTransaksi) {
+      const hpp = hppPerMenu.get(item.menuId) ?? 0;
+      laba += (item.harga - hpp) * item.jumlah;
+    }
+    return { createdAt: t.createdAt, totalHarga: t.totalHarga, laba: Math.round(laba) };
   });
 
   const data = buildGrafikData(
-    transaksi,
+    dataTx,
     rentang,
     dari ? new Date(dari + "T00:00:00+07:00") : undefined,
     sampai ? new Date(sampai + "T23:59:59.999+07:00") : undefined,
@@ -39,6 +66,7 @@ export async function GET(request: NextRequest) {
     ringkasan: {
       totalOmset: data.reduce((s, d) => s + d.omset, 0),
       totalTransaksi: data.reduce((s, d) => s + d.transaksi, 0),
+      totalLaba: data.reduce((s, d) => s + d.laba, 0),
       titik: data.length,
     },
   });
