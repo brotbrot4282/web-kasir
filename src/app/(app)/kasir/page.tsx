@@ -9,6 +9,7 @@ import {
   getConnectionStatus,
   isBridgeAvailable,
   printStruk,
+  splitItemNama,
   type PrinterInfo,
   type StrukData,
 } from "@/lib/printer";
@@ -286,7 +287,7 @@ export default function KasirPage() {
     });
 
     const itemsHtml = t.items.map((item) => {
-      const nm = item.nama.length > 24 ? item.nama.slice(0, 22) + ".." : item.nama;
+      const nm = splitItemNama(item.nama, item.variant);
       const harga = item.subtotal / item.jumlah;
       return `
         <div style="display:flex;justify-content:space-between;">
@@ -296,7 +297,8 @@ export default function KasirPage() {
         <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;padding-left:4px;">
           <span>${formatRupiah(harga)} x ${item.jumlah}</span>
           <span></span>
-        </div>`;
+        </div>
+        ${item.variant ? `<div style="font-size:11px;color:#555;padding-left:8px;">(${item.variant})</div>` : ""}`;
     }).join("");
 
     const labelCatatan = jenis === "catatan"
@@ -356,8 +358,6 @@ export default function KasirPage() {
   </div>` : ""}
   <div style="border-top:1px dashed #000;margin:6px 0;"></div>
   <div style="text-align:center;font-weight:bold;font-size:14px;margin-top:6px;">Terima kasih</div>
-  <div style="text-align:center;font-size:11px;color:#666;">Barang yang sudah dibeli</div>
-  <div style="text-align:center;font-size:11px;color:#666;">tidak dapat dikembalikan</div>
 </body></html>`;
 
     const iframe = iframeRef.current;

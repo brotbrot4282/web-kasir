@@ -16,7 +16,15 @@ const sample = {
   tipePesanan: "DINE_IN",
   catatan: "Meja 5",
   items: [
-    { nama: "Kopi Susu Gula Aren - Es | Gula Aren Asli", harga: 18000, jumlah: 2, subtotal: 36000 },
+    { nama: "Kopsu Caramel", variant: "Normal", harga: 18000, jumlah: 1, subtotal: 18000 },
+    { nama: "Kopi Susu Gula Aren", variant: "Less Ice | Less Sugar", harga: 18000, jumlah: 2, subtotal: 36000 },
+    {
+      nama: "Matcha Latte",
+      variant: "Normal | Less Ice | Extra Shot | Gula Aren Asli",
+      harga: 25000,
+      jumlah: 1,
+      subtotal: 25000,
+    },
     { nama: "Roti Bakar Coklat", harga: 14000, jumlah: 1, subtotal: 14000 },
   ],
 };

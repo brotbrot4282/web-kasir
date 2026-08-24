@@ -22,6 +22,7 @@ export type StrukItem = {
   harga: number;
   jumlah: number;
   subtotal: number;
+  variant?: string | null;
 };
 
 export type StrukData = {
@@ -43,12 +44,38 @@ export type StrukData = {
 };
 
 const COLS = 32;
+const INDENT = new Uint8Array([0x20, 0x20]);
 
 const metodeLabel = (m: string) => (m === "QRIS" ? "QRIS" : m === "CARD" ? "Card" : "Tunai");
 
 function truncate(s: string, max: number): string {
   if (s.length <= max) return s;
   return s.slice(0, Math.max(1, max - 1)) + ".";
+}
+
+export function splitItemNama(nama: string, variant?: string | null): string {
+  if (variant && nama.endsWith(` - ${variant}`)) {
+    return nama.slice(0, nama.length - variant.length - 3);
+  }
+  return nama;
+}
+
+function wrapText(s: string, width: number): string[] {
+  const words = s.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let current = "";
+  for (const w of words) {
+    if (!current) {
+      current = w;
+    } else if (current.length + 1 + w.length <= width) {
+      current += " " + w;
+    } else {
+      lines.push(current);
+      current = w;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
 }
 
 function alignLine(left: string, right: string): string {
@@ -166,8 +193,19 @@ export function buildStrukBytes(data: StrukData, jenis: "customer" | "catatan"):
   for (const item of data.items) {
     const subtotal = formatRupiah(item.subtotal);
     const maxNama = Math.max(1, COLS - subtotal.length - 1);
-    encoder.line(alignLine(truncate(item.nama, maxNama), subtotal));
-    encoder.line(`  ${formatRupiah(item.harga)} x ${item.jumlah}`);
+    const baseNama = splitItemNama(item.nama, item.variant);
+    encoder.line(alignLine(truncate(baseNama, maxNama), subtotal));
+    encoder.raw(INDENT);
+    encoder.line(`${formatRupiah(item.harga)} x ${item.jumlah}`);
+    if (item.variant) {
+      const parts = wrapText(item.variant, COLS - 4);
+      for (let i = 0; i < parts.length; i++) {
+        const open = i === 0 ? "(" : "";
+        const close = i === parts.length - 1 ? ")" : "";
+        encoder.raw(INDENT);
+        encoder.line(`${open}${parts[i]}${close}`);
+      }
+    }
   }
 
   separator();
@@ -207,8 +245,6 @@ export function buildStrukBytes(data: StrukData, jenis: "customer" | "catatan"):
   encoder.line("Terima kasih");
   encoder.size(1, 1);
   encoder.bold(false);
-  encoder.line("Barang yang sudah dibeli");
-  encoder.line("tidak dapat dikembalikan");
 
   encoder.newline(4);
 
