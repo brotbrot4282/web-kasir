@@ -65,6 +65,7 @@ export async function GET(_request: Request, { params }: { params: Params }) {
         itemTransaksi: {
           include: { menu: true },
         },
+        pembayaranSplit: { orderBy: { urutan: "asc" } },
       },
     });
 

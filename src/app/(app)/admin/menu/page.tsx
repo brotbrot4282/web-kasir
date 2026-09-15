@@ -20,6 +20,12 @@ export default function AdminMenuPage() {
   const [gambarPreview, setGambarPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetConfirmInput, setResetConfirmInput] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
+  const [hapusPaksa, setHapusPaksa] = useState<Menu | null>(null);
+  const [hapusPaksaLoading, setHapusPaksaLoading] = useState(false);
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   const loadData = useCallback(() => {
     Promise.all([fetch("/api/menu").then((r) => r.json()), fetch("/api/kategori").then((r) => r.json())])
@@ -68,13 +74,65 @@ export default function AdminMenuPage() {
     } catch (err) { setToast({ message: err instanceof Error ? err.message : "Gagal simpan", type: "error" }); }
   };
 
-  const hapusMenu = async (id: string) => {
+  const hapusMenu = async (menu: Menu) => {
     if (!confirm("Yakin ingin menghapus menu ini?")) return;
     try {
-      const res = await fetch(`/api/menu/${id}`, { method: "DELETE" });
-      if (!res.ok) { const err = await res.json(); throw new Error(err.error || "Gagal"); }
+      const res = await fetch(`/api/menu/${menu.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json();
+        if (res.status === 400 && err.error?.includes("riwayat")) {
+          setHapusPaksa(menu);
+          return;
+        }
+        throw new Error(err.error || "Gagal");
+      }
       loadData(); setToast({ message: "Menu berhasil dihapus", type: "success" });
     } catch (err) { setToast({ message: err instanceof Error ? err.message : "Gagal hapus", type: "error" }); }
+  };
+
+  const konfirmasiHapusPaksa = async () => {
+    if (!hapusPaksa) return;
+    setHapusPaksaLoading(true);
+    try {
+      const res = await fetch(`/api/menu/${hapusPaksa.id}?paksa=1`, { method: "DELETE" });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error || "Gagal"); }
+      loadData();
+      setToast({ message: "Menu berhasil dihapus (riwayat terkait ikut terhapus)", type: "success" });
+      setHapusPaksa(null);
+    } catch (err) {
+      setToast({ message: err instanceof Error ? err.message : "Gagal hapus", type: "error" });
+      setHapusPaksa(null);
+    } finally {
+      setHapusPaksaLoading(false);
+    }
+  };
+
+  const nonaktifkanSemua = async () => {
+    if (!confirm("Nonaktifkan semua menu? Menu tidak akan muncul di kasir, tapi laporan tetap aman.")) return;
+    setBulkLoading(true);
+    try {
+      const res = await fetch("/api/menu/nonaktifkan-semua", { method: "POST" });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error || "Gagal"); }
+      const data = await res.json();
+      loadData();
+      setToast({ message: data.message || "Semua menu dinonaktifkan", type: "success" });
+    } catch (err) { setToast({ message: err instanceof Error ? err.message : "Gagal menonaktifkan menu", type: "error" }); }
+    finally { setBulkLoading(false); }
+  };
+
+  const resetSemua = async () => {
+    if (resetConfirmInput !== "RESET") return;
+    setResetLoading(true);
+    try {
+      const res = await fetch("/api/menu/reset", { method: "POST" });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error || "Gagal"); }
+      const data = await res.json();
+      loadData();
+      setToast({ message: data.message || "Semua data berhasil direset", type: "success" });
+      setShowResetModal(false);
+      setResetConfirmInput("");
+    } catch (err) { setToast({ message: err instanceof Error ? err.message : "Gagal reset", type: "error" }); }
+    finally { setResetLoading(false); }
   };
 
   const simpanKategori = async (e: React.FormEvent) => {
@@ -102,10 +160,20 @@ export default function AdminMenuPage() {
           <h1 className="text-xl font-bold text-sage-800">Menu</h1>
           <p className="text-sm text-sage-500 mt-0.5">Kelola menu makanan dan minuman</p>
         </div>
-        <button onClick={() => { resetForm(); setShowForm(true); }} className="inline-flex items-center gap-2 bg-red-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-900 transition-colors shadow-sm">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-          Tambah Menu
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={nonaktifkanSemua} disabled={bulkLoading} className="inline-flex items-center gap-2 border border-sage-200 text-sage-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-sage-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            Nonaktifkan Semua
+          </button>
+          <button onClick={() => setShowResetModal(true)} className="inline-flex items-center gap-2 border border-red-300 text-red-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+            Reset Semua
+          </button>
+          <button onClick={() => { resetForm(); setShowForm(true); }} className="inline-flex items-center gap-2 bg-red-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-900 transition-colors shadow-sm">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+            Tambah Menu
+          </button>
+        </div>
       </div>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
@@ -302,6 +370,94 @@ export default function AdminMenuPage() {
         </div>
       )}
 
+      {showResetModal && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowResetModal(false)}>
+          <div className="bg-white rounded-xl p-6 shadow-xl border border-red-200 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-red-700">Reset Semua Menu & Riwayat</h3>
+              <button type="button" onClick={() => setShowResetModal(false)} className="text-sage-400 hover:text-sage-600 transition-colors">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-3 text-sm">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 space-y-1">
+                <p className="font-semibold">Tindakan ini TIDAK BISA dibatalkan.</p>
+                <p>Semua data berikut akan dihapus permanen:</p>
+                <ul className="list-disc list-inside space-y-0.5 text-red-600">
+                  <li>Semua menu &amp; kategori</li>
+                  <li>Semua transaksi penjualan</li>
+                  <li>Semua laporan closing</li>
+                  <li>Riwayat poin (member dikembalikan ke 0)</li>
+                </ul>
+                <p className="text-xs text-red-500">Stok bahan mentah tidak dihapus.</p>
+              </div>
+              <div>
+                <label className="block font-medium text-sage-700 mb-1">Ketik &quot;RESET&quot; untuk melanjutkan</label>
+                <input
+                  type="text"
+                  value={resetConfirmInput}
+                  onChange={(e) => setResetConfirmInput(e.target.value)}
+                  placeholder="RESET"
+                  className="w-full border border-sage-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-400 transition-all"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 pt-4">
+              <button onClick={() => setShowResetModal(false)} className="flex-1 border border-sage-200 text-sage-600 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-sage-50 transition-colors">
+                Batal
+              </button>
+              <button
+                onClick={resetSemua}
+                disabled={resetConfirmInput !== "RESET" || resetLoading}
+                className="flex-1 bg-red-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-red-800 transition-colors disabled:bg-red-300 disabled:cursor-not-allowed"
+              >
+                {resetLoading ? "Menghapus..." : "Reset Semua"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {hapusPaksa && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setHapusPaksa(null)}>
+          <div className="bg-white rounded-xl p-6 shadow-xl border border-red-200 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-red-700">Hapus Paksa Menu</h3>
+              <button type="button" onClick={() => setHapusPaksa(null)} className="text-sage-400 hover:text-sage-600 transition-colors">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-3 text-sm">
+              <p className="text-sage-700">
+                Menu <span className="font-semibold text-sage-800">{hapusPaksa.nama}</span> sudah pernah masuk riwayat transaksi.
+              </p>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-600">
+                <p className="font-medium">Peringatan:</p>
+                <p className="text-xs mt-1">
+                  Baris item menu ini pada laporan transaksi lama akan ikut terhapus. Total laporan transaksi tersebut akan berubah dan tidak bisa dikembalikan.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 pt-4">
+              <button onClick={() => setHapusPaksa(null)} className="flex-1 border border-sage-200 text-sage-600 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-sage-50 transition-colors">
+                Batal
+              </button>
+              <button
+                onClick={konfirmasiHapusPaksa}
+                disabled={hapusPaksaLoading}
+                className="flex-1 bg-red-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-red-800 transition-colors disabled:bg-red-300 disabled:cursor-not-allowed"
+              >
+                {hapusPaksaLoading ? "Menghapus..." : "Ya, Hapus Paksa"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white border border-sage-200 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -344,7 +500,7 @@ export default function AdminMenuPage() {
                   </td>
                     <td className="px-4 py-3.5 text-center">
                     <button onClick={() => editMenu(menu)} className="text-red-600 hover:text-red-700 text-sm font-medium mr-2 transition-colors">Edit</button>
-                    <button onClick={() => hapusMenu(menu.id)} className="text-red-600 hover:text-red-500 text-sm font-medium transition-colors">Hapus</button>
+                    <button onClick={() => hapusMenu(menu)} className="text-red-600 hover:text-red-500 text-sm font-medium transition-colors">Hapus</button>
                   </td>
                 </tr>
               ))}

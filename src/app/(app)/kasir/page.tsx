@@ -9,9 +9,11 @@ import {
   getConnectionStatus,
   isBridgeAvailable,
   printStruk,
+  printClosing,
   splitItemNama,
   type PrinterInfo,
   type StrukData,
+  type ClosingReportData,
 } from "@/lib/printer";
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
@@ -27,7 +29,7 @@ type KeranjangItem = { key: string; menuId: string; nama: string; harga: number;
 type PengaturanPoin = { rupiahPerPoin: number; nilaiPerPoin: number; minimalTransaksi: number };
 type PengaturanPembayaran = { taxCardPersen: number };
 
-const metodeLabel = (m: string) => (m === "QRIS" ? "QRIS" : m === "CARD" ? "Card" : "Tunai");
+const metodeLabel = (m: string) => (m === "QRIS" ? "QRIS" : m === "CARD" ? "Card" : m === "SPLIT" ? "Split Bill" : "Tunai");
 
 export default function KasirPage() {
   const [kategoriList, setKategoriList] = useState<Kategori[]>([]);
@@ -42,7 +44,10 @@ export default function KasirPage() {
   const [pengaturanPoin, setPengaturanPoin] = useState<PengaturanPoin>({ rupiahPerPoin: 15000, nilaiPerPoin: 1000, minimalTransaksi: 10000 });
   const [diskon, setDiskon] = useState("");
   const [diskonTipe, setDiskonTipe] = useState<"nominal" | "persen">("nominal");
-  const [metodeBayar, setMetodeBayar] = useState<"CASH" | "QRIS" | "CARD">("CASH");
+  const [metodeBayar, setMetodeBayar] = useState<"CASH" | "QRIS" | "CARD" | "SPLIT">("CASH");
+  const [splitPayments, setSplitPayments] = useState<Array<{ metodeBayar: "CASH" | "QRIS" | "CARD"; jumlah: number }>>([
+    { metodeBayar: "CASH", jumlah: 0 },
+  ]);
   const [pengaturanPembayaran, setPengaturanPembayaran] = useState<PengaturanPembayaran>({ taxCardPersen: 0 });
   const [tipePesanan, setTipePesanan] = useState<"" | "DINE_IN" | "TAKE_AWAY">("");
   const [nomorMeja, setNomorMeja] = useState("");
@@ -54,6 +59,7 @@ export default function KasirPage() {
     diskon: number; tax: number;
     publicId: string; noWa: string | null; memberNama?: string;
     tipePesanan: string; catatan: string | null;
+    splitPayments?: Array<{ metodeBayar: string; jumlah: number }>;
   } | null>(null);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -84,6 +90,8 @@ export default function KasirPage() {
     pembayaran: { CASH: number; QRIS: number; CARD: number };
   } | null>(null);
   const [closingSummaryLoading, setClosingSummaryLoading] = useState(false);
+  const [closingResult, setClosingResult] = useState<ClosingReportData | null>(null);
+  const [closingPrintMsg, setClosingPrintMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [kasAktualInput, setKasAktualInput] = useState("");
   const [showOpening, setShowOpening] = useState(false);
   const [uangAwalInput, setUangAwalInput] = useState("");
@@ -200,6 +208,8 @@ export default function KasirPage() {
   const taxCardPersen = typeof pengaturanPembayaran.taxCardPersen === "number" ? pengaturanPembayaran.taxCardPersen : 0;
   const taxCard = metodeBayar === "CARD" ? Math.round((totalBayarFinal * taxCardPersen) / 100) : 0;
   const totalBayarCard = totalBayarFinal + taxCard;
+  const totalSplitAmount = splitPayments.reduce((sum, sp) => sum + sp.jumlah, 0);
+  const splitSisa = totalBayarFinal - totalSplitAmount;
 
   const hitungHarga = useCallback((menu: Menu, variantString: string | null): number => {
     if (!variantString || !menu.variants) return menu.harga;
@@ -242,32 +252,48 @@ export default function KasirPage() {
 
   const bayar = async () => {
     if (submitting) return;
-    const bayarAmount = metodeBayar === "CARD" ? totalBayarCard : metodeBayar === "QRIS" ? totalBayarFinal : (parseInt(totalBayar.replace(/\D/g, "")) || 0);
+    const bayarAmount = metodeBayar === "CARD" ? totalBayarCard : metodeBayar === "QRIS" ? totalBayarFinal : metodeBayar === "SPLIT" ? totalBayarFinal : (parseInt(totalBayar.replace(/\D/g, "")) || 0);
     if (keranjang.length === 0) { setMessage({ type: "error", text: "Keranjang masih kosong" }); return; }
     if (!tipePesanan) { setMessage({ type: "error", text: "Pilih Dine In atau Take Away" }); return; }
     if (metodeBayar === "CASH" && bayarAmount < totalBayarFinal) { setMessage({ type: "error", text: `Kurang Rp ${(totalBayarFinal - bayarAmount).toLocaleString()}` }); return; }
+    if (metodeBayar === "SPLIT") {
+      const totalSplit = splitPayments.reduce((sum, sp) => sum + sp.jumlah, 0);
+      if (totalSplit !== totalBayarFinal) {
+        setMessage({ type: "error", text: `Total split (${formatRupiah(totalSplit)}) tidak sama dengan total yang harus dibayar (${formatRupiah(totalBayarFinal)})` });
+        return;
+      }
+      const validSplit = splitPayments.filter((sp) => sp.jumlah > 0);
+      if (validSplit.length < 2) {
+        setMessage({ type: "error", text: "Split bill minimal 2 metode bayar" });
+        return;
+      }
+    }
 
     setSubmitting(true);
     try {
+      const payload: Record<string, unknown> = {
+        items: keranjang.map((i) => ({ menuId: i.menuId, jumlah: i.jumlah, variant: i.variant })),
+        totalBayar: bayarAmount,
+        diskon: totalDiskon,
+        metodeBayar,
+        noWa: noWa.trim() || undefined,
+        memberNama: memberNama.trim() || undefined,
+        poinDigunakan,
+        tipePesanan,
+        catatan: tipePesanan === "DINE_IN" ? nomorMeja.trim() || undefined : undefined,
+      };
+      if (metodeBayar === "SPLIT") {
+        payload.splitPayments = splitPayments.filter((sp) => sp.jumlah > 0);
+      }
       const res = await fetch("/api/transaksi", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: keranjang.map((i) => ({ menuId: i.menuId, jumlah: i.jumlah, variant: i.variant })),
-          totalBayar: bayarAmount,
-          diskon: totalDiskon,
-          metodeBayar,
-          noWa: noWa.trim() || undefined,
-          memberNama: memberNama.trim() || undefined,
-          poinDigunakan,
-          tipePesanan,
-          catatan: tipePesanan === "DINE_IN" ? nomorMeja.trim() || undefined : undefined,
-        }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) { const err = await res.json(); throw new Error(err.error || "Gagal"); }
       const data = await res.json();
-      setTransaksiSukses({ noTransaksi: data.noTransaksi, totalHarga: data.totalHarga, totalBayar: data.totalBayar, kembalian: data.kembalian, metodeBayar, items: [...keranjang], poinDidapat: data.poinDidapat || 0, poinDigunakan: data.poinDigunakan || 0, totalPoin: data.totalPoin || 0, diskon: data.diskon || 0, tax: data.tax || 0, publicId: data.publicId, noWa: data.noWa || null, memberNama: memberNama.trim() || undefined, tipePesanan, catatan: tipePesanan === "DINE_IN" ? (nomorMeja.trim() || null) : null });
-      setKeranjang([]); setTotalBayar(""); setDiskon(""); setNoWa(""); setMemberNama(""); setMetodeBayar("CASH"); setPoinDigunakanInput(""); setTipePesanan(""); setNomorMeja(""); setMessage(null);
+      setTransaksiSukses({ noTransaksi: data.noTransaksi, totalHarga: data.totalHarga, totalBayar: data.totalBayar, kembalian: data.kembalian, metodeBayar, items: [...keranjang], poinDidapat: data.poinDidapat || 0, poinDigunakan: data.poinDigunakan || 0, totalPoin: data.totalPoin || 0, diskon: data.diskon || 0, tax: data.tax || 0, publicId: data.publicId, noWa: data.noWa || null, memberNama: memberNama.trim() || undefined, tipePesanan, catatan: tipePesanan === "DINE_IN" ? (nomorMeja.trim() || null) : null, splitPayments: metodeBayar === "SPLIT" ? splitPayments.filter((sp) => sp.jumlah > 0) : undefined });
+      setKeranjang([]); setTotalBayar(""); setDiskon(""); setNoWa(""); setMemberNama(""); setMetodeBayar("CASH"); setPoinDigunakanInput(""); setTipePesanan(""); setNomorMeja(""); setSplitPayments([{ metodeBayar: "CASH", jumlah: 0 }]); setMessage(null);
       fetch("/api/menu").then((r) => r.json()).then(setMenuList);
     } catch (err) {
       setMessage({ type: "error", text: err instanceof Error ? err.message : "Gagal bayar" });
@@ -346,12 +372,19 @@ export default function KasirPage() {
   <div style="display:flex;justify-content:space-between;">
     <span>Bayar</span><span>${formatRupiah(t.totalBayar)}</span>
   </div>
+  ${t.metodeBayar === "SPLIT" && t.splitPayments && t.splitPayments.length > 0 ? `
+  <div style="display:flex;justify-content:space-between;">
+    <span>Metode</span><span>Split Bill</span>
+  </div>
+  ${t.splitPayments.map((sp) => `  <div style="display:flex;justify-content:space-between;padding-left:8px;font-size:12px;">
+    <span>${metodeLabel(sp.metodeBayar)}</span><span>${formatRupiah(sp.jumlah)}</span>
+  </div>`).join("\n  ")}` : `
   <div style="display:flex;justify-content:space-between;">
     <span>Metode</span><span>${metodeLabel(t.metodeBayar)}</span>
   </div>
   ${t.metodeBayar === "CASH" ? `<div style="display:flex;justify-content:space-between;">
     <span>Kembali</span><span>${formatRupiah(t.kembalian)}</span>
-  </div>` : ""}
+  </div>` : ""}`}
   ${t.poinDidapat > 0 ? `<div style="border-top:1px dashed #000;margin:6px 0;"></div>
   <div style="display:flex;justify-content:space-between;">
     <span>Poin</span><span>+${t.poinDidapat} poin</span>
@@ -391,6 +424,116 @@ export default function KasirPage() {
     if (!transaksiSukses) return;
     kirimStruk(jenis, transaksiSukses);
   }, [transaksiSukses, kirimStruk]);
+
+  const printClosingReportHtml = useCallback((d: ClosingReportData) => {
+    if (!iframeRef.current) return;
+    const tanggal = new Date(d.tanggal).toLocaleDateString("id-ID", {
+      weekday: "long", year: "numeric", month: "long", day: "numeric"
+    });
+    const jam = new Date(d.tanggal).toLocaleTimeString("id-ID", {
+      hour: "2-digit", minute: "2-digit"
+    });
+    const shift = d.shift === "SHIFT_1" ? "SHIFT 1" : d.shift === "SHIFT_2" ? "SHIFT 2" : d.shift;
+    const kasHarusnya = d.uangAwal + d.totalOmset;
+    const totalUrgent = (d.belanjaUrgent || []).reduce((s, i) => s + i.nominal, 0);
+    const selisihText =
+      d.selisih === null || d.selisih === undefined
+        ? "-"
+        : d.selisih === 0
+          ? "Pas"
+          : formatRupiah(d.selisih);
+
+    const row = (label: string, value: string) =>
+      `<div style="display:flex;justify-content:space-between;"><span>${label}</span><span>${value}</span></div>`;
+
+    const breakdownHtml = d.breakdown.length > 0 ? `
+  <div style="border-top:1px dashed #000;margin:6px 0;"></div>
+  <div style="text-align:center;font-size:11px;color:#666;margin:2px 0;">-- Detail Item --</div>
+  ${d.breakdown.map((item) => `
+  <div style="padding-left:4px;">${item.nama}</div>
+  <div style="display:flex;justify-content:space-between;padding-left:8px;font-size:12px;color:#333;">
+    <span>${item.qty}x</span><span>${formatRupiah(item.subtotal)}</span>
+  </div>`).join("\n")}` : "";
+
+    const urgentHtml = d.belanjaUrgent && d.belanjaUrgent.length > 0 ? `
+  <div style="border-top:1px dashed #000;margin:6px 0;"></div>
+  <div style="text-align:center;font-size:11px;color:#666;margin:2px 0;">-- Belanja Urgent --</div>
+  ${d.belanjaUrgent.map((u) => `
+  <div style="display:flex;justify-content:space-between;padding-left:4px;">
+    <span>${u.nama || "-"}</span><span>${formatRupiah(u.nominal)}</span>
+  </div>`).join("\n")}
+  ${totalUrgent > 0 ? row("Total Belanja", formatRupiah(totalUrgent)) : ""}` : "";
+
+    const catatanHtml = d.catatan && d.catatan.trim() ? `
+  <div style="border-top:1px dashed #000;margin:6px 0;"></div>
+  <div style="font-size:12px;color:#333;">Catatan: ${d.catatan.trim()}</div>` : "";
+
+    const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8">
+<style>
+  @page { size: 58mm auto; margin: 0; }
+  body {
+    font-family: 'Courier New', 'Consolas', 'Lucida Console', monospace;
+    font-size: 13px; line-height: 1.45; padding: 8px 12px; color: #000; margin: 0;
+  }
+</style>
+</head>
+<body>
+  <img src="/logo.jpg" style="display:block;margin:0 auto 4px;width:36px;height:36px;border-radius:50%;object-fit:cover;" />
+  <div style="text-align:center;font-weight:bold;font-size:18px;margin-bottom:2px;">WARKOP SOEKARDJO</div>
+  <div style="text-align:center;font-weight:bold;font-size:13px;letter-spacing:2px;margin:2px 0;">LAPORAN CLOSING ${shift}</div>
+  <div style="text-align:center;font-size:11px;color:#666;">${tanggal} ${jam}</div>
+  <div style="text-align:center;font-size:11px;color:#666;">Kasir: ${d.kasirNama}</div>
+  <div style="border-top:1px dashed #000;margin:6px 0;"></div>
+  ${row("Uang Awal", formatRupiah(d.uangAwal))}
+  ${row("Makanan", `${d.makanan.qty} item ${formatRupiah(d.makanan.total)}`)}
+  ${row("Minuman", `${d.minuman.qty} item ${formatRupiah(d.minuman.total)}`)}
+  <div style="border-top:1px dashed #000;margin:6px 0;"></div>
+  ${row("Tunai", formatRupiah(d.pembayaran.CASH))}
+  ${row("QRIS", formatRupiah(d.pembayaran.QRIS))}
+  ${row("Card", formatRupiah(d.pembayaran.CARD))}
+  <div style="border-top:1px dashed #000;margin:6px 0;"></div>
+  <div style="display:flex;justify-content:space-between;font-weight:bold;">
+    <span>Total Omset</span><span>${formatRupiah(d.totalOmset)}</span>
+  </div>
+  ${row("Total Transaksi", `${d.totalTransaksi}x`)}
+  ${row("Kas Harusnya", formatRupiah(kasHarusnya))}
+  ${row("Kas Aktual", d.kasAktual != null ? formatRupiah(d.kasAktual) : "-")}
+  ${row("Selisih", selisihText)}
+  ${breakdownHtml}
+  ${urgentHtml}
+  ${catatanHtml}
+  <div style="border-top:1px dashed #000;margin:6px 0;"></div>
+  <div style="text-align:center;font-weight:bold;font-size:14px;margin-top:6px;">Terima kasih</div>
+</body></html>`;
+
+    const iframe = iframeRef.current;
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (doc) {
+      iframe.style.display = "block";
+      doc.open();
+      doc.write(html);
+      doc.close();
+      setTimeout(() => {
+        iframe.contentWindow?.print();
+        setTimeout(() => { iframe.style.display = "none"; }, 500);
+      }, 300);
+    }
+  }, []);
+
+  const kirimClosingReport = useCallback((d: ClosingReportData) => {
+    if (isBridgeAvailable()) {
+      try {
+        printClosing(d);
+        setClosingPrintMsg({ type: "success", text: "Rincian dikirim ke printer" });
+      } catch (err) {
+        setClosingPrintMsg({ type: "error", text: err instanceof Error ? err.message : "Gagal mencetak rincian" });
+      }
+      return;
+    }
+    printClosingReportHtml(d);
+  }, [printClosingReportHtml]);
 
   const fetchRiwayat = useCallback(() => {
     setRiwayatLoading(true);
@@ -432,6 +575,9 @@ export default function KasirPage() {
           subtotal: item.subtotal,
           variant: item.variant,
         })),
+        splitPayments: full.metodeBayar === "SPLIT" && full.pembayaranSplit?.length
+          ? full.pembayaranSplit.map((sp: { metodeBayar: string; jumlah: number }) => ({ metodeBayar: sp.metodeBayar, jumlah: sp.jumlah }))
+          : undefined,
       };
       kirimStruk(jenis, strukData);
     } catch {
@@ -475,6 +621,150 @@ export default function KasirPage() {
       setPrinterMsg({ type: "error", text: "Gagal memutuskan printer" });
     }
   }, []);
+
+  if (closingResult) {
+    const shift = closingResult.shift === "SHIFT_1" ? "Shift 1" : closingResult.shift === "SHIFT_2" ? "Shift 2" : closingResult.shift;
+    const tanggal = new Date(closingResult.tanggal).toLocaleDateString("id-ID", {
+      weekday: "long", year: "numeric", month: "long", day: "numeric"
+    });
+    const jam = new Date(closingResult.tanggal).toLocaleTimeString("id-ID", {
+      hour: "2-digit", minute: "2-digit"
+    });
+    const kasHarusnya = closingResult.uangAwal + closingResult.totalOmset;
+    const selisihText =
+      closingResult.selisih === null || closingResult.selisih === undefined
+        ? "-"
+        : closingResult.selisih === 0
+          ? "Pas"
+          : closingResult.selisih > 0
+            ? `+${formatRupiah(closingResult.selisih)}`
+            : formatRupiah(closingResult.selisih);
+    const totalUrgent = (closingResult.belanjaUrgent || []).reduce((s, i) => s + i.nominal, 0);
+    const row = (label: string, value: string | number, extraClass = "") => (
+      <div className={`flex justify-between text-sm ${extraClass}`}>
+        <span className="text-sage-600">{label}</span>
+        <span className="font-medium text-sage-800">{formatRupiah(Number(value))}</span>
+      </div>
+    );
+
+    return (
+      <div className="max-w-sm mx-auto">
+        <div className="bg-white border border-sage-200 rounded-xl p-6 text-center">
+          <div className="w-12 h-12 rounded-full bg-sage-100 flex items-center justify-center mx-auto mb-3">
+            <span className="text-lg font-bold text-sage-600">W</span>
+          </div>
+          <h2 className="font-bold text-xl text-sage-800">WARKOP SOEKARDJO</h2>
+          <p className="text-sm text-sage-400 mt-0.5">Laporan Closing {shift}</p>
+          <p className="text-sm font-mono text-sage-300 mt-1">{tanggal} {jam}</p>
+          <p className="text-sm text-sage-500 mt-1">Kasir: {closingResult.kasirNama}</p>
+
+          <div className="border-t border-dashed border-sage-200 mt-4 pt-4 text-left space-y-1.5 mb-4">
+            {row("Uang Awal", closingResult.uangAwal)}
+            {row("Makanan", closingResult.makanan.total)}
+            <div className="text-xs text-sage-400 pl-4">{closingResult.makanan.qty} item</div>
+            {row("Minuman", closingResult.minuman.total)}
+            <div className="text-xs text-sage-400 pl-4">{closingResult.minuman.qty} item</div>
+
+            <div className="border-t border-dashed border-sage-200 pt-2 mt-2"></div>
+            {row("Tunai", closingResult.pembayaran.CASH)}
+            {row("QRIS", closingResult.pembayaran.QRIS)}
+            {row("Card", closingResult.pembayaran.CARD)}
+
+            <div className="border-t border-dashed border-sage-200 pt-2 mt-2"></div>
+            <div className="flex justify-between text-sm font-bold">
+              <span className="text-sage-800">Total Omset</span>
+              <span className="text-sage-800">{formatRupiah(closingResult.totalOmset)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-sage-600">Total Transaksi</span>
+              <span className="font-medium text-sage-800">{closingResult.totalTransaksi}x</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-sage-600">Kas Harusnya</span>
+              <span className="font-medium text-sage-800">{formatRupiah(kasHarusnya)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-sage-600">Kas Aktual</span>
+              <span className="font-medium text-sage-800">
+                {closingResult.kasAktual != null ? formatRupiah(closingResult.kasAktual) : "-"}
+              </span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-sage-600">Selisih</span>
+              <span className={`font-bold ${closingResult.selisih && closingResult.selisih > 0 ? "text-emerald-600" : closingResult.selisih && closingResult.selisih < 0 ? "text-red-600" : "text-sage-800"}`}>
+                {selisihText}
+              </span>
+            </div>
+
+            {closingResult.breakdown.length > 0 && (
+              <>
+                <div className="border-t border-dashed border-sage-200 pt-2 mt-2"></div>
+                <p className="text-xs font-bold text-sage-400 tracking-widest text-center mt-1 mb-1">-- DETAIL ITEM --</p>
+                <div className="space-y-1">
+                  {closingResult.breakdown.map((item) => (
+                    <div key={item.nama} className="text-sm">
+                      <span className="text-sage-600">{item.nama}</span>
+                      <span className="text-sage-400 text-xs"> x{item.qty} = </span>
+                      <span className="font-medium text-sage-800">{formatRupiah(item.subtotal)}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {closingResult.belanjaUrgent && closingResult.belanjaUrgent.length > 0 && (
+              <>
+                <div className="border-t border-dashed border-sage-200 pt-2 mt-2"></div>
+                <p className="text-xs font-bold text-sage-400 tracking-widest text-center mt-1 mb-1">-- BELANJA URGENT --</p>
+                {closingResult.belanjaUrgent.map((u) => (
+                  <div key={u.nama} className="flex justify-between text-sm">
+                    <span className="text-sage-600">{u.nama || "-"}</span>
+                    <span className="font-medium text-sage-800">{formatRupiah(u.nominal)}</span>
+                  </div>
+                ))}
+                {totalUrgent > 0 && row("Total Belanja", totalUrgent)}
+              </>
+            )}
+
+            {closingResult.catatan && closingResult.catatan.trim() && (
+              <>
+                <div className="border-t border-dashed border-sage-200 pt-2 mt-2"></div>
+                <p className="text-sm"><span className="text-sage-600">Catatan:</span> <span className="text-sage-800">{closingResult.catatan}</span></p>
+              </>
+            )}
+          </div>
+
+          {closingPrintMsg && (
+            <p className={`text-sm mb-3 ${closingPrintMsg.type === "success" ? "text-emerald-600" : "text-red-600"}`}>
+              {closingPrintMsg.text}
+            </p>
+          )}
+
+          <div className="flex gap-3">
+            <button
+              onClick={async () => {
+                setClosingPrintMsg(null);
+                kirimClosingReport(closingResult);
+              }}
+              className="flex-1 bg-sage-600 text-white py-2 rounded-lg font-medium text-sm hover:bg-sage-700 transition-colors"
+            >
+              Cetak Rincian
+            </button>
+            <button
+              onClick={() => {
+                setClosingResult(null);
+                setClosingPrintMsg(null);
+                setShowClosing(false);
+              }}
+              className="flex-1 border border-sage-200 text-sage-600 py-2 rounded-lg font-medium text-sm hover:bg-sage-50 transition-colors"
+            >
+              Selesai
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (transaksiSukses) {
     return (
@@ -520,9 +810,22 @@ export default function KasirPage() {
             <div className="flex justify-between text-sage-500">
               <span>Bayar</span><span>{formatRupiah(transaksiSukses.totalBayar)}</span>
             </div>
-            <div className="flex justify-between text-sage-500">
-              <span>Metode</span><span>{metodeLabel(transaksiSukses.metodeBayar)}</span>
-            </div>
+            {transaksiSukses.metodeBayar === "SPLIT" && transaksiSukses.splitPayments ? (
+              <div className="space-y-0.5">
+                <div className="flex justify-between text-sage-400 text-sm">
+                  <span>Metode</span><span className="font-medium">Split Bill</span>
+                </div>
+                {transaksiSukses.splitPayments.map((sp, idx) => (
+                  <div key={idx} className="flex justify-between text-sage-500 text-sm pl-3">
+                    <span>{metodeLabel(sp.metodeBayar)}</span><span>{formatRupiah(sp.jumlah)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex justify-between text-sage-500">
+                <span>Metode</span><span>{metodeLabel(transaksiSukses.metodeBayar)}</span>
+              </div>
+            )}
             {transaksiSukses.metodeBayar === "CASH" && (
               <div className="flex justify-between text-sage-600 font-medium">
                 <span>Kembali</span><span>{formatRupiah(transaksiSukses.kembalian)}</span>
@@ -983,6 +1286,91 @@ export default function KasirPage() {
                     >
                       Card
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMetodeBayar("SPLIT");
+                        setSplitPayments([
+                          { metodeBayar: "CASH", jumlah: 0 },
+                          { metodeBayar: "QRIS", jumlah: 0 },
+                        ]);
+                      }}
+                      className={`flex-1 py-2 text-xs font-semibold rounded-md transition-all ${
+                        metodeBayar === "SPLIT"
+                          ? "bg-white text-sage-800 shadow-sm"
+                          : "text-sage-400 hover:text-sage-600"
+                      }`}
+                    >
+                      Split
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {totalBayarFinal !== 0 && metodeBayar === "SPLIT" && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-sage-500">Detail Split Payment</label>
+                    <button
+                      type="button"
+                      onClick={() => setSplitPayments([...splitPayments, { metodeBayar: "CASH", jumlah: 0 }])}
+                      className="text-xs font-medium text-sage-500 hover:text-sage-700 transition-colors"
+                    >
+                      + Tambah
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {splitPayments.map((sp, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <select
+                          value={sp.metodeBayar}
+                          onChange={(e) => {
+                            const updated = [...splitPayments];
+                            updated[idx] = { ...updated[idx], metodeBayar: e.target.value as "CASH" | "QRIS" | "CARD" };
+                            setSplitPayments(updated);
+                          }}
+                          className="border border-sage-200 rounded-lg px-2 py-2 text-xs font-medium text-sage-700 bg-white focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400"
+                        >
+                          <option value="CASH">Cash</option>
+                          <option value="QRIS">QRIS</option>
+                          <option value="CARD">Card</option>
+                        </select>
+                        <div className="relative flex-1">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-medium text-sage-400">Rp</span>
+                          <input
+                            type="text"
+                            value={sp.jumlah > 0 ? sp.jumlah.toLocaleString("id-ID") : ""}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value.replace(/\D/g, "")) || 0;
+                              const updated = [...splitPayments];
+                              updated[idx] = { ...updated[idx], jumlah: val };
+                              setSplitPayments(updated);
+                            }}
+                            placeholder="0"
+                            className="w-full border border-sage-200 rounded-lg pl-10 pr-2 py-2 text-sm text-right font-bold text-sage-800 focus:outline-none focus:ring-2 focus:ring-sage-600/20 focus:border-sage-400 bg-white"
+                          />
+                        </div>
+                        {splitPayments.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => setSplitPayments(splitPayments.filter((_, i) => i !== idx))}
+                            className="w-7 h-7 rounded-lg bg-rose-50 flex items-center justify-center hover:bg-rose-100 transition-colors shrink-0"
+                          >
+                            <X className="w-3.5 h-3.5 text-rose-400" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className={`flex items-center justify-between px-3 py-2 rounded-lg ${
+                    splitSisa === 0 ? "bg-emerald-50 border border-emerald-200" : "bg-amber-50 border border-amber-200"
+                  }`}>
+                    <span className={`text-xs font-medium ${splitSisa === 0 ? "text-emerald-600" : "text-amber-600"}`}>
+                      {splitSisa === 0 ? "Cocok" : (splitSisa > 0 ? `Sisa: ${formatRupiah(splitSisa)}` : `Lebih: ${formatRupiah(Math.abs(splitSisa))}`)}
+                    </span>
+                    <span className={`text-sm font-bold ${splitSisa === 0 ? "text-emerald-700" : "text-amber-700"}`}>
+                      {formatRupiah(totalSplitAmount)}
+                    </span>
                   </div>
                 </div>
               )}
@@ -1197,7 +1585,7 @@ export default function KasirPage() {
                               {new Date(t.createdAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
                               {t.member?.nama ? ` - ${t.member.nama}` : ""}
                             </p>
-                            <span className={`inline-block mt-1 text-[10px] font-medium px-1.5 py-0.5 rounded ${t.metodeBayar === "QRIS" ? "bg-blue-50 text-blue-600" : t.metodeBayar === "CARD" ? "bg-violet-50 text-violet-600" : "bg-emerald-50 text-emerald-600"}`}>
+                            <span className={`inline-block mt-1 text-[10px] font-medium px-1.5 py-0.5 rounded ${t.metodeBayar === "QRIS" ? "bg-blue-50 text-blue-600" : t.metodeBayar === "CARD" ? "bg-violet-50 text-violet-600" : t.metodeBayar === "SPLIT" ? "bg-amber-50 text-amber-600" : "bg-emerald-50 text-emerald-600"}`}>
                               {metodeLabel(t.metodeBayar)}
                             </span>
                             <span className="inline-block ml-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-sage-50 text-sage-600">
@@ -1753,11 +2141,40 @@ export default function KasirPage() {
                           const err = await res.json();
                           throw new Error(err.error || "Gagal");
                         }
-                        setClosingMsg({ type: "success", text: "Laporan closing berhasil disimpan!" });
+                        const saved = await res.json();
+                        const pay = saved.totalCash != null
+                          ? { CASH: saved.totalCash, QRIS: saved.totalQris, CARD: saved.totalCard }
+                          : closingSummary?.pembayaran || { CASH: 0, QRIS: 0, CARD: 0 };
+                        const savedBreakdown = Array.isArray(saved.breakdown) ? saved.breakdown : [];
+                        setClosingResult({
+                          shift: saved.shift || "SHIFT_1",
+                          kasirNama: saved.kasirNama || "Kasir",
+                          tanggal: saved.createdAt || new Date(),
+                          uangAwal: saved.uangAwal ?? 0,
+                          makanan: {
+                            qty: saved.totalMakanan ?? (closingSummary?.makanan.qty || 0),
+                            total: saved.totalMakananRupiah ?? (closingSummary?.makanan.total || 0),
+                          },
+                          minuman: {
+                            qty: saved.totalMinuman ?? (closingSummary?.minuman.qty || 0),
+                            total: saved.totalMinumanRupiah ?? (closingSummary?.minuman.total || 0),
+                          },
+                          pembayaran: pay,
+                          totalOmset: saved.totalOmset ?? 0,
+                          totalTransaksi: saved.totalTransaksi ?? 0,
+                          kasAktual: saved.kasAktual ?? null,
+                          selisih: saved.selisih ?? null,
+                          breakdown: savedBreakdown.length > 0
+                            ? savedBreakdown
+                            : [...(closingSummary?.breakdown || [])],
+                          belanjaUrgent: belanjaUrgentItems.length > 0 ? [...belanjaUrgentItems] : null,
+                          catatan: closingCatatan || null,
+                        });
+                        setShowClosing(false);
                         setClosingCatatan("");
                         setBelanjaUrgentItems([]);
                         setKasAktualInput("");
-                        setTimeout(() => { setShowClosing(false); setClosingMsg(null); }, 1500);
+                        setClosingMsg(null);
                       } catch (err) {
                         setClosingMsg({ type: "error", text: err instanceof Error ? err.message : "Gagal menyimpan" });
                       } finally {

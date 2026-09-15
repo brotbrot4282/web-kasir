@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: message }, { status: 400 });
     }
 
-    const { items, totalBayar, noWa, memberNama, diskon, metodeBayar, poinDigunakan, tipePesanan, catatan } = parsed.data;
+    const { items, totalBayar, noWa, memberNama, diskon, metodeBayar, splitPayments, poinDigunakan, tipePesanan, catatan } = parsed.data;
 
     let totalHarga = 0;
 
@@ -204,6 +204,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (metodeBayar === "SPLIT") {
+      if (!splitPayments || splitPayments.length < 2) {
+        return NextResponse.json(
+          { error: "Split bill harus minimal 2 metode bayar" },
+          { status: 400 }
+        );
+      }
+      const totalSplit = splitPayments.reduce((sum, sp) => sum + sp.jumlah, 0);
+      if (totalSplit !== harusDibayar) {
+        return NextResponse.json(
+          { error: `Total split (${totalSplit.toLocaleString()}) tidak sama dengan yang harus dibayar (${harusDibayar.toLocaleString()})` },
+          { status: 400 }
+        );
+      }
+    }
+
     const transaksi = await prisma.$transaction(async (tx) => {
       for (const item of items) {
         const result: { stok: number }[] = await tx.$queryRaw`
@@ -223,7 +239,7 @@ export async function POST(request: NextRequest) {
           totalHarga,
           diskon,
           tax,
-          totalBayar: metodeBayar === "CASH" ? totalBayar : totalYangDibayar,
+          totalBayar: metodeBayar === "SPLIT" ? harusDibayar : (metodeBayar === "CASH" ? totalBayar : totalYangDibayar),
           kembalian,
           metodeBayar,
           tipePesanan,
@@ -242,6 +258,26 @@ export async function POST(request: NextRequest) {
           },
         },
       });
+
+      if (metodeBayar === "SPLIT" && splitPayments) {
+        await tx.pembayaranSplit.createMany({
+          data: splitPayments.map((sp, idx) => ({
+            transaksiId: newTransaksi.id,
+            metodeBayar: sp.metodeBayar,
+            jumlah: sp.jumlah,
+            urutan: idx,
+          })),
+        });
+      } else {
+        await tx.pembayaranSplit.create({
+          data: {
+            transaksiId: newTransaksi.id,
+            metodeBayar,
+            jumlah: metodeBayar === "CASH" ? totalBayar : totalYangDibayar,
+            urutan: 0,
+          },
+        });
+      }
 
       let poinDidapat = 0;
       if (member) {

@@ -65,16 +65,36 @@ export async function POST(request: NextRequest) {
 
     let totalMakanan = 0;
     let totalMinuman = 0;
+    let totalMakananRupiah = 0;
+    let totalMinumanRupiah = 0;
     let totalOmset = 0;
+
+    const breakdownMap = new Map<string, { nama: string; qty: number; subtotal: number }>();
 
     for (const item of items) {
       totalOmset += item.subtotal;
       if (item.menu.kategori.nama === "Makanan") {
         totalMakanan += item.jumlah;
+        totalMakananRupiah += item.subtotal;
       } else {
         totalMinuman += item.jumlah;
+        totalMinumanRupiah += item.subtotal;
+      }
+
+      const existing = breakdownMap.get(item.namaMenu);
+      if (existing) {
+        existing.qty += item.jumlah;
+        existing.subtotal += item.subtotal;
+      } else {
+        breakdownMap.set(item.namaMenu, {
+          nama: item.namaMenu,
+          qty: item.jumlah,
+          subtotal: item.subtotal,
+        });
       }
     }
+
+    const breakdown = [...breakdownMap.values()].sort((a, b) => b.subtotal - a.subtotal);
 
     const totalBelanjaUrgent = belanjaUrgent?.reduce((sum, item) => sum + item.nominal, 0) ?? 0;
     const netOmset = Math.max(0, totalOmset - totalBelanjaUrgent);
@@ -96,6 +116,8 @@ export async function POST(request: NextRequest) {
         ...(belanjaUrgent ? { belanjaUrgent } : {}),
         totalMakanan,
         totalMinuman,
+        totalMakananRupiah,
+        totalMinumanRupiah,
         totalOmset: netOmset,
         totalTransaksi,
         totalCash: pembayaran.CASH,
@@ -103,12 +125,34 @@ export async function POST(request: NextRequest) {
         totalCard: pembayaran.CARD,
         kasAktual: kasAktual ?? null,
         selisih,
+        breakdown,
       },
     });
 
-    return NextResponse.json(report, { status: 201 });
+    return NextResponse.json(
+      { ...report, kasirNama: user.nama },
+      { status: 201 }
+    );
   } catch {
     return NextResponse.json({ error: "Gagal menyimpan laporan closing" }, { status: 500 });
+  }
+}
+
+export async function DELETE() {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (session.role !== "OWNER") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const result = await prisma.dailyReport.deleteMany({});
+
+    return NextResponse.json({ message: `${result.count} laporan closing dihapus` });
+  } catch {
+    return NextResponse.json({ error: "Gagal menghapus laporan closing" }, { status: 500 });
   }
 }
 

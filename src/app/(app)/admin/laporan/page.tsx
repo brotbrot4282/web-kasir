@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { formatRupiah, formatDate } from "@/lib/utils";
+import { printClosing, type ClosingReportData } from "@/lib/printer";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
@@ -12,9 +13,10 @@ type Transaksi = {
   id: string; noTransaksi: string; totalHarga: number; diskon: number; totalBayar: number;
   kembalian: number; metodeBayar: string; createdAt: string;
   itemTransaksi: Array<{ id: string; namaMenu: string; harga: number; jumlah: number; subtotal: number }>;
+  pembayaranSplit?: Array<{ metodeBayar: string; jumlah: number }>;
 };
 type LaporanData = { ringkasan: Ringkasan; menuTerlaris: MenuTerlaris[]; transaksi: Transaksi[]; total: number; totalPages: number; page: number };
-type ClosingItem = { id: string; tanggal: string; createdAt: string; shift: string; uangAwal: number; catatan: string | null; belanjaUrgent: Array<{ nama: string; nominal: number }> | null; totalMakanan: number; totalMinuman: number; totalOmset: number; totalTransaksi: number; totalCash: number; totalQris: number; totalCard: number; kasAktual: number | null; selisih: number | null; user: { nama: string } };
+type ClosingItem = { id: string; tanggal: string; createdAt: string; shift: string; uangAwal: number; catatan: string | null; belanjaUrgent: Array<{ nama: string; nominal: number }> | null; totalMakanan: number; totalMinuman: number; totalMakananRupiah: number; totalMinumanRupiah: number; totalOmset: number; totalTransaksi: number; totalCash: number; totalQris: number; totalCard: number; kasAktual: number | null; selisih: number | null; breakdown: Array<{ nama: string; qty: number; subtotal: number }> | null; user: { nama: string } };
 type Rentang = "JAM" | "HARI" | "MINGGU" | "BULAN";
 type TitikGrafik = { label: string; tanggal: string; omset: number; transaksi: number; laba: number };
 
@@ -32,6 +34,8 @@ export default function LaporanPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [closingPage, setClosingPage] = useState(1);
   const [closingTotalPages, setClosingTotalPages] = useState(1);
+  const [closingPrint, setClosingPrint] = useState<{ id: string; type: "success" | "error"; text: string } | null>(null);
+  const [closingHapusLoading, setClosingHapusLoading] = useState(false);
   const [rentang, setRentang] = useState<Rentang>("BULAN");
   const [grafikData, setGrafikData] = useState<TitikGrafik[]>([]);
   const [grafikLoading, setGrafikLoading] = useState(false);
@@ -108,6 +112,56 @@ export default function LaporanPage() {
   };
 
   useEffect(() => { loadData(); }, []);
+
+  const cetakClosing = (c: ClosingItem) => {
+    const data: ClosingReportData = {
+      shift: c.shift,
+      kasirNama: c.user.nama,
+      tanggal: c.createdAt,
+      uangAwal: c.uangAwal,
+      makanan: { qty: c.totalMakanan, total: c.totalMakananRupiah || 0 },
+      minuman: { qty: c.totalMinuman, total: c.totalMinumanRupiah || 0 },
+      pembayaran: { CASH: c.totalCash ?? 0, QRIS: c.totalQris ?? 0, CARD: c.totalCard ?? 0 },
+      totalOmset: c.totalOmset,
+      totalTransaksi: c.totalTransaksi,
+      kasAktual: c.kasAktual,
+      selisih: c.selisih,
+      breakdown: c.breakdown || [],
+      belanjaUrgent: c.belanjaUrgent,
+      catatan: c.catatan,
+    };
+    try {
+      printClosing(data);
+      setClosingPrint({ id: c.id, type: "success", text: "Rincian dikirim ke printer" });
+    } catch (err) {
+      setClosingPrint({
+        id: c.id,
+        type: "error",
+        text: err instanceof Error && err.message === "Print bridge tidak tersedia"
+          ? "Printer thermal tidak terhubung"
+          : err instanceof Error ? err.message : "Gagal mencetak rincian",
+      });
+    }
+  };
+
+  const hapusSemuaLaporan = async () => {
+    const ok = window.prompt(
+      "HAPUS SEMUA LAPORAN CLOSING\n\nKetik \"HAPUS\" untuk melanjutkan. Tindakan ini tidak bisa dibatalkan."
+    );
+    if (ok !== "HAPUS") return;
+    setClosingHapusLoading(true);
+    try {
+      const res = await fetch("/api/closing", { method: "DELETE" });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error || "Gagal menghapus laporan"); }
+      const body = await res.json();
+      setClosingData([]);
+      setMsg({ type: "success", text: body.message || "Semua laporan closing dihapus" });
+    } catch (err) {
+      setMsg({ type: "error", text: err instanceof Error ? err.message : "Gagal menghapus laporan" });
+    } finally {
+      setClosingHapusLoading(false);
+    }
+  };
 
   const cari = (e: React.FormEvent) => { e.preventDefault(); setPage(1); setClosingPage(1); loadData(dari || undefined, sampai || undefined, undefined, undefined, 1); };
   const getLocalDate = (d: Date) =>
@@ -322,8 +376,15 @@ export default function LaporanPage() {
           ) : closingData.length > 0 ? (
             <>
               <div className="bg-white border border-sage-200 rounded-xl overflow-hidden">
-                <div className="px-4 py-3 border-b border-sage-100">
+                <div className="px-4 py-3 border-b border-sage-100 flex items-center justify-between gap-3">
                   <h2 className="text-sm font-semibold text-sage-800">Laporan Closing</h2>
+                  <button
+                    onClick={hapusSemuaLaporan}
+                    disabled={closingHapusLoading}
+                    className="text-xs font-medium text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                  >
+                    {closingHapusLoading ? "Menghapus..." : "Hapus Semua Laporan"}
+                  </button>
                 </div>
                 <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -342,6 +403,7 @@ export default function LaporanPage() {
                       <th className="text-right px-4 py-3 text-xs font-medium text-sage-500 uppercase">Transaksi</th>
                       <th className="text-left px-4 py-3 text-xs font-medium text-sage-500 uppercase">Catatan</th>
                       <th className="text-left px-4 py-3 text-xs font-medium text-sage-500 uppercase">Barang Urgent</th>
+                      <th className="text-left px-4 py-3 text-xs font-medium text-sage-500 uppercase">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-sage-100">
@@ -399,6 +461,19 @@ export default function LaporanPage() {
                               </div>
                             </div>
                           ) : "-"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => cetakClosing(c)}
+                            className="text-xs font-medium bg-sage-600 text-white px-3 py-1.5 rounded-lg hover:bg-sage-700 transition-colors whitespace-nowrap"
+                          >
+                            Cetak Rincian
+                          </button>
+                          {closingPrint?.id === c.id && (
+                            <p className={`text-xs mt-1 ${closingPrint.type === "success" ? "text-emerald-600" : "text-red-600"}`}>
+                              {closingPrint.text}
+                            </p>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -484,9 +559,22 @@ export default function LaporanPage() {
                       <td className="px-4 py-3.5 text-right font-medium text-sage-800">{formatRupiah(t.totalHarga)}</td>
                       <td className="px-4 py-3.5 text-center text-sage-500">{t.itemTransaksi.reduce((s, i) => s + i.jumlah, 0)}</td>
                       <td className="px-4 py-3.5 text-center">
-                        <span className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded ${t.metodeBayar === "QRIS" ? "bg-blue-50 text-blue-600" : t.metodeBayar === "CARD" ? "bg-violet-50 text-violet-600" : "bg-emerald-50 text-emerald-600"}`}>
-                          {t.metodeBayar === "QRIS" ? "QRIS" : t.metodeBayar === "CARD" ? "Card" : "Cash"}
-                        </span>
+                        {t.metodeBayar === "SPLIT" ? (
+                          <div className="inline-flex flex-col items-center gap-0.5">
+                            <span className="inline-block text-[10px] font-medium px-2 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-200">
+                              Split
+                            </span>
+                            <span className="inline-flex flex-col text-[9px] text-sage-400 leading-tight">
+                              {t.pembayaranSplit?.map((sp, idx) => (
+                                <span key={idx}>{sp.metodeBayar === "QRIS" ? "QRIS" : sp.metodeBayar === "CARD" ? "Card" : "Cash"}: {formatRupiah(sp.jumlah)}</span>
+                              ))}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded ${t.metodeBayar === "QRIS" ? "bg-blue-50 text-blue-600" : t.metodeBayar === "CARD" ? "bg-violet-50 text-violet-600" : "bg-emerald-50 text-emerald-600"}`}>
+                            {t.metodeBayar === "QRIS" ? "QRIS" : t.metodeBayar === "CARD" ? "Card" : "Cash"}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3.5 text-center text-sage-400 text-xs">{formatDate(new Date(t.createdAt))}</td>
                       <td className="px-4 py-3.5 text-center">
@@ -580,7 +668,24 @@ export default function LaporanPage() {
                       <tr className="text-red-500 font-medium"><td colSpan={3} className="py-1 text-right">Diskon</td><td className="py-1 text-right">-{formatRupiah(detail.diskon)}</td></tr>
                     )}
                     <tr className="text-sage-500"><td colSpan={3} className="py-1 text-right">Bayar</td><td className="py-1 text-right">{formatRupiah(detail.totalBayar)}</td></tr>
-                    <tr className="text-red-600 font-medium"><td colSpan={3} className="py-1 text-right">Kembali</td><td className="py-1 text-right">{formatRupiah(detail.kembalian)}</td></tr>
+                    {detail.metodeBayar === "SPLIT" && detail.pembayaranSplit && detail.pembayaranSplit.length > 0 ? (
+                      <>
+                        <tr className="text-sage-500"><td colSpan={3} className="py-1 text-right">Metode</td><td className="py-1 text-right font-medium">Split Bill</td></tr>
+                        {detail.pembayaranSplit.map((sp, idx) => (
+                          <tr key={idx} className="text-sage-500">
+                            <td colSpan={3} className="py-1 text-right pl-6">
+                              {sp.metodeBayar === "QRIS" ? "QRIS" : sp.metodeBayar === "CARD" ? "Card" : "Cash"}
+                            </td>
+                            <td className="py-1 text-right">{formatRupiah(sp.jumlah)}</td>
+                          </tr>
+                        ))}
+                      </>
+                    ) : (
+                      <tr className="text-sage-500"><td colSpan={3} className="py-1 text-right">Metode</td><td className="py-1 text-right">{detail.metodeBayar === "QRIS" ? "QRIS" : detail.metodeBayar === "CARD" ? "Card" : "Cash"}</td></tr>
+                    )}
+                    {detail.metodeBayar !== "SPLIT" && (
+                      <tr className="text-red-600 font-medium"><td colSpan={3} className="py-1 text-right">Kembali</td><td className="py-1 text-right">{formatRupiah(detail.kembalian)}</td></tr>
+                    )}
                   </tfoot>
                 </table>
               </div>

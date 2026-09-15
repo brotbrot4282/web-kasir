@@ -76,12 +76,18 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
   }
 }
 
-export async function DELETE(_request: NextRequest, { params }: { params: Params }) {
+export async function DELETE(request: NextRequest, { params }: { params: Params }) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id } = await params;
+    const { searchParams } = new URL(request.url);
+    const paksa = searchParams.get("paksa") === "1";
+
+    if (paksa) {
+      if (session.role !== "OWNER") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const existing = await prisma.menu.findUnique({ where: { id } });
     if (!existing) {
@@ -89,7 +95,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: Params
     }
 
     const transaksiCount = await prisma.itemTransaksi.count({ where: { menuId: id } });
-    if (transaksiCount > 0) {
+    if (transaksiCount > 0 && !paksa) {
       return NextResponse.json(
         { error: "Menu sudah memiliki riwayat transaksi, tidak bisa dihapus" },
         { status: 400 }
@@ -98,9 +104,18 @@ export async function DELETE(_request: NextRequest, { params }: { params: Params
 
     await deleteImageFromStorage(existing.gambar);
 
-    await prisma.menu.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      if (paksa) {
+        await tx.itemTransaksi.deleteMany({ where: { menuId: id } });
+      }
+      await tx.menu.delete({ where: { id } });
+    });
 
-    return NextResponse.json({ message: "Menu berhasil dihapus" });
+    return NextResponse.json({
+      message: paksa
+        ? "Menu berhasil dihapus (riwayat terkait ikut terhapus)"
+        : "Menu berhasil dihapus",
+    });
   } catch {
     return NextResponse.json({ error: "Gagal menghapus menu" }, { status: 500 });
   }

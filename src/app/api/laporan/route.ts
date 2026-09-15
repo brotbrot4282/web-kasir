@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
       take: limit,
       include: {
         itemTransaksi: true,
+        pembayaranSplit: { orderBy: { urutan: "asc" } },
       },
     }),
     prisma.itemTransaksi.groupBy({

@@ -81,10 +81,23 @@ model Transaksi {
   member        Member?         @relation(fields: [memberId], references: [id])
   itemTransaksi   ItemTransaksi[]
   rewardPoin      RewardPoin[]
+  pembayaranSplit PembayaranSplit[]
   createdAt     DateTime        @default(now()) @map("created_at")
   updatedAt     DateTime        @updatedAt @map("updated_at")
 
   @@map("transaksi")
+}
+
+model PembayaranSplit {
+  id          String   @id @default(uuid()) @db.Uuid
+  transaksiId String   @map("transaksi_id") @db.Uuid
+  transaksi   Transaksi @relation(fields: [transaksiId], references: [id], onDelete: Cascade)
+  metodeBayar String   @map("metode_bayar")
+  jumlah      Int
+  urutan      Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("pembayaran_split")
 }
 
 model ItemTransaksi {
@@ -174,6 +187,8 @@ model DailyReport {
   belanjaUrgent  Json?    @map("belanja_urgent")
   totalMakanan   Int      @default(0) @map("total_makanan")
   totalMinuman   Int      @default(0) @map("total_minuman")
+  totalMakananRupiah Int  @default(0) @map("total_makanan_rupiah")
+  totalMinumanRupiah Int  @default(0) @map("total_minuman_rupiah")
   totalOmset     Int      @default(0) @map("total_omset")
   totalTransaksi Int      @default(0) @map("total_transaksi")
   totalCash      Int      @default(0) @map("total_cash")
@@ -181,6 +196,7 @@ model DailyReport {
   totalCard      Int      @default(0) @map("total_card")
   kasAktual      Int?     @map("kas_aktual")
   selisih        Int?     @map("selisih")
+  breakdown      Json?    @map("breakdown")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 

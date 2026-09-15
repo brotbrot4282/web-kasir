@@ -41,12 +41,13 @@ export type StrukData = {
   tipePesanan: string;
   catatan: string | null;
   items: StrukItem[];
+  splitPayments?: Array<{ metodeBayar: string; jumlah: number }>;
 };
 
 const COLS = 32;
 const INDENT = new Uint8Array([0x20, 0x20]);
 
-const metodeLabel = (m: string) => (m === "QRIS" ? "QRIS" : m === "CARD" ? "Card" : "Tunai");
+const metodeLabel = (m: string) => (m === "QRIS" ? "QRIS" : m === "CARD" ? "Card" : m === "SPLIT" ? "Split Bill" : "Tunai");
 
 function truncate(s: string, max: number): string {
   if (s.length <= max) return s;
@@ -227,9 +228,17 @@ export function buildStrukBytes(data: StrukData, jenis: "customer" | "catatan"):
     encoder.line(alignLine("Tax Card", formatRupiah(data.tax)));
   }
   encoder.line(alignLine("Bayar", formatRupiah(data.totalBayar)));
-  encoder.line(alignLine("Metode", metodeLabel(data.metodeBayar)));
-  if (data.metodeBayar === "CASH") {
-    encoder.line(alignLine("Kembali", formatRupiah(data.kembalian)));
+  if (data.metodeBayar === "SPLIT" && data.splitPayments && data.splitPayments.length > 0) {
+    encoder.line(alignLine("Metode", "Split Bill"));
+    for (const sp of data.splitPayments) {
+      encoder.raw(INDENT);
+      encoder.line(alignLine(metodeLabel(sp.metodeBayar), formatRupiah(sp.jumlah)));
+    }
+  } else {
+    encoder.line(alignLine("Metode", metodeLabel(data.metodeBayar)));
+    if (data.metodeBayar === "CASH") {
+      encoder.line(alignLine("Kembali", formatRupiah(data.kembalian)));
+    }
   }
 
   if (data.poinDidapat > 0) {
@@ -256,6 +265,139 @@ export function printStruk(data: StrukData, jenis: "customer" | "catatan"): bool
     throw new Error("Print bridge tidak tersedia");
   }
   const bytes = buildStrukBytes(data, jenis);
+  const base64 = uint8ArrayToBase64(bytes);
+  const ok = bridge.print(base64);
+  if (!ok) {
+    throw new Error("Gagal mengirim data ke printer");
+  }
+  return true;
+}
+
+export type ClosingItemDetail = { nama: string; qty: number; subtotal: number };
+
+export type ClosingReportData = {
+  shift: string;
+  kasirNama: string;
+  tanggal: Date | string;
+  uangAwal: number;
+  makanan: { qty: number; total: number };
+  minuman: { qty: number; total: number };
+  pembayaran: { CASH: number; QRIS: number; CARD: number };
+  totalOmset: number;
+  totalTransaksi: number;
+  kasAktual: number | null;
+  selisih: number | null;
+  breakdown: ClosingItemDetail[];
+  belanjaUrgent: Array<{ nama: string; nominal: number }> | null;
+  catatan: string | null;
+};
+
+function shiftLabel(shift: string): string {
+  return shift === "SHIFT_1" ? "Shift 1" : shift === "SHIFT_2" ? "Shift 2" : shift;
+}
+
+function formatSelisih(n: number | null): string {
+  if (n === null || n === undefined) return "-";
+  if (n === 0) return "Pas";
+  return n > 0 ? `+${formatRupiah(n)}` : formatRupiah(n);
+}
+
+export function buildClosingBytes(data: ClosingReportData): Uint8Array {
+  const encoder = new ReceiptPrinterEncoder({ printerModel: "youku-58t" });
+
+  const tanggal = new Date(data.tanggal).toLocaleDateString("id-ID", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  const jam = new Date(data.tanggal).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+
+  const separator = () => encoder.line("-".repeat(COLS));
+
+  encoder.initialize();
+  encoder.align("center");
+  encoder.bold(true);
+  encoder.size(2, 2);
+  encoder.line("WARKOP SOEKARDJO");
+  encoder.size(1, 1);
+  encoder.bold(true);
+  encoder.line(`LAPORAN CLOSING ${shiftLabel(data.shift).toUpperCase()}`);
+  encoder.bold(false);
+  encoder.line(`${tanggal} ${jam}`);
+  encoder.line(`Kasir: ${data.kasirNama}`);
+  encoder.align("left");
+  separator();
+
+  encoder.line(alignLine("Uang Awal", formatRupiah(data.uangAwal)));
+  encoder.line(alignLine("Makanan", `${data.makanan.qty} item ${formatRupiah(data.makanan.total)}`));
+  encoder.line(alignLine("Minuman", `${data.minuman.qty} item ${formatRupiah(data.minuman.total)}`));
+  separator();
+
+  encoder.line(alignLine("Tunai", formatRupiah(data.pembayaran.CASH)));
+  encoder.line(alignLine("QRIS", formatRupiah(data.pembayaran.QRIS)));
+  encoder.line(alignLine("Card", formatRupiah(data.pembayaran.CARD)));
+  separator();
+
+  encoder.bold(true);
+  encoder.line(alignLine("Total Omset", formatRupiah(data.totalOmset)));
+  encoder.bold(false);
+  encoder.line(alignLine("Total Transaksi", `${data.totalTransaksi}x`));
+  const kasHarusnya = data.uangAwal + data.totalOmset;
+  encoder.line(alignLine("Kas Harusnya", formatRupiah(kasHarusnya)));
+  encoder.line(alignLine("Kas Aktual", data.kasAktual != null ? formatRupiah(data.kasAktual) : "-"));
+  encoder.line(alignLine("Selisih", formatSelisih(data.selisih)));
+  separator();
+
+  if (data.breakdown.length > 0) {
+    for (const item of data.breakdown) {
+      const maxNama = Math.max(1, COLS - 4);
+      encoder.raw(INDENT);
+      encoder.line(truncate(item.nama, maxNama));
+      encoder.raw(INDENT);
+      encoder.line(alignLine(`x${item.qty}`, formatRupiah(item.subtotal)));
+    }
+    separator();
+  }
+
+  if (data.belanjaUrgent && data.belanjaUrgent.length > 0) {
+    const totalUrgent = data.belanjaUrgent.reduce((sum, item) => sum + item.nominal, 0);
+    for (const item of data.belanjaUrgent) {
+      encoder.raw(INDENT);
+      encoder.line(alignLine(truncate(item.nama || "-", COLS - 4), formatRupiah(item.nominal)));
+    }
+    encoder.line(alignLine("Total Belanja", formatRupiah(totalUrgent)));
+    separator();
+  }
+
+  if (data.catatan && data.catatan.trim()) {
+    encoder.line("Catatan:");
+    const parts = wrapText(data.catatan.trim(), COLS);
+    for (const part of parts) {
+      encoder.raw(INDENT);
+      encoder.line(part);
+    }
+    separator();
+  }
+
+  encoder.align("center");
+  encoder.bold(true);
+  encoder.size(1, 2);
+  encoder.line("Terima kasih");
+  encoder.size(1, 1);
+  encoder.bold(false);
+
+  encoder.newline(4);
+
+  return encoder.encode();
+}
+
+export function printClosing(data: ClosingReportData): boolean {
+  const bridge = getBridge();
+  if (!bridge) {
+    throw new Error("Print bridge tidak tersedia");
+  }
+  const bytes = buildClosingBytes(data);
   const base64 = uint8ArrayToBase64(bytes);
   const ok = bridge.print(base64);
   if (!ok) {

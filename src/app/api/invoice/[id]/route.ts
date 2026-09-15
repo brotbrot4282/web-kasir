@@ -12,6 +12,7 @@ export async function GET(
       include: {
         itemTransaksi: { orderBy: { createdAt: "asc" } },
         member: { select: { noWa: true, nama: true, poin: true } },
+        pembayaranSplit: { orderBy: { urutan: "asc" } },
       },
     });
     if (!transaksi) {

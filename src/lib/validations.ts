@@ -13,20 +13,46 @@ export const transaksiItemSchema = z.object({
   variant: z.string().nullish(),
 });
 
+export const splitPaymentSchema = z.object({
+  metodeBayar: z.enum(["CASH", "QRIS", "CARD"], {
+    message: "Metode bayar split harus CASH, QRIS, atau CARD",
+  }),
+  jumlah: z.number().int().positive("Jumlah split harus lebih dari 0"),
+});
+
 export const transaksiSchema = z.object({
   items: z.array(transaksiItemSchema).min(1, "Minimal satu item diperlukan"),
   totalBayar: z.number().min(0, "Total bayar tidak valid"),
   noWa: z.string().nullish(),
   memberNama: z.string().nullish(),
   diskon: z.number().min(0, "Diskon tidak boleh negatif").default(0),
-  metodeBayar: z.enum(["CASH", "QRIS", "CARD"], {
-    message: "Metode bayar harus CASH, QRIS, atau CARD",
+  metodeBayar: z.enum(["CASH", "QRIS", "CARD", "SPLIT"], {
+    message: "Metode bayar harus CASH, QRIS, CARD, atau SPLIT",
   }),
+  splitPayments: z.array(splitPaymentSchema).optional(),
   tipePesanan: z.enum(["DINE_IN", "TAKE_AWAY"], {
     message: "Tipe pesanan harus Dine In atau Take Away",
   }),
   catatan: z.string().max(200, "Catatan maksimal 200 karakter").nullish(),
   poinDigunakan: z.number().int().min(0, "Poin tidak boleh negatif").default(0),
+}).superRefine((data, ctx) => {
+  if (data.metodeBayar === "SPLIT") {
+    if (!data.splitPayments || data.splitPayments.length < 2) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Split bill harus minimal 2 metode bayar",
+        path: ["splitPayments"],
+      });
+    }
+  } else {
+    if (data.splitPayments && data.splitPayments.length > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Split payments hanya boleh ada jika metode bayar SPLIT",
+        path: ["splitPayments"],
+      });
+    }
+  }
 });
 
 // ── Menu ──────────────────────────────────────────────

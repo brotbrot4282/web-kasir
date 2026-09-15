@@ -13,6 +13,7 @@ type Transaksi = {
   poinDigunakan: number; totalPoin: number;
   createdAt: string; itemTransaksi: Item[];
   noWa: string | null; member: Member;
+  pembayaranSplit?: Array<{ metodeBayar: string; jumlah: number }>;
 };
 
 export default function InvoicePage() {
@@ -135,9 +136,23 @@ export default function InvoicePage() {
             <div className="flex justify-between text-sm text-sage-500">
               <span>Bayar</span><span>{formatRupiah(data.totalBayar)}</span>
             </div>
-            <div className="flex justify-between text-sm text-sage-500">
-              <span>Metode</span><span>{data.metodeBayar === "QRIS" ? "QRIS" : data.metodeBayar === "CARD" ? "Card" : "Tunai"}</span>
-            </div>
+            {data.metodeBayar === "SPLIT" && data.pembayaranSplit && data.pembayaranSplit.length > 0 ? (
+              <div className="space-y-0.5">
+                <div className="flex justify-between text-sm text-sage-500">
+                  <span>Metode</span><span className="font-medium text-sage-700">Split Bill</span>
+                </div>
+                {data.pembayaranSplit.map((sp, idx) => (
+                  <div key={idx} className="flex justify-between text-sm text-sage-500 pl-3">
+                    <span>{sp.metodeBayar === "QRIS" ? "QRIS" : sp.metodeBayar === "CARD" ? "Card" : "Tunai"}</span>
+                    <span className="text-sage-700">{formatRupiah(sp.jumlah)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex justify-between text-sm text-sage-500">
+                <span>Metode</span><span>{data.metodeBayar === "QRIS" ? "QRIS" : data.metodeBayar === "CARD" ? "Card" : "Tunai"}</span>
+              </div>
+            )}
             {data.metodeBayar === "CASH" && (
               <div className="flex justify-between text-sm font-medium text-sage-600">
                 <span>Kembali</span><span>{formatRupiah(data.kembalian)}</span>
